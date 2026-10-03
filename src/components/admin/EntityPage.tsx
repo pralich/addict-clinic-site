@@ -1,0 +1,202 @@
+import { useMemo, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import Icon from "@/components/ui/icon";
+import { toast } from "sonner";
+import EntityForm from "./EntityForm";
+import { DEFAULTS, ENTITY_DEFS } from "./entities";
+import { useCrmMutation, useList, useOptions } from "./useCrm";
+import { money } from "./config";
+import { useAuth } from "./AuthContext";
+
+const ALL = "__all";
+
+type Props = { resource: string; onOpen: (resource: string, id: number) => void };
+
+const EntityPage = ({ resource, onOpen }: Props) => {
+  const def = ENTITY_DEFS[resource];
+  const { user } = useAuth();
+  const { data: opts } = useOptions();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState(ALL);
+  const [manager, setManager] = useState(ALL);
+  const [partner, setPartner] = useState(ALL);
+  const [archived, setArchived] = useState(false);
+  const [view, setView] = useState<"table" | "board">(resource === "deals" ? "board" : "table");
+  const [creating, setCreating] = useState(false);
+  const mut = useCrmMutation();
+
+  const params = {
+    search: search.trim() || undefined,
+    status: status === ALL ? undefined : status,
+    manager_id: manager === ALL ? undefined : manager,
+    partner_id: partner === ALL ? undefined : partner,
+    archived: archived ? "1" : undefined,
+  };
+  const { data, isLoading } = useList(resource, params);
+  const items = useMemo(() => data?.items ?? [], [data]);
+  const canBoard = resource === "deals" || resource === "leads";
+  const createInitial = useMemo(
+    () => ({ ...DEFAULTS[resource], manager_id: def.filters?.includes("manager") && user ? String(user.id) : undefined }),
+    [resource, def, user],
+  );
+
+  const create = (body: Record<string, any>) =>
+    mut.mutateAsync({ params: { resource }, method: "POST", body }).then((r: any) => {
+      toast.success("Создано");
+      onOpen(resource, r.item.id);
+    });
+
+  const exportCsv = () => {
+    const cols = def.columns;
+    const rows = [cols.map((c) => c.label), ...items.map((r) => cols.map((c) => String(r[c.key] ?? "")))];
+    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `${resource}.csv`;
+    a.click();
+  };
+
+  const moveTo = (id: number, value: string) =>
+    mut.mutate({ params: { resource, id }, method: "PUT", body: { [def.statusKey]: value } });
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">{def.title}</h1>
+          <p className="text-sm text-muted-foreground">{isLoading ? "Загрузка…" : `${items.length} записей${archived ? " в архиве" : ""}`}</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {canBoard && (
+            <div className="flex rounded-full border bg-card p-0.5">
+              {(["board", "table"] as const).map((v) => (
+                <button key={v} onClick={() => setView(v)} className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs ${view === v ? "bg-ink text-ink-foreground" : ""}`}>
+                  <Icon name={v === "board" ? "Columns3" : "List"} size={14} />{v === "board" ? "Воронка" : "Список"}
+                </button>
+              ))}
+            </div>
+          )}
+          <Button variant="outline" size="sm" onClick={exportCsv} className="rounded-full"><Icon name="Download" size={14} className="mr-1.5" />CSV</Button>
+          <Button size="sm" onClick={() => setCreating(true)} className="rounded-full"><Icon name="Plus" size={14} className="mr-1.5" />Добавить</Button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск…" className="bg-card pl-9" />
+        </div>
+        <FilterSelect value={status} onChange={setStatus} placeholder={resource === "deals" ? "Все этапы" : "Все статусы"}
+          items={Object.entries(def.statusMap).map(([k, v]) => ({ value: k, label: v.label }))} />
+        {def.filters?.includes("manager") && (
+          <FilterSelect value={manager} onChange={setManager} placeholder="Все ответственные"
+            items={[{ value: String(user?.id), label: "Мои" }, ...(opts?.users || []).filter((u) => u.id !== user?.id).map((u) => ({ value: String(u.id), label: u.name }))]} />
+        )}
+        {def.filters?.includes("partner") && (
+          <FilterSelect value={partner} onChange={setPartner} placeholder="Все партнёры"
+            items={(opts?.partners || []).map((u) => ({ value: String(u.id), label: u.name }))} />
+        )}
+        <Button variant={archived ? "default" : "outline"} size="sm" className="h-10" onClick={() => setArchived(!archived)}>
+          <Icon name="Archive" size={14} className="mr-1.5" />Архив
+        </Button>
+      </div>
+
+      {canBoard && view === "board" ? (
+        <div className="-mx-4 overflow-x-auto px-4 pb-2 md:-mx-8 md:px-8">
+          <div className="flex min-w-max gap-3">
+            {Object.entries(def.statusMap).map(([k, s]) => {
+              const col = items.filter((i) => i[def.statusKey] === k);
+              const sum = col.reduce((a, i) => a + Number(i.amount || 0), 0);
+              return (
+                <div
+                  key={k}
+                  className="flex w-[270px] flex-col rounded-xl bg-secondary/70 p-2"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => { const id = Number(e.dataTransfer.getData("id")); if (id) moveTo(id, k); }}
+                >
+                  <div className="flex items-center justify-between px-2 py-1.5">
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${s.cls}`}>{s.label}</span>
+                    <span className="text-xs text-muted-foreground">{col.length}{resource === "deals" && sum > 0 ? ` · ${money(sum)}` : ""}</span>
+                  </div>
+                  <div className="flex min-h-[120px] flex-col gap-2 pt-1">
+                    {col.map((i) => (
+                      <button
+                        key={i.id}
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData("id", String(i.id))}
+                        onClick={() => onOpen(resource, i.id)}
+                        className="cursor-grab rounded-lg border bg-card p-3 text-left text-sm shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
+                      >
+                        <p className="font-medium leading-snug">{i[def.titleKey] || "Аноним"}</p>
+                        {resource === "deals" ? (
+                          <>
+                            <p className="mt-1 text-xs text-muted-foreground">{i.client_name || "Без клиента"}</p>
+                            <p className="mt-2 font-heading font-semibold">{money(i.amount)}</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="mt-1 text-xs text-muted-foreground">{i.contact}</p>
+                            {i.topic && <p className="mt-1.5 inline-block rounded bg-secondary px-1.5 py-0.5 text-[11px]">{i.topic}</p>}
+                          </>
+                        )}
+                        {i.manager_name && <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground"><Icon name="User" size={11} />{i.manager_name}</p>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {def.columns.map((c) => <TableHead key={c.key} className={`whitespace-nowrap ${c.className || ""}`}>{c.label}</TableHead>)}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {items.map((r) => (
+                  <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(resource, r.id)}>
+                    {def.columns.map((c) => (
+                      <TableCell key={c.key} className={c.className}>{c.render ? c.render(r) : r[c.key] ?? "—"}</TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+                {!isLoading && items.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={def.columns.length} className="py-12 text-center text-muted-foreground">
+                      <Icon name={def.icon} size={28} className="mx-auto mb-2 opacity-40" />
+                      Ничего не найдено
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      <EntityForm open={creating} onOpenChange={setCreating} title={`Добавить ${def.single}`} fields={def.fields}
+        initial={createInitial} onSubmit={create} />
+    </div>
+  );
+};
+
+const FilterSelect = ({ value, onChange, placeholder, items }: { value: string; onChange: (v: string) => void; placeholder: string; items: { value: string; label: string }[] }) => (
+  <Select value={value} onValueChange={onChange}>
+    <SelectTrigger className="h-10 w-auto min-w-[160px] bg-card"><SelectValue /></SelectTrigger>
+    <SelectContent>
+      <SelectItem value={ALL}>{placeholder}</SelectItem>
+      {items.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
+    </SelectContent>
+  </Select>
+);
+
+export default EntityPage;

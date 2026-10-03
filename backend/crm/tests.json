@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"name": "Auth status", "method": "GET", "path": "/?resource=auth&action=status", "expectedStatus": 200},
+    {"name": "Dashboard requires auth", "method": "GET", "path": "/?resource=dashboard", "expectedStatus": 401},
+    {"name": "Public lead without contact", "method": "POST", "path": "/?resource=public_lead", "body": {"name": "Тест"}, "expectedStatus": 400}
+  ]
+}

@@ -7,6 +7,7 @@ import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
 import Cross3D from "./Cross3D";
 import { PHONE_DISPLAY, PHONE_HREF } from "./contacts";
+import { sendPublicLead } from "@/lib/crm-api";
 
 const TOPICS = ["Алкоголь", "Наркотики", "Лекарства", "Игромания", "Для близкого", "Другое"];
 
@@ -19,7 +20,9 @@ const Contacts = () => {
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
-  const onSubmit = (e: FormEvent) => {
+  const [sending, setSending] = useState(false);
+
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const digits = contact.replace(/\D/g, "");
     if (digits.length < 10 && !contact.includes("@")) {
@@ -27,8 +30,16 @@ const Contacts = () => {
       return;
     }
     setError("");
-    setSent(true);
-    toast({ title: "Заявка принята", description: "Специалист свяжется с вами в течение 5 минут." });
+    setSending(true);
+    try {
+      await sendPublicLead({ name, contact, topic, message: msg });
+      setSent(true);
+      toast({ title: "Заявка принята", description: "Специалист свяжется с вами в течение 5 минут." });
+    } catch {
+      setError(`Не удалось отправить. Позвоните нам: ${PHONE_DISPLAY}`);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -129,10 +140,11 @@ const Contacts = () => {
                 </label>
                 <button
                   type="submit"
-                  className="accent-glow inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground transition-transform hover:-translate-y-0.5"
+                  disabled={sending}
+                  className="accent-glow inline-flex h-12 items-center justify-center gap-2 rounded-full bg-primary px-6 font-medium text-primary-foreground transition-transform hover:-translate-y-0.5 disabled:opacity-70"
                 >
-                  <Icon name="Lock" size={16} />
-                  Отправить анонимно
+                  <Icon name={sending ? "Loader2" : "Lock"} size={16} className={sending ? "animate-spin" : ""} />
+                  {sending ? "Отправляем…" : "Отправить анонимно"}
                 </button>
                 <p className="flex items-start gap-2 text-[0.82em] text-muted-foreground">
                   <Icon name="ShieldCheck" size={14} className="mt-0.5 shrink-0 text-teal-a" />
