@@ -82,7 +82,7 @@ const Support = () => (
           <div>
             <p className="flex flex-wrap items-center gap-2 font-heading text-[1.35em] font-semibold tracking-tight">
               Кабинет для родственников
-              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.55em] font-medium uppercase tracking-wider">Бесплатно</span>
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.55em] font-medium uppercase tracking-wider">Эксклюзив</span>
             </p>
             <p className="mt-1 max-w-[620px] text-[0.97em] text-white/70">
               Вопросы психологу, группы поддержки и вебинары, а также ИИ-психолог: отрепетируйте разговор с близким и подготовьте его к лечению.
