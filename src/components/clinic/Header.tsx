@@ -4,13 +4,8 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { LOGO_URL, NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 
 export const Logo = () => (
-  <a href="#top" className="relative block h-7 w-[204px] overflow-hidden shrink-0" aria-label="addict.clinic">
-    <img
-      src={LOGO_URL}
-      alt="addict.clinic"
-      className="absolute max-w-none"
-      style={{ width: 224, height: 224, left: -10, top: -98 }}
-    />
+  <a href="#top" className="block shrink-0" aria-label="addict.clinic">
+    <img src={LOGO_URL} alt="addict.clinic" className="h-6 w-auto md:h-7" />
   </a>
 );
 
