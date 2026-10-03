@@ -11,8 +11,22 @@ import Faq from "@/components/clinic/Faq";
 import Contacts from "@/components/clinic/Contacts";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_HREF } from "@/components/clinic/contacts";
+import { FAQ } from "@/components/clinic/Faq";
+import { useSeo } from "@/lib/seo";
+
+const FAQ_LD = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+};
 
 const Index = () => {
+  useSeo({
+    title: "Анонимное лечение зависимостей в Москве 24/7 — addict.clinic",
+    description: "Анонимное лечение алкоголизма, наркомании, лекарственной зависимости и игромании. Срочный выезд нарколога 24/7, без постановки на учёт. Бесплатная консультация: 8 800 555-24-07.",
+    path: "/",
+    jsonLd: FAQ_LD,
+  });
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />

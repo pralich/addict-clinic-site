@@ -1,8 +1,10 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { useSeo } from "@/lib/seo";
 
 const NotFound = () => {
   const location = useLocation();
+  useSeo({ title: "Страница не найдена — addict.clinic", description: "Страница не найдена", path: location.pathname, noindex: true });
 
   useEffect(() => {
     console.error(

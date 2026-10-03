@@ -4,6 +4,24 @@ import Icon from "@/components/ui/icon";
 import Reveal from "@/components/clinic/Reveal";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { sendPublicLead } from "@/lib/crm-api";
+import { SITE_URL, useSeo } from "@/lib/seo";
+
+const PREMIUM_LD = {
+  "@context": "https://schema.org",
+  "@type": "MedicalWebPage",
+  name: "addict.clinic PREMIUM — VIP-лечение зависимостей",
+  url: `${SITE_URL}/premium`,
+  inLanguage: "ru-RU",
+  about: { "@type": "MedicalTherapy", name: "Анонимное стационарное лечение зависимостей в условиях резиденции" },
+  isPartOf: { "@id": `${SITE_URL}/#website` },
+  breadcrumb: {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
+      { "@type": "ListItem", position: 2, name: "PREMIUM", item: `${SITE_URL}/premium` },
+    ],
+  },
+};
 
 const IMG_SUITE = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/424c1c3f-702f-42ed-b676-2530ceff3686.jpg";
 const IMG_DOCTOR = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/931c2f44-73a7-4db8-8948-042009851630.jpg";
@@ -135,9 +153,15 @@ const PremiumForm = () => {
 };
 
 const Premium = () => {
+  useSeo({
+    title: "VIP-лечение зависимостей анонимно — addict.clinic PREMIUM",
+    description: "Премиальная программа лечения зависимостей: абсолютная анонимность с гарантией в договоре, врачи с мировым именем, частная резиденция с люксами, SPA и личным куратором.",
+    path: "/premium",
+    image: "/og-premium.jpg",
+    jsonLd: PREMIUM_LD,
+  });
   useEffect(() => {
     window.scrollTo(0, 0);
-    document.title = "addict.clinic PREMIUM — анонимное лечение зависимостей в условиях резиденции";
   }, []);
 
   return (
@@ -145,7 +169,7 @@ const Premium = () => {
       <PremiumHeader />
 
       <section className="relative flex min-h-[100svh] items-center overflow-hidden pt-16">
-        <img src={IMG_RESIDENCE} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" />
+        <img src={IMG_RESIDENCE} alt="Частная резиденция addict.clinic PREMIUM в сосновом лесу" fetchPriority="high" className="absolute inset-0 h-full w-full object-cover opacity-35" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0e0e10]/70 via-[#0e0e10]/60 to-[#0e0e10]" />
         <div className="premium-glow absolute left-1/2 top-1/3 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2" />
         <div className="relative mx-auto w-full max-w-[1280px] px-5 py-16 text-center md:px-14">
@@ -225,7 +249,7 @@ const Premium = () => {
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <Reveal className="relative">
               <div className="premium-glow absolute -inset-10" />
-              <img src={IMG_DOCTOR} alt="Руководитель программы" className="relative aspect-[4/5] w-full rounded-3xl object-cover" />
+              <img src={IMG_DOCTOR} alt="Руководитель программы PREMIUM, профессор психиатрии-наркологии" loading="lazy" className="relative aspect-[4/5] w-full rounded-3xl object-cover" />
               <div className="premium-card absolute bottom-5 left-5 right-5 rounded-2xl bg-[#0e0e10]/80 p-5 backdrop-blur-md">
                 <p className={`text-xs uppercase tracking-[0.25em] ${GOLD}`}>Руководитель программы</p>
                 <p className="mt-2 font-heading text-lg text-white">Профессор, доктор медицинских наук</p>
@@ -268,7 +292,7 @@ const Premium = () => {
           </p>
         </Reveal>
         <Reveal delay={100} className="relative mt-12 overflow-hidden rounded-3xl">
-          <img src={IMG_SUITE} alt="Люкс в резиденции" className="aspect-[16/9] w-full object-cover md:aspect-[21/9]" />
+          <img src={IMG_SUITE} alt="Люкс в стационаре addict.clinic PREMIUM" loading="lazy" className="aspect-[16/9] w-full object-cover md:aspect-[21/9]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[#0e0e10]/80 via-transparent to-transparent" />
           <p className="absolute bottom-6 left-6 max-w-[420px] font-heading text-xl text-white md:bottom-8 md:left-8 md:text-2xl">
             Каждый люкс — отдельное пространство с собственным входом

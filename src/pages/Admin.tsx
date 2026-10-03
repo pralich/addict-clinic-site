@@ -9,6 +9,7 @@ import EntityPage from "@/components/admin/EntityPage";
 import UsersPage from "@/components/admin/UsersPage";
 import EntityDrawer from "@/components/admin/EntityDrawer";
 import { ROLES } from "@/components/admin/config";
+import { useSeo } from "@/lib/seo";
 
 const NAV = [
   { id: "dashboard", label: "Сводка", icon: "LayoutDashboard" },
@@ -92,10 +93,13 @@ const Shell = () => {
   );
 };
 
-const Admin = () => (
-  <AuthProvider>
-    <Shell />
-  </AuthProvider>
-);
+const Admin = () => {
+  useSeo({ title: "CRM — addict.clinic", description: "Панель управления", path: "/admin", noindex: true });
+  return (
+    <AuthProvider>
+      <Shell />
+    </AuthProvider>
+  );
+};
 
 export default Admin;

@@ -1,0 +1,13 @@
+{
+  "name": "addict.clinic — анонимное лечение зависимостей",
+  "short_name": "addict.clinic",
+  "lang": "ru",
+  "start_url": "/",
+  "display": "browser",
+  "background_color": "#F3F3F1",
+  "theme_color": "#F3F3F1",
+  "icons": [
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
+    { "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png" }
+  ]
+}
