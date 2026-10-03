@@ -1,11 +1,22 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Link } from "react-router-dom";
 import { LOGO_URL, NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
+
+const PremiumLink = ({ compact = false }: { compact?: boolean }) => (
+  <Link
+    to="/premium"
+    className={`premium-btn inline-flex h-9 items-center gap-1.5 whitespace-nowrap rounded-full font-heading font-semibold transition-transform hover:-translate-y-0.5 ${compact ? "px-2.5 text-[0.72em] tracking-[0.12em]" : "px-4 text-[0.82em] tracking-[0.18em]"}`}
+  >
+    <Icon name="Crown" size={13} className="relative z-10 text-[#e6d3b3]" />
+    <span className="premium-gold-text relative z-10">PREMIUM</span>
+  </Link>
+);
 
 export const Logo = () => (
   <a href="#top" className="block shrink-0" aria-label="addict.clinic">
-    <img src={LOGO_URL} alt="addict.clinic" className="h-6 w-auto md:h-7" />
+    <img src={LOGO_URL} alt="addict.clinic" className="h-5 w-auto sm:h-6 md:h-7" />
   </a>
 );
 
@@ -34,6 +45,7 @@ const Header = () => {
               {n.label}
             </a>
           ))}
+          <PremiumLink />
           <a
             href={PHONE_HREF}
             className="ml-1 inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-ink px-[17px] text-[0.94em] font-medium tracking-tight text-ink-foreground transition-transform hover:-translate-y-0.5"
@@ -44,6 +56,7 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-2 lg:hidden">
+          <PremiumLink compact />
           <a
             href={PHONE_HREF}
             className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground accent-glow"
@@ -71,9 +84,17 @@ const Header = () => {
                   </a>
                 ))}
               </nav>
+              <Link
+                to="/premium"
+                onClick={() => setOpen(false)}
+                className="premium-btn mt-6 flex h-12 items-center justify-center gap-2 rounded-full font-heading font-semibold tracking-[0.2em]"
+              >
+                <Icon name="Crown" size={16} className="relative z-10 text-[#e6d3b3]" />
+                <span className="premium-gold-text relative z-10">PREMIUM</span>
+              </Link>
               <a
                 href={PHONE_HREF}
-                className="mt-8 flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-medium text-primary-foreground accent-glow"
+                className="mt-3 flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-medium text-primary-foreground accent-glow"
               >
                 <Icon name="Phone" size={16} />
                 Срочная помощь 24/7
