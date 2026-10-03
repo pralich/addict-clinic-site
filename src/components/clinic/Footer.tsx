@@ -13,7 +13,7 @@ const Footer = () => (
       </div>
       <nav className="grid grid-cols-2 gap-2 text-[0.95em]">
         {NAV.map((n) => (
-          <a key={n.href} href={n.href} className="w-fit text-muted-foreground hover:text-foreground story-link">
+          <a key={n.href} href={n.href.startsWith("#") ? `/${n.href}` : n.href} className="w-fit text-muted-foreground hover:text-foreground story-link">
             {n.label}
           </a>
         ))}

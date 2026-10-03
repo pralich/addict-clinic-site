@@ -7,6 +7,7 @@ import LoginScreen from "@/components/admin/LoginScreen";
 import Dashboard from "@/components/admin/Dashboard";
 import EntityPage from "@/components/admin/EntityPage";
 import UsersPage from "@/components/admin/UsersPage";
+import ArticlesPage from "@/components/admin/ArticlesPage";
 import EntityDrawer from "@/components/admin/EntityDrawer";
 import { ROLES } from "@/components/admin/config";
 import { useSeo } from "@/lib/seo";
@@ -17,6 +18,7 @@ const NAV = [
   { id: "deals", label: "Сделки", icon: "Handshake" },
   { id: "clients", label: "Клиенты", icon: "Users" },
   { id: "partners", label: "Партнёры", icon: "Building2" },
+  { id: "articles", label: "Статьи", icon: "Newspaper" },
   { id: "users", label: "Пользователи", icon: "UserCog" },
 ];
 
@@ -86,6 +88,7 @@ const Shell = () => {
           {page === "dashboard" && <Dashboard onOpen={open} onNavigate={go} />}
           {["leads", "deals", "clients", "partners"].includes(page) && <EntityPage key={page} resource={page} onOpen={open} />}
           {page === "users" && <UsersPage />}
+          {page === "articles" && <ArticlesPage />}
         </div>
       </main>
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}

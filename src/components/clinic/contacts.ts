@@ -8,5 +8,6 @@ export const NAV = [
   { href: "#doctors", label: "Врачи" },
   { href: "#steps", label: "Как обратиться" },
   { href: "#faq", label: "Вопросы" },
+  { href: "/articles", label: "Статьи" },
   { href: "#contacts", label: "Контакты" },
 ];

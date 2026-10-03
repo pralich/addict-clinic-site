@@ -1,0 +1,8 @@
+{
+  "tests": [
+    {"name": "Public list", "method": "GET", "path": "/", "expectedStatus": 200},
+    {"name": "Article by slug", "method": "GET", "path": "/?slug=vyvod-iz-zapoya-na-domu", "expectedStatus": 200},
+    {"name": "Missing article", "method": "GET", "path": "/?slug=net-takoy-stati", "expectedStatus": 404},
+    {"name": "Admin requires auth", "method": "GET", "path": "/?action=admin", "expectedStatus": 401}
+  ]
+}

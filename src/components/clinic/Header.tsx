@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { LOGO_URL, NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 
 const PremiumLink = ({ compact = false }: { compact?: boolean }) => (
@@ -15,12 +15,14 @@ const PremiumLink = ({ compact = false }: { compact?: boolean }) => (
 );
 
 export const Logo = () => (
-  <a href="#top" className="block shrink-0" aria-label="addict.clinic">
+  <a href="/" className="block shrink-0" aria-label="addict.clinic — на главную">
     <img src={LOGO_URL} alt="addict.clinic" className="h-5 w-auto sm:h-6 md:h-7" />
   </a>
 );
 
 const Header = () => {
+  const { pathname } = useLocation();
+  const navHref = (h: string) => (h.startsWith("#") && pathname !== "/" ? `/${h}` : h);
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -41,7 +43,7 @@ const Header = () => {
         <Logo />
         <nav className="hidden items-center gap-5 lg:flex">
           {NAV.map((n) => (
-            <a key={n.href} href={n.href} className="story-link text-[0.94em] text-muted-foreground hover:text-foreground transition-colors">
+            <a key={n.href} href={navHref(n.href)} className="story-link text-[0.94em] text-muted-foreground hover:text-foreground transition-colors">
               {n.label}
             </a>
           ))}
@@ -76,7 +78,7 @@ const Header = () => {
                 {NAV.map((n) => (
                   <a
                     key={n.href}
-                    href={n.href}
+                    href={navHref(n.href)}
                     onClick={() => setOpen(false)}
                     className="rounded-lg px-3 py-3 font-heading text-xl font-medium tracking-tight hover:bg-secondary"
                   >
