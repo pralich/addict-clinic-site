@@ -3,7 +3,7 @@ import Icon from "@/components/ui/icon";
 import { CATEGORIES, type Article } from "@/lib/articles";
 
 const ArticleCard = ({ a, large = false }: { a: Article; large?: boolean }) => (
-  <Link to={`/articles/${a.slug}`} className={`group flex flex-col overflow-hidden rounded-2xl bg-card transition-shadow hover:shadow-lg ${large ? "md:col-span-2 md:flex-row" : ""}`}>
+  <Link to={`/articles/${a.slug}`} className={`group flex w-full flex-col overflow-hidden rounded-2xl bg-card transition-shadow hover:shadow-lg ${large ? "md:col-span-2 md:flex-row" : ""}`}>
     <div className={`relative overflow-hidden ${large ? "aspect-[16/10] md:aspect-auto md:w-[55%]" : "aspect-[16/10]"}`}>
       {a.cover_url ? (
         <img src={a.cover_url} alt={a.cover_alt || a.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105" />
