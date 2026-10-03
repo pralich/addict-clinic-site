@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { fetchArticles } from "@/lib/articles";
 import Icon from "@/components/ui/icon";
 import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
@@ -7,6 +10,7 @@ const PROBLEMS = [
   {
     icon: "Wine",
     name: "Алкоголизм",
+    category: "alcohol",
     short: "Запои, абстиненция, потеря контроля",
     signs: ["Запои и тяжёлое похмелье", "Выпивка «для снятия стресса» каждый день", "Провалы в памяти", "Агрессия и тревога без алкоголя"],
     help: ["Вывод из запоя на дому за 1–3 часа", "Детоксикация и капельницы", "Кодирование и блокирующая терапия", "Реабилитация и психотерапия"],
@@ -14,6 +18,7 @@ const PROBLEMS = [
   {
     icon: "Syringe",
     name: "Наркомания",
+    category: "drugs",
     short: "Опиаты, стимуляторы, соли, каннабис",
     signs: ["Резкая смена поведения и круга общения", "Пропажа денег и вещей", "Ломка, бессонница, паранойя", "Вспышки агрессии"],
     help: ["Купирование ломки под наблюдением", "Сверхбыстрая детоксикация", "Мотивационная работа с пациентом", "Стационарная реабилитация"],
@@ -21,6 +26,7 @@ const PROBLEMS = [
   {
     icon: "Pill",
     name: "Лекарственная зависимость",
+    category: "meds",
     short: "Снотворные, транквилизаторы, обезболивающие",
     signs: ["Препараты без назначения или сверх дозы", "Невозможность уснуть без таблеток", "Поиск рецептов у разных врачей", "Заторможенность"],
     help: ["Плавная отмена по схеме врача", "Замещающая терапия", "Лечение тревоги и бессонницы", "Психологическое сопровождение"],
@@ -28,6 +34,7 @@ const PROBLEMS = [
   {
     icon: "Dices",
     name: "Игромания",
+    category: "gambling",
     short: "Ставки, казино, онлайн-игры на деньги",
     signs: ["Долги и кредиты ради игры", "Попытки «отыграться»", "Ложь близким о деньгах", "Раздражительность без игры"],
     help: ["Когнитивно-поведенческая терапия", "Финансовые ограничения вместе с семьёй", "Групповая терапия", "Профилактика срывов"],
@@ -35,6 +42,7 @@ const PROBLEMS = [
   {
     icon: "HeartHandshake",
     name: "Созависимость",
+    category: "codependency",
     short: "Помощь родственникам зависимых",
     signs: ["Жизнь вращается вокруг зависимого", "Постоянный контроль и тревога", "Чувство вины и бессилия", "Своя жизнь отложена"],
     help: ["Консультации для семьи", "Подготовка к разговору и мотивации", "Группы поддержки для близких", "Личная терапия"],
@@ -42,6 +50,7 @@ const PROBLEMS = [
   {
     icon: "Utensils",
     name: "Расстройства пищевого поведения",
+    category: "eating",
     short: "Анорексия, булимия, компульсивное переедание",
     signs: ["Навязчивый контроль веса", "Приступы переедания и чистки", "Страх еды", "Резкие колебания веса"],
     help: ["Совместная работа психиатра и диетолога", "Психотерапия", "Восстановление режима питания", "Наблюдение после выписки"],
@@ -49,6 +58,7 @@ const PROBLEMS = [
   {
     icon: "Cigarette",
     name: "Никотин",
+    category: "nicotine",
     short: "Сигареты, вейпы, снюс",
     signs: ["Больше пачки в день", "Безуспешные попытки бросить", "Кашель и одышка", "Раздражение без сигареты"],
     help: ["Медикаментозная поддержка", "Работа с привычкой и триггерами", "Поддержка психолога", "План на первые 30 дней"],
@@ -56,6 +66,7 @@ const PROBLEMS = [
   {
     icon: "Smartphone",
     name: "Интернет-зависимость",
+    category: "internet",
     short: "Соцсети, игры, сериалы до утра",
     signs: ["Многие часы у экрана каждый день", "Нарушение сна", "Отказ от учёбы, работы, общения", "Тревога без телефона"],
     help: ["Диагностика сопутствующих расстройств", "Цифровая гигиена с психологом", "Семейная терапия для подростков", "Восстановление режима"],
@@ -63,6 +74,7 @@ const PROBLEMS = [
   {
     icon: "Brain",
     name: "Сопутствующие расстройства",
+    category: "mental",
     short: "Депрессия, тревога, панические атаки",
     signs: ["Апатия и потеря интереса", "Панические атаки", "Мысли о самоповреждении", "Хроническая бессонница"],
     help: ["Консультация психиатра", "Подбор терапии", "Кризисная психологическая помощь 24/7", "Длительное сопровождение"],
@@ -72,6 +84,8 @@ const PROBLEMS = [
 const Problems = () => {
   const [active, setActive] = useState(0);
   const p = PROBLEMS[active];
+  const { data } = useQuery({ queryKey: ["articles"], queryFn: () => fetchArticles() });
+  const related = useMemo(() => (data?.items ?? []).filter((a) => a.category === p.category), [data, p.category]);
 
   return (
     <section id="problems" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
@@ -146,6 +160,37 @@ const Problems = () => {
                 </ul>
               </div>
             </div>
+
+            {related.length > 0 && (
+              <div className="mt-7 rounded-xl bg-secondary p-4">
+                <div className="mb-2.5 flex items-center justify-between gap-3">
+                  <p className="flex items-center gap-2 text-[0.82em] font-medium uppercase tracking-[0.08em] text-muted-foreground">
+                    <Icon name="BookOpen" size={14} className="text-primary" />
+                    Статьи по теме
+                  </p>
+                  <Link
+                    to={`/articles?category=${p.category}`}
+                    className="group inline-flex shrink-0 items-center gap-1 text-[0.88em] font-medium text-foreground hover:text-primary"
+                  >
+                    Все статьи{related.length > 2 ? ` (${related.length})` : ""}
+                    <Icon name="ArrowRight" size={14} className="transition-transform group-hover:translate-x-0.5" />
+                  </Link>
+                </div>
+                <ul className="space-y-1">
+                  {related.slice(0, 2).map((a) => (
+                    <li key={a.id}>
+                      <Link
+                        to={`/articles/${a.slug}`}
+                        className="group flex items-start gap-2 rounded-lg px-2 py-1.5 leading-snug transition-colors hover:bg-card"
+                      >
+                        <Icon name="FileText" size={15} className="mt-0.5 shrink-0 text-muted-foreground group-hover:text-primary" />
+                        <span className="group-hover:text-primary">{a.title}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             <div className="mt-8 flex flex-wrap items-center gap-3 border-t border-border pt-6">
               <a
