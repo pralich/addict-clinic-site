@@ -47,7 +47,16 @@ export const RELATIONS: Record<string, string> = {
 };
 
 export type FamilyUser = { id: number; name: string; email: string; phone?: string | null; relation?: string | null; created_at: string };
-export type FamilyStats = { answered: number; waiting: number; events: number; ai_chats: number };
+export type FamilyStats = { answered: number; waiting: number; events: number; ai_chats: number; tokens?: number; plans?: string[] };
+export type BillingPlan = { code: string; title: string; price: number; days: number };
+export type BillingOrder = { order_number: string; status: "pending" | "paid" | "canceled"; amount: string | number; product_code: string; tokens: number; created_at: string; paid_at?: string | null; title?: string | null };
+export type BillingOverview = {
+  balance: number;
+  subscriptions: { plan: string; ends_at: string }[];
+  orders: BillingOrder[];
+  catalog: { token_price_per_1000: number; token_packs: { thousands: number; tokens: number; price: number }[]; plans: BillingPlan[] };
+  payments_enabled: boolean;
+};
 export type Question = {
   id: number;
   topic?: string | null;
@@ -93,7 +102,14 @@ export const familyApi = {
   events: () => call<{ items: FamilyEvent[] }>(FAMILY_URL, { resource: "events" }),
   register_event: (id: number) => call(FAMILY_URL, { resource: "events", id }, "POST", {}),
   cancel_event: (id: number) => call(FAMILY_URL, { resource: "events", id, action: "cancel" }, "POST", {}),
+  billing: () => call<BillingOverview>(FAMILY_URL, { resource: "billing" }),
+  billingOrder: (order: string) => call<{ order: BillingOrder }>(FAMILY_URL, { resource: "billing", order }),
+  pay: (b: { product: string; thousands?: number; return_url: string }) =>
+    call<{ payment_url: string; order_number: string }>(FAMILY_URL, { resource: "billing", action: "pay" }, "POST", b),
 };
+
+export const fmtRub = (n: number | string) => `${Number(n).toLocaleString("ru-RU")} ₽`;
+export const fmtNum = (n: number) => n.toLocaleString("ru-RU");
 
 export const aiApi = {
   status: () => call<{ enabled: boolean }>(AI_URL, { action: "status" }),

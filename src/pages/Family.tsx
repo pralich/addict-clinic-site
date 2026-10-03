@@ -9,7 +9,8 @@ import HomeSection from "@/components/family/HomeSection";
 import QuestionsSection from "@/components/family/QuestionsSection";
 import EventsSection from "@/components/family/EventsSection";
 import AiSection from "@/components/family/AiSection";
-import { RELATIONS } from "@/lib/family-api";
+import BillingSection from "@/components/family/BillingSection";
+import { RELATIONS, fmtNum } from "@/lib/family-api";
 import { useSeo } from "@/lib/seo";
 
 const NAV = [
@@ -17,11 +18,13 @@ const NAV = [
   { id: "ai", label: "ИИ-психолог", icon: "Sparkles", badge: "NEW" },
   { id: "questions", label: "Вопрос психологу", icon: "MessageCircleQuestion" },
   { id: "events", label: "Встречи и вебинары", icon: "CalendarHeart" },
+  { id: "billing", label: "Тарифы и баланс", icon: "Wallet" },
 ];
 
 const TITLES: Record<string, { title: string; text: string }> = {
   questions: { title: "Вопрос психологу", text: "Задайте вопрос — специалист клиники ответит письменно в течение 24 часов." },
   events: { title: "Встречи и вебинары", text: "Группы поддержки для родственников и онлайн-эфиры с врачами клиники." },
+  billing: { title: "Тарифы и баланс", text: "Пополняйте баланс ИИ-токенов и подключайте персональную поддержку специалистов." },
 };
 
 const Shell = () => {
@@ -49,6 +52,7 @@ const Shell = () => {
             {n.label}
             {n.badge && <span className="ml-auto rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">{n.badge}</span>}
             {n.id === "questions" && !!stats?.answered && section !== n.id && <span className="ml-auto h-2 w-2 rounded-full bg-emerald-500" />}
+            {n.id === "billing" && stats?.tokens !== undefined && <span className={`ml-auto text-xs ${section === n.id ? "text-white/60" : "text-muted-foreground"}`}>{fmtNum(stats.tokens)}</span>}
           </button>
         ))}
       </nav>
@@ -92,6 +96,7 @@ const Shell = () => {
           {section === "questions" && <QuestionsSection />}
           {section === "events" && <EventsSection />}
           {section === "ai" && <AiSection />}
+          {section === "billing" && <BillingSection />}
         </div>
       </main>
     </div>

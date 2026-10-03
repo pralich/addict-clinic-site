@@ -7,6 +7,8 @@ from datetime import datetime, timedelta, date
 import psycopg2
 import psycopg2.extras
 
+import billing
+
 SCHEMA = 't_p15395438_addict_clinic_site'
 
 CORS = {
@@ -114,7 +116,11 @@ def handle_auth(cur, action, body, headers):
     ev = cur.fetchone()['c']
     cur.execute(f"SELECT COUNT(*) AS c FROM {t('family_ai_chats')} WHERE user_id = %s", (user['id'],))
     ai = cur.fetchone()['c']
-    return resp(200, {'user': user, 'stats': {'answered': q['answered'], 'waiting': q['waiting'], 'events': ev, 'ai_chats': ai}})
+    cur.execute(f"SELECT token_balance FROM {t('family_users')} WHERE id = %s", (user['id'],))
+    tokens = cur.fetchone()['token_balance']
+    cur.execute(f"SELECT DISTINCT plan FROM {t('family_subscriptions')} WHERE user_id = %s AND ends_at > NOW()", (user['id'],))
+    plans = [r['plan'] for r in cur.fetchall()]
+    return resp(200, {'user': user, 'stats': {'answered': q['answered'], 'waiting': q['waiting'], 'events': ev, 'ai_chats': ai, 'tokens': tokens, 'plans': plans}})
 
 
 def handle_questions(cur, method, body, user):
@@ -234,6 +240,9 @@ def handler(event: dict, context) -> dict:
             return handle_questions(cur, method, body, user)
         if resource == 'events':
             return handle_events(cur, method, params, user)
+        if resource == 'billing':
+            code, data = billing.handle(cur, t, method, params, body, user)
+            return resp(code, data)
         return resp(404, {'error': 'Неизвестный запрос'})
     finally:
         cur.close()
