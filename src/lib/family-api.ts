@@ -43,7 +43,7 @@ export const RELATIONS: Record<string, string> = {
   sibling: "Брат / сестра",
   partner: "Партнёр",
   friend: "Друг / подруга",
-  other: "Другое",
+  other: "Не хочу раскрывать",
 };
 
 export type FamilyUser = { id: number; name: string; email: string; phone?: string | null; relation?: string | null; created_at: string };
