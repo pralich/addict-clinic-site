@@ -1,15 +1,40 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import Icon from "@/components/ui/icon";
+import Header from "@/components/clinic/Header";
+import Hero from "@/components/clinic/Hero";
+import Problems from "@/components/clinic/Problems";
+import Methods from "@/components/clinic/Methods";
+import Support from "@/components/clinic/Support";
+import Privacy from "@/components/clinic/Privacy";
+import Doctors from "@/components/clinic/Doctors";
+import Steps from "@/components/clinic/Steps";
+import Faq from "@/components/clinic/Faq";
+import Contacts from "@/components/clinic/Contacts";
+import Footer from "@/components/clinic/Footer";
+import { PHONE_HREF } from "@/components/clinic/contacts";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4 color-black text-black">Добро пожаловать!</h1>
-        <p className="text-xl text-gray-600">тут будет отображаться ваш проект</p>
-      </div>
-      <span className="absolute bottom-8 left-1/2 -translate-x-1/2 inline-block bg-[#FF6637] text-white text-sm px-4 py-2 rounded-full whitespace-nowrap">
-        Подождите 5 минут, Юра создает первую версию проекта с нуля
-      </span>
+    <div className="min-h-screen overflow-x-clip bg-background text-foreground">
+      <Header />
+      <main>
+        <Hero />
+        <Problems />
+        <Methods />
+        <Support />
+        <Privacy />
+        <Doctors />
+        <Steps />
+        <Faq />
+        <Contacts />
+      </main>
+      <Footer />
+      <a
+        href={PHONE_HREF}
+        className="accent-glow fixed bottom-4 left-4 right-4 z-40 flex h-12 items-center justify-center gap-2 rounded-full bg-primary font-medium text-primary-foreground md:hidden"
+      >
+        <Icon name="Phone" size={16} />
+        Срочная помощь 24/7
+      </a>
     </div>
   );
 };
