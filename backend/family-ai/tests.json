@@ -1,0 +1,6 @@
+{
+  "tests": [
+    {"name": "Status", "method": "GET", "path": "/?action=status", "expectedStatus": 200},
+    {"name": "Chats require auth", "method": "GET", "path": "/", "expectedStatus": 401}
+  ]
+}

@@ -17,6 +17,7 @@ const Footer = () => (
             {n.label}
           </a>
         ))}
+        <a href="/family" className="w-fit text-muted-foreground hover:text-foreground story-link">Кабинет для близких</a>
       </nav>
       <div>
         <a href={PHONE_HREF} className="font-heading text-[1.5em] font-medium tracking-[-0.03em] hover:text-primary transition-colors">

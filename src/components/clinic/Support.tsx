@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
@@ -69,6 +70,31 @@ const Support = () => (
         ))}
       </div>
     </div>
+
+    <Reveal delay={150} className="mt-[7px]">
+      <Link
+        to="/family"
+        className="group relative flex flex-col gap-6 overflow-hidden rounded-[10px] bg-ink p-6 text-ink-foreground md:flex-row md:items-center md:justify-between md:p-8"
+      >
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-primary/40 blur-3xl" />
+        <div className="relative flex items-start gap-4">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Icon name="HeartHandshake" size={22} /></span>
+          <div>
+            <p className="flex flex-wrap items-center gap-2 font-heading text-[1.35em] font-semibold tracking-tight">
+              Кабинет для родственников
+              <span className="rounded-full bg-white/15 px-2 py-0.5 text-[0.55em] font-medium uppercase tracking-wider">Бесплатно</span>
+            </p>
+            <p className="mt-1 max-w-[620px] text-[0.97em] text-white/70">
+              Вопросы психологу, группы поддержки и вебинары, а также ИИ-психолог: отрепетируйте разговор с близким и подготовьте его к лечению.
+            </p>
+          </div>
+        </div>
+        <span className="relative inline-flex h-11 shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 font-medium text-foreground transition-transform group-hover:-translate-y-0.5 md:self-auto">
+          Войти в кабинет
+          <Icon name="ArrowRight" size={16} className="transition-transform group-hover:translate-x-1" />
+        </span>
+      </Link>
+    </Reveal>
   </section>
 );
 

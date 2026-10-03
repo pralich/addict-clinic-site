@@ -1,9 +1,11 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /family
 
 User-agent: Yandex
 Allow: /
 Disallow: /admin
+Disallow: /family
 
 Sitemap: https://addict.clinic/sitemap.xml

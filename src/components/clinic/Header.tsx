@@ -48,6 +48,9 @@ const Header = () => {
             </a>
           ))}
           <PremiumLink />
+          <Link to="/family" title="Кабинет для близких" aria-label="Кабинет для близких" className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-secondary transition-colors hover:bg-card">
+            <Icon name="UserRound" size={16} />
+          </Link>
           <a
             href={PHONE_HREF}
             className="ml-1 inline-flex h-9 items-center gap-2 whitespace-nowrap rounded-full bg-ink px-[17px] text-[0.94em] font-medium tracking-tight text-ink-foreground transition-transform hover:-translate-y-0.5"
@@ -87,9 +90,21 @@ const Header = () => {
                 ))}
               </nav>
               <Link
+                to="/family"
+                onClick={() => setOpen(false)}
+                className="mt-6 flex items-center gap-3 rounded-xl bg-secondary px-4 py-3"
+              >
+                <Icon name="HeartHandshake" size={20} className="text-primary" />
+                <span className="flex-1">
+                  <span className="block font-medium">Кабинет для близких</span>
+                  <span className="block text-xs text-muted-foreground">Психолог, встречи, ИИ-помощник</span>
+                </span>
+                <Icon name="ArrowRight" size={16} />
+              </Link>
+              <Link
                 to="/premium"
                 onClick={() => setOpen(false)}
-                className="premium-btn mt-6 flex h-12 items-center justify-center gap-2 rounded-full font-heading font-semibold tracking-[0.2em]"
+                className="premium-btn mt-3 flex h-12 items-center justify-center gap-2 rounded-full font-heading font-semibold tracking-[0.2em]"
               >
                 <Icon name="Crown" size={16} className="relative z-10 text-[#e6d3b3]" />
                 <span className="premium-gold-text relative z-10">PREMIUM</span>

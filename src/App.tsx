@@ -10,6 +10,7 @@ import Admin from "./pages/Admin";
 import Premium from "./pages/Premium";
 import Articles from "./pages/Articles";
 import ArticlePage from "./pages/ArticlePage";
+import Family from "./pages/Family";
 
 const queryClient = new QueryClient();
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/premium" element={<Premium />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<ArticlePage />} />
+          <Route path="/family" element={<Family />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
