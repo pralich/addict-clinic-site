@@ -24,6 +24,7 @@ export type Article = {
 };
 
 export const CATEGORIES: Record<string, { label: string; icon: string }> = {
+  rehab: { label: "Реабилитация", icon: "Sprout" },
   alcohol: { label: "Алкоголизм", icon: "Wine" },
   drugs: { label: "Наркомания", icon: "Syringe" },
   meds: { label: "Лекарственная зависимость", icon: "Pill" },
@@ -38,6 +39,7 @@ export const CATEGORIES: Record<string, { label: string; icon: string }> = {
 export const CTA_TYPES: Record<string, string> = {
   urgent: "Срочная помощь — вызов врача",
   consult: "Бесплатная консультация специалиста",
+  rehab: "Подбор программы реабилитации",
   family: "Консультация для родственников",
   crisis: "Кризисная линия психолога 24/7",
   premium: "Программа PREMIUM",
