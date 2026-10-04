@@ -1,4 +1,5 @@
 import Icon from "@/components/ui/icon";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Logo } from "./Header";
 import { NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 import { LEGAL_LINKS, ORG } from "@/lib/legal";
@@ -47,6 +48,24 @@ const Footer = () => (
         <div className="flex flex-col gap-2 md:flex-row md:justify-between">
           <span>© {new Date().getFullYear()} addict.clinic</span>
           <span>Имеются противопоказания. Необходима консультация специалиста.</span>
+        </div>
+        <div className="flex justify-center md:justify-end">
+          <TooltipProvider delayDuration={150}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://alexpralich.ru"
+                  target="_blank"
+                  rel="noopener"
+                  aria-label="DEV & ADS – ALEXPRALICH.RU"
+                  className="opacity-60 grayscale transition-opacity hover:opacity-100"
+                >
+                  <img src="/dev-logo.webp" alt="Alexander Pralich" width={90} height={24} loading="lazy" className="h-6 w-auto" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="top">DEV &amp; ADS – ALEXPRALICH.RU</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
     </div>
