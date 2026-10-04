@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -16,6 +16,7 @@ import AdminInstall from "@/components/admin/AdminInstall";
 import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import { ROLES } from "@/components/admin/config";
+import { api } from "@/lib/crm-api";
 import { useSeo } from "@/lib/seo";
 
 const NAV_GROUPS = [
@@ -86,14 +87,26 @@ const Shell = () => {
       }
     };
     navigator.serviceWorker.addEventListener("message", onMsg);
-    const onFocus = () => (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => null);
-    onFocus();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      navigator.serviceWorker.removeEventListener("message", onMsg);
-      window.removeEventListener("focus", onFocus);
-    };
+    return () => navigator.serviceWorker.removeEventListener("message", onMsg);
   }, [qc]);
+
+  const { data: counters } = useQuery<{ leads: number; questions: number }>({
+    queryKey: ["crm", "counters"],
+    queryFn: () => api({ resource: "counters" }),
+    enabled: !!user,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+  });
+  const badges: Record<string, number> = { leads: counters?.leads ?? 0, family: counters?.questions ?? 0 };
+  const badgeTotal = badges.leads + badges.family;
+
+  useEffect(() => {
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    if (!counters) return;
+    if (badgeTotal > 0) nav.setAppBadge?.(badgeTotal).catch(() => null);
+    else nav.clearAppBadge?.().catch(() => null);
+  }, [counters, badgeTotal]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>;
@@ -102,6 +115,7 @@ const Shell = () => {
 
   const open = (resource: string, id: number) => setDrawer({ resource, id });
   const go = (p: string) => { setPage(p); setMenu(false); };
+
 
   const nav = (
     <div className="flex h-full flex-col">
@@ -121,7 +135,13 @@ const Shell = () => {
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
                 <Icon name={n.icon} size={17} />
                 {n.label}
-                {page === n.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+                {badges[n.id] > 0 ? (
+                  <span className="ml-auto min-w-[20px] rounded-full bg-primary px-1.5 py-0.5 text-center text-[11px] font-semibold leading-none text-primary-foreground tabular-nums">
+                    {badges[n.id] > 99 ? "99+" : badges[n.id]}
+                  </span>
+                ) : (
+                  page === n.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
+                )}
               </button>
             ))}
           </div>
@@ -154,7 +174,10 @@ const Shell = () => {
         <SheetContent side="left" className="w-[260px] border-none bg-night p-0 text-night-foreground">{nav}</SheetContent>
       </Sheet>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
-        <button onClick={() => setMenu(true)}><Icon name="Menu" size={22} /></button>
+        <button onClick={() => setMenu(true)} className="relative" aria-label="Меню">
+          <Icon name="Menu" size={22} />
+          {badgeTotal > 0 && <span className="absolute -right-1.5 -top-1 h-2.5 w-2.5 rounded-full border-2 border-background bg-primary" />}
+        </button>
         <span className="flex-1 font-heading font-semibold">{FAMILY_SECTION[page] ? `Близкие · ${NAV.find((n) => n.id === page)?.label}` : NAV.find((n) => n.id === page)?.label}</span>
         <PushSettings variant="icon" />
       </header>

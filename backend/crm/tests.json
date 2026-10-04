@@ -29,6 +29,12 @@
         "contact": "+79990000000"
       },
       "expectedStatus": 400
+    },
+    {
+      "name": "Counters require auth",
+      "method": "GET",
+      "path": "/?resource=counters",
+      "expectedStatus": 401
     }
   ]
 }

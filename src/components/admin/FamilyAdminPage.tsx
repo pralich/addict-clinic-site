@@ -75,7 +75,7 @@ const Questions = () => {
       </div>
       {isLoading && <p className="py-8 text-center text-muted-foreground">Загрузка…</p>}
       {!isLoading && items.length === 0 && <p className="rounded-xl border border-dashed py-12 text-center text-muted-foreground">Вопросов нет</p>}
-      {items.map((q) => <QuestionCard key={`${q.id}-${q.status}`} q={q} onDone={() => qc.invalidateQueries({ queryKey: ["crm", "family-q"] })} />)}
+      {items.map((q) => <QuestionCard key={`${q.id}-${q.status}`} q={q} onDone={() => { qc.invalidateQueries({ queryKey: ["crm", "family-q"] }); qc.invalidateQueries({ queryKey: ["crm", "counters"] }); qc.invalidateQueries({ queryKey: ["crm", "family-stats"] }); }} />)}
     </div>
   );
 };

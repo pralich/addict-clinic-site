@@ -470,6 +470,11 @@ def handler(event: dict, context) -> dict:
         if not user:
             return resp(401, {'error': 'Требуется вход'})
 
+        if resource == 'counters':
+            q(cur, f"""SELECT
+                (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL) AS leads,
+                (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions""")
+            return resp(200, cur.fetchone())
         if resource == 'dashboard':
             return handle_dashboard(cur)
         if resource == 'options':
