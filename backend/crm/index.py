@@ -8,6 +8,8 @@ from decimal import Decimal
 import psycopg2
 import psycopg2.extras
 
+from finance import handle_finance
+
 SCHEMA = 't_p15395438_addict_clinic_site'
 
 CORS = {
@@ -470,6 +472,8 @@ def handler(event: dict, context) -> dict:
         if not user:
             return resp(401, {'error': 'Требуется вход'})
 
+        if resource == 'finance':
+            return handle_finance(cur, t, method, params, body, user, eid, resp)
         if resource == 'counters':
             q(cur, f"""SELECT
                 (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL) AS leads,

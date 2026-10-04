@@ -15,11 +15,14 @@ import EntityDrawer from "@/components/admin/EntityDrawer";
 import AdminInstall from "@/components/admin/AdminInstall";
 import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
+import FinancePage from "@/components/admin/finance/FinancePage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { useSeo } from "@/lib/seo";
 
-const NAV_GROUPS = [
+type NavItem = { id: string; label: string; icon: string; admin?: boolean };
+
+const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "CRM",
     items: [
@@ -28,6 +31,7 @@ const NAV_GROUPS = [
       { id: "deals", label: "Сделки", icon: "Handshake" },
       { id: "clients", label: "Клиенты", icon: "Users" },
       { id: "partners", label: "Партнёры", icon: "Building2" },
+      { id: "finance", label: "Финансы", icon: "Wallet", admin: true },
       { id: "users", label: "Пользователи", icon: "UserCog" },
     ],
   },
@@ -130,7 +134,7 @@ const Shell = () => {
         {NAV_GROUPS.map((g) => (
           <div key={g.title} className="flex flex-col gap-0.5">
             <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-night-muted/70">{g.title}</p>
-            {g.items.map((n) => (
+            {g.items.filter((n) => !n.admin || user.role === "admin").map((n) => (
               <button key={n.id} onClick={() => go(n.id)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
                 <Icon name={n.icon} size={17} />
@@ -189,6 +193,7 @@ const Shell = () => {
           {page === "articles" && <ArticlesPage />}
           {FAMILY_SECTION[page] && <FamilyAdminPage section={FAMILY_SECTION[page]} />}
           {page === "orders" && <ShopOrdersPage />}
+          {page === "finance" && <FinancePage onOpen={open} />}
         </div>
       </main>
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}

@@ -35,6 +35,12 @@
       "method": "GET",
       "path": "/?resource=counters",
       "expectedStatus": 401
+    },
+    {
+      "name": "Finance requires auth",
+      "method": "GET",
+      "path": "/?resource=finance&action=cashflow",
+      "expectedStatus": 401
     }
   ]
 }
