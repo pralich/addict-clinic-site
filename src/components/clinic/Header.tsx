@@ -27,6 +27,7 @@ const MENU: Group[] = [
   },
   { label: "Близким", href: "#cabinet" },
   { label: "Статьи", href: "/articles" },
+  { label: "Магазин", href: "/shop" },
   { label: "Контакты", href: "#contacts" },
 ];
 
@@ -68,7 +69,7 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
-    if (pathname !== "/") return setActive(pathname.startsWith("/articles") ? "articles" : "");
+    if (pathname !== "/") return setActive(pathname.startsWith("/articles") ? "articles" : pathname.startsWith("/shop") ? "shop" : "");
     const obs = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
       { rootMargin: "-45% 0px -50% 0px" }
@@ -78,7 +79,7 @@ const Header = () => {
   }, [pathname]);
 
   const isActive = (g: Group) =>
-    g.items ? g.items.some((i) => i.href === `#${active}`) : g.href === `#${active}` || (g.href === "/articles" && active === "articles");
+    g.items ? g.items.some((i) => i.href === `#${active}`) : g.href === `#${active}` || (g.href === "/articles" && active === "articles") || (g.href === "/shop" && active === "shop");
 
   return (
     <header className="sticky top-0 z-50">
@@ -96,6 +97,7 @@ const Header = () => {
           </div>
           <div className="flex items-center gap-5 text-white/65">
             <a href={href("#contacts")} className="flex items-center gap-1.5 transition-colors hover:text-white"><Icon name="MessageCircle" size={13} />Написать анонимно</a>
+            <Link to="/shop?category=certificates" className="flex items-center gap-1.5 transition-colors hover:text-white"><Icon name="Gift" size={13} />Подарочные сертификаты</Link>
             <Link to="/family" className="flex items-center gap-1.5 transition-colors hover:text-white"><Icon name="HeartHandshake" size={13} />Кабинет для близких</Link>
           </div>
         </div>

@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "Catalog", "method": "GET", "path": "/", "expectedStatus": 200},
+  {"name": "Catalog by category", "method": "GET", "path": "/?category=books", "expectedStatus": 200},
+  {"name": "Checkout validation", "method": "POST", "path": "/?action=checkout", "body": {"name": "", "email": "x"}, "expectedStatus": 400}
+]}
