@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"name": "Public key", "method": "GET", "path": "/?action=key", "expectedStatus": 200, "expectedBody": {"public_key": "string"}, "bodyMatcher": "partial"},
+    {"name": "Tick", "method": "GET", "path": "/?action=tick", "expectedStatus": 200},
+    {"name": "Subscribe requires auth", "method": "POST", "path": "/?action=subscribe", "body": {}, "expectedStatus": 401}
+  ]
+}

@@ -8,6 +8,7 @@ import psycopg2
 import psycopg2.extras
 
 import billing
+import push_lib
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -179,7 +180,16 @@ def handle_admin(cur, resource, method, params, body, staff):
             if not answer:
                 return resp(400, {'error': 'Введите ответ'})
             cur.execute(f"UPDATE {t('family_questions')} SET answer = %s, answered_by = %s, status = 'answered', answered_at = NOW() WHERE id = %s RETURNING *", (answer, staff['id'], eid))
-            return resp(200, {'item': cur.fetchone()})
+            item = cur.fetchone()
+            if item:
+                preview = (item['question'] or '')[:80]
+                push_lib.send_to_user(cur, t, item['user_id'], {
+                    'title': 'Психолог ответил на ваш вопрос',
+                    'body': f'«{preview}»' + ('…' if len(item['question'] or '') > 80 else ''),
+                    'url': '/family?s=questions',
+                    'tag': f'question-{eid}',
+                }, 'answer', eid)
+            return resp(200, {'item': item})
         where, args = '1=1', []
         if params.get('status'):
             where, args = 'q.status = %s', [params['status']]

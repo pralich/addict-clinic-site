@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { familyApi } from "@/lib/family-api";
 import { fetchArticles } from "@/lib/articles";
 import { useFamilyAuth } from "./FamilyAuth";
+import PushCard from "./PushCard";
 
 const FAMILY_SLUGS = ["sozavisimost-kak-pomoch-sebe", "pomoshch-alkogolikam-kak-ugovorit-lechitsya", "pomoshch-narkomanam-chto-delat-blizkim", "priznaki-narkomanii-u-blizkogo"];
 
@@ -28,6 +29,8 @@ const HomeSection = ({ go }: { go: (s: string) => void }) => {
         <h1 className="font-heading text-[2em] font-semibold tracking-[-0.03em]">{greet}, {user?.name}</h1>
         <p className="mt-1 text-muted-foreground">Это ваше пространство поддержки. Начните с того, что сейчас важнее всего.</p>
       </div>
+
+      <PushCard />
 
       <div className="grid gap-3 md:grid-cols-3">
         {cards.map((c) => (

@@ -11,6 +11,7 @@ import EventsSection from "@/components/family/EventsSection";
 import AiSection from "@/components/family/AiSection";
 import BillingSection from "@/components/family/BillingSection";
 import TrialBanner from "@/components/family/TrialBanner";
+import PushCard from "@/components/family/PushCard";
 import { RELATIONS, fmtNum } from "@/lib/family-api";
 import { useSeo } from "@/lib/seo";
 
@@ -57,6 +58,7 @@ const Shell = () => {
           </button>
         ))}
       </nav>
+      <PushCard compact />
       <div className="m-3 rounded-2xl bg-card p-4">
         <p className="text-xs text-muted-foreground">Срочная помощь 24/7</p>
         <a href={PHONE_HREF} className="mt-1 block font-heading font-semibold hover:text-primary">{PHONE_DISPLAY}</a>
