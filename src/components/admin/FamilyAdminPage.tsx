@@ -210,8 +210,9 @@ const Users = () => {
   );
 };
 
-const FamilyAdminPage = () => {
-  const [tab, setTab] = useState("questions");
+const FamilyAdminPage = ({ section }: { section?: string }) => {
+  const [own, setTab] = useState("questions");
+  const tab = section || own;
   const { data: s } = useQuery({ queryKey: ["crm", "family-stats"], queryFn: familyAdminApi.stats });
   const kpi = [
     { label: "Родственников", value: s?.users, icon: "Users" },
@@ -237,7 +238,7 @@ const FamilyAdminPage = () => {
           </div>
         ))}
       </div>
-      <div className="flex gap-1 border-b">
+      <div className={`flex gap-1 border-b ${section ? "hidden" : ""}`}>
         {TABS.map((t) => (
           <button key={t.id} onClick={() => setTab(t.id)} className={`-mb-px inline-flex items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm ${tab === t.id ? "border-primary font-medium" : "border-transparent text-muted-foreground"}`}>
             <Icon name={t.icon} size={15} />{t.label}

@@ -18,17 +18,37 @@ import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import { ROLES } from "@/components/admin/config";
 import { useSeo } from "@/lib/seo";
 
-const NAV = [
-  { id: "dashboard", label: "Сводка", icon: "LayoutDashboard" },
-  { id: "leads", label: "Лиды", icon: "Inbox" },
-  { id: "deals", label: "Сделки", icon: "Handshake" },
-  { id: "clients", label: "Клиенты", icon: "Users" },
-  { id: "partners", label: "Партнёры", icon: "Building2" },
-  { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
-  { id: "family", label: "Кабинет близких", icon: "HeartHandshake" },
-  { id: "articles", label: "Статьи", icon: "Newspaper" },
-  { id: "users", label: "Пользователи", icon: "UserCog" },
+const NAV_GROUPS = [
+  {
+    title: "CRM",
+    items: [
+      { id: "dashboard", label: "Сводка", icon: "LayoutDashboard" },
+      { id: "leads", label: "Лиды", icon: "Inbox" },
+      { id: "deals", label: "Сделки", icon: "Handshake" },
+      { id: "clients", label: "Клиенты", icon: "Users" },
+      { id: "partners", label: "Партнёры", icon: "Building2" },
+      { id: "users", label: "Пользователи", icon: "UserCog" },
+    ],
+  },
+  {
+    title: "Кабинет близких",
+    items: [
+      { id: "family", label: "Вопросы", icon: "MessageCircleQuestion" },
+      { id: "family-events", label: "События", icon: "CalendarHeart" },
+      { id: "family-users", label: "Родственники", icon: "HeartHandshake" },
+    ],
+  },
+  {
+    title: "Сайт",
+    items: [
+      { id: "articles", label: "Статьи", icon: "Newspaper" },
+      { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
+    ],
+  },
 ];
+
+const NAV = NAV_GROUPS.flatMap((g) => g.items);
+const FAMILY_SECTION: Record<string, string> = { family: "questions", "family-events": "events", "family-users": "users" };
 
 const Shell = () => {
   const { user, loading, signOut } = useAuth();
@@ -92,14 +112,19 @@ const Shell = () => {
           <p className="text-[11px] text-night-muted">CRM</p>
         </div>
       </div>
-      <nav className="flex flex-1 flex-col gap-0.5 px-3">
-        {NAV.map((n) => (
-          <button key={n.id} onClick={() => go(n.id)}
-            className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
-            <Icon name={n.icon} size={18} />
-            {n.label}
-            {page === n.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
-          </button>
+      <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
+        {NAV_GROUPS.map((g) => (
+          <div key={g.title} className="flex flex-col gap-0.5">
+            <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-night-muted/70">{g.title}</p>
+            {g.items.map((n) => (
+              <button key={n.id} onClick={() => go(n.id)}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
+                <Icon name={n.icon} size={17} />
+                {n.label}
+                {page === n.id && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />}
+              </button>
+            ))}
+          </div>
         ))}
       </nav>
       <div className="border-t border-white/10 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
@@ -130,7 +155,7 @@ const Shell = () => {
       </Sheet>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
         <button onClick={() => setMenu(true)}><Icon name="Menu" size={22} /></button>
-        <span className="flex-1 font-heading font-semibold">{NAV.find((n) => n.id === page)?.label}</span>
+        <span className="flex-1 font-heading font-semibold">{FAMILY_SECTION[page] ? `Близкие · ${NAV.find((n) => n.id === page)?.label}` : NAV.find((n) => n.id === page)?.label}</span>
         <PushSettings variant="icon" />
       </header>
       <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px]">
@@ -139,7 +164,7 @@ const Shell = () => {
           {["leads", "deals", "clients", "partners"].includes(page) && <EntityPage key={page} resource={page} onOpen={open} />}
           {page === "users" && <UsersPage />}
           {page === "articles" && <ArticlesPage />}
-          {page === "family" && <FamilyAdminPage />}
+          {FAMILY_SECTION[page] && <FamilyAdminPage section={FAMILY_SECTION[page]} />}
           {page === "orders" && <ShopOrdersPage />}
         </div>
       </main>
