@@ -112,11 +112,6 @@ const Footer = () => (
         </div>
       </div>
     </div>
-    <script
-      src="https://xn--b1aeggcy5bi.xn--p1ai/w.js"
-      data-token="wg_0b64aa04c7526147b140453b"
-      async
-    ></script>
   </footer>
 );
 
