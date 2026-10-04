@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AuthProvider, useAuth } from "@/components/admin/AuthContext";
@@ -11,6 +13,8 @@ import ArticlesPage from "@/components/admin/ArticlesPage";
 import FamilyAdminPage from "@/components/admin/FamilyAdminPage";
 import EntityDrawer from "@/components/admin/EntityDrawer";
 import AdminInstall from "@/components/admin/AdminInstall";
+import PushSettings from "@/components/admin/PushSettings";
+import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import { ROLES } from "@/components/admin/config";
 import { useSeo } from "@/lib/seo";
 
@@ -20,6 +24,7 @@ const NAV = [
   { id: "deals", label: "Сделки", icon: "Handshake" },
   { id: "clients", label: "Клиенты", icon: "Users" },
   { id: "partners", label: "Партнёры", icon: "Building2" },
+  { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
   { id: "family", label: "Кабинет близких", icon: "HeartHandshake" },
   { id: "articles", label: "Статьи", icon: "Newspaper" },
   { id: "users", label: "Пользователи", icon: "UserCog" },
@@ -31,12 +36,44 @@ const Shell = () => {
   const initial = params.get("page");
   const [page, setPage] = useState(initial && NAV.some((n) => n.id === initial) ? initial : "dashboard");
 
+  const [drawer, setDrawer] = useState<{ resource: string; id: number } | null>(() => {
+    const m = /^(leads|deals|clients|partners):(\d+)$/.exec(params.get("open") || "");
+    return m ? { resource: m[1], id: Number(m[2]) } : null;
+  });
+  const [menu, setMenu] = useState(false);
+  const qc = useQueryClient();
+
   useEffect(() => {
-    if (params.has("page") || params.has("source")) setParams({}, { replace: true });
+    if (params.has("page") || params.has("source") || params.has("open")) setParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [drawer, setDrawer] = useState<{ resource: string; id: number } | null>(null);
-  const [menu, setMenu] = useState(false);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const onMsg = (e: MessageEvent) => {
+      const d = e.data || {};
+      if (d.type === "crm-push") {
+        qc.invalidateQueries({ queryKey: ["crm"] });
+        if (document.visibilityState === "visible" && d.payload?.title && d.payload?.tag !== "crm-test") toast(d.payload.title, { description: d.payload.body });
+      }
+      if (d.type === "crm-open" && d.url) {
+        const u = new URL(d.url);
+        const p = u.searchParams.get("page");
+        if (p && NAV.some((n) => n.id === p)) setPage(p);
+        const m = /^(leads|deals|clients|partners):(\d+)$/.exec(u.searchParams.get("open") || "");
+        if (m) setDrawer({ resource: m[1], id: Number(m[2]) });
+        qc.invalidateQueries({ queryKey: ["crm"] });
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMsg);
+    const onFocus = () => (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => null);
+    onFocus();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onMsg);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [qc]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>;
@@ -67,6 +104,7 @@ const Shell = () => {
       </nav>
       <div className="border-t border-white/10 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
         <div className="mb-2"><AdminInstall /></div>
+        <PushSettings />
         <Link to="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-night-muted hover:text-white">
           <Icon name="Globe" size={16} />На сайт
         </Link>
@@ -92,7 +130,8 @@ const Shell = () => {
       </Sheet>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
         <button onClick={() => setMenu(true)}><Icon name="Menu" size={22} /></button>
-        <span className="font-heading font-semibold">{NAV.find((n) => n.id === page)?.label}</span>
+        <span className="flex-1 font-heading font-semibold">{NAV.find((n) => n.id === page)?.label}</span>
+        <PushSettings variant="icon" />
       </header>
       <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px]">
         <div className="mx-auto max-w-[1400px]">
@@ -101,6 +140,7 @@ const Shell = () => {
           {page === "users" && <UsersPage />}
           {page === "articles" && <ArticlesPage />}
           {page === "family" && <FamilyAdminPage />}
+          {page === "orders" && <ShopOrdersPage />}
         </div>
       </main>
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}

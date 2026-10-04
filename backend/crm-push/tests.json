@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "Public key", "method": "GET", "path": "/?action=key", "expectedStatus": 200},
+  {"name": "Notify scan", "method": "GET", "path": "/?action=notify", "expectedStatus": 200},
+  {"name": "Status requires auth", "method": "GET", "path": "/?action=status", "expectedStatus": 401}
+]}

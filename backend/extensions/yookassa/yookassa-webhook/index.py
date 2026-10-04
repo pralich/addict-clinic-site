@@ -52,6 +52,17 @@ def verify_payment_via_api(payment_id: str, shop_id: str, secret_key: str) -> di
 # DATABASE
 # =============================================================================
 
+CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
+
+
+def ping_crm_push():
+    try:
+        from urllib.request import urlopen as _uo
+        _uo(CRM_PUSH_URL, timeout=2.5).read()
+    except Exception as e:
+        print(f'crm push ping failed: {e}')
+
+
 def get_connection():
     """Get database connection."""
     return psycopg2.connect(os.environ['DATABASE_URL'])
@@ -186,6 +197,8 @@ def handler(event, context):
                 conn.commit()
             apply_family_order(cur, S, order_id)
             conn.commit()
+            if current_status != 'paid':
+                ping_crm_push()
 
         elif payment_status == 'canceled':
             if current_status not in ('paid', 'canceled'):

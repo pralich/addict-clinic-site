@@ -55,6 +55,17 @@ ENTITIES = {
 USER_FIELDS = 'id, name, email, phone, role, is_active, last_login_at, created_at'
 
 
+CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
+
+
+def ping_crm_push():
+    try:
+        from urllib.request import urlopen as _uo
+        _uo(CRM_PUSH_URL, timeout=2.5).read()
+    except Exception as e:
+        print(f'crm push ping failed: {e}')
+
+
 def t(name):
     return f'{SCHEMA}.{name}'
 
@@ -167,6 +178,7 @@ def handle_public_lead(cur, body):
       (clean(body.get('name')), contact[:200], (clean(body.get('topic')) or '')[:200] or None, clean(body.get('message')), 'site'))
     lid = cur.fetchone()['id']
     log_activity(cur, 'leads', lid, None, 'Заявка с сайта')
+    ping_crm_push()
     return resp(200, {'ok': True, 'id': lid})
 
 
@@ -308,6 +320,8 @@ def save_entity(cur, name, eid, body, user):
         ph = ', '.join(['%s'] * len(data))
         q(cur, f"INSERT INTO {t(cfg['table'])} ({cols}) VALUES ({ph}) RETURNING *", list(data.values()))
         item = cur.fetchone()
+        if name == 'leads':
+            q(cur, f"INSERT INTO {t('crm_push_log')} (kind, ref_id) VALUES ('lead', %s) ON CONFLICT DO NOTHING", (item['id'],))
         log_activity(cur, name, item['id'], user['id'], 'Запись создана')
         return resp(200, {'item': item})
 
@@ -401,6 +415,20 @@ def handle_users(cur, method, eid, body, user, params):
     return resp(405, {'error': 'Метод не поддерживается'})
 
 
+def handle_shop_orders(cur, params):
+    status = params.get('status') or 'paid'
+    where = "o.source = 'shop'" + ('' if status == 'all' else ' AND o.status = %s')
+    args = () if status == 'all' else (status,)
+    q(cur, f"""SELECT o.id, o.order_number, o.user_name, o.user_email, o.user_phone, o.amount, o.status, o.delivery_address, o.comment, o.created_at, o.paid_at,
+        COALESCE((SELECT json_agg(json_build_object('name', i.product_name, 'qty', i.quantity, 'price', i.product_price) ORDER BY i.id)
+                  FROM {t('order_items')} i WHERE i.order_id = o.id), '[]') AS items
+        FROM {t('orders')} o WHERE {where} ORDER BY COALESCE(o.paid_at, o.created_at) DESC LIMIT 200""", args)
+    items = cur.fetchall()
+    q(cur, f"""SELECT COUNT(*) FILTER (WHERE status = 'paid') AS paid, COALESCE(SUM(amount) FILTER (WHERE status = 'paid'), 0) AS revenue,
+        COUNT(*) FILTER (WHERE status = 'paid' AND paid_at > NOW() - INTERVAL '1 day') AS today FROM {t('orders')} WHERE source = 'shop'""")
+    return resp(200, {'items': items, 'stats': cur.fetchone()})
+
+
 def handler(event: dict, context) -> dict:
     """CRM addict.clinic: авторизация, клиенты, партнёры, лиды, сделки, пользователи, приём заявок с сайта"""
     method = event.get('httpMethod', 'GET')
@@ -431,6 +459,8 @@ def handler(event: dict, context) -> dict:
             return handle_dashboard(cur)
         if resource == 'options':
             return handle_options(cur)
+        if resource == 'shop_orders':
+            return handle_shop_orders(cur, params)
         if resource == 'users':
             return handle_users(cur, method, eid, body, user, params)
         if resource == 'activities' and method == 'POST':

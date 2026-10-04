@@ -24,6 +24,17 @@ CORS = {
 }
 
 
+CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
+
+
+def ping_crm_push():
+    try:
+        from urllib.request import urlopen as _uo
+        _uo(CRM_PUSH_URL, timeout=2.5).read()
+    except Exception as e:
+        print(f'crm push ping failed: {e}')
+
+
 def t(name):
     return f'{SCHEMA}.{name}'
 
@@ -151,6 +162,7 @@ def order_status(cur, number):
             if st == 'succeeded':
                 cur.execute(f"UPDATE {t('orders')} SET status = 'paid', paid_at = NOW(), updated_at = NOW() WHERE id = %s AND status = 'pending'", (o['id'],))
                 o['status'] = 'paid'
+                ping_crm_push()
             elif st == 'canceled':
                 cur.execute(f"UPDATE {t('orders')} SET status = 'canceled', updated_at = NOW() WHERE id = %s AND status = 'pending'", (o['id'],))
                 o['status'] = 'canceled'
