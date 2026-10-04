@@ -1,13 +1,26 @@
 {
+  "id": "/",
   "name": "addict.clinic — анонимное лечение зависимостей",
   "short_name": "addict.clinic",
+  "description": "Анонимная помощь при зависимости 24/7: срочный вызов врача, психологи и кабинет для близких.",
   "lang": "ru",
-  "start_url": "/",
-  "display": "browser",
+  "dir": "ltr",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#F3F3F1",
   "theme_color": "#F3F3F1",
+  "categories": ["health", "medical"],
   "icons": [
-    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "/favicon-32.png", "sizes": "32x32", "type": "image/png" }
+    { "src": "/pwa-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/pwa-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "Срочная помощь 24/7", "short_name": "Позвонить", "url": "tel:+78005552407", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
+    { "name": "Кабинет для близких", "short_name": "Кабинет", "url": "/family", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
+    { "name": "Статьи", "short_name": "Статьи", "url": "/articles", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] }
   ]
 }
