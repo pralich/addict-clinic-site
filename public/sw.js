@@ -1,4 +1,4 @@
-const CACHE = "addict-clinic-v2";
+const CACHE = "addict-clinic-v3";
 const SHELL = ["/", "/site.webmanifest", "/pwa-192.png", "/pwa-512.png", "/logo.png", "/favicon.svg"];
 
 self.addEventListener("install", (e) => {
