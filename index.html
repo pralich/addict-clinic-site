@@ -22,6 +22,21 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
     <link rel="manifest" href="/site.webmanifest">
+    <script>
+      (function () {
+        if (location.pathname.indexOf("/admin") !== 0) return;
+        var set = function (sel, attr, val) { var el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
+        set('link[rel="manifest"]', "href", "/admin.webmanifest");
+        set('meta[name="theme-color"]', "content", "#1B1B1A");
+        set('link[rel="apple-touch-icon"]', "href", "/admin-apple-touch-icon.png");
+        set('link[rel="icon"][type="image/svg+xml"]', "href", "/admin-favicon.svg");
+        set('link[rel="icon"][sizes="32x32"]', "href", "/admin-favicon-32.png");
+        set('meta[name="apple-mobile-web-app-title"]', "content", "Clinic CRM");
+        set('meta[name="application-name"]', "content", "Clinic CRM");
+        set('meta[name="apple-mobile-web-app-status-bar-style"]', "content", "black-translucent");
+        set('meta[name="viewport"]', "content", "width=device-width, initial-scale=1.0, viewport-fit=cover");
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">

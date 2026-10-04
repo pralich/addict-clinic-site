@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AuthProvider, useAuth } from "@/components/admin/AuthContext";
@@ -10,6 +10,7 @@ import UsersPage from "@/components/admin/UsersPage";
 import ArticlesPage from "@/components/admin/ArticlesPage";
 import FamilyAdminPage from "@/components/admin/FamilyAdminPage";
 import EntityDrawer from "@/components/admin/EntityDrawer";
+import AdminInstall from "@/components/admin/AdminInstall";
 import { ROLES } from "@/components/admin/config";
 import { useSeo } from "@/lib/seo";
 
@@ -26,7 +27,14 @@ const NAV = [
 
 const Shell = () => {
   const { user, loading, signOut } = useAuth();
-  const [page, setPage] = useState("dashboard");
+  const [params, setParams] = useSearchParams();
+  const initial = params.get("page");
+  const [page, setPage] = useState(initial && NAV.some((n) => n.id === initial) ? initial : "dashboard");
+
+  useEffect(() => {
+    if (params.has("page") || params.has("source")) setParams({}, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [drawer, setDrawer] = useState<{ resource: string; id: number } | null>(null);
   const [menu, setMenu] = useState(false);
 
@@ -40,8 +48,8 @@ const Shell = () => {
 
   const nav = (
     <div className="flex h-full flex-col">
-      <div className="flex items-center gap-3 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-primary-foreground"><Icon name="Cross" size={18} /></div>
+      <div className="flex items-center gap-3 px-5 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <img src="/admin-192.png" alt="" className="h-9 w-9 rounded-xl" />
         <div>
           <p className="font-heading font-semibold leading-tight">addict.clinic</p>
           <p className="text-[11px] text-night-muted">CRM</p>
@@ -57,7 +65,8 @@ const Shell = () => {
           </button>
         ))}
       </nav>
-      <div className="border-t border-white/10 p-3">
+      <div className="border-t border-white/10 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <div className="mb-2"><AdminInstall /></div>
         <Link to="/" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-night-muted hover:text-white">
           <Icon name="Globe" size={16} />На сайт
         </Link>
@@ -81,7 +90,7 @@ const Shell = () => {
       <Sheet open={menu} onOpenChange={setMenu}>
         <SheetContent side="left" className="w-[260px] border-none bg-night p-0 text-night-foreground">{nav}</SheetContent>
       </Sheet>
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur lg:hidden">
         <button onClick={() => setMenu(true)}><Icon name="Menu" size={22} /></button>
         <span className="font-heading font-semibold">{NAV.find((n) => n.id === page)?.label}</span>
       </header>
