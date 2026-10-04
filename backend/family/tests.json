@@ -1,9 +1,50 @@
 {
   "tests": [
-    {"name": "Me requires auth", "method": "GET", "path": "/?resource=auth&action=me", "expectedStatus": 401},
-    {"name": "Questions require auth", "method": "GET", "path": "/?resource=questions", "expectedStatus": 401},
-    {"name": "Admin requires CRM auth", "method": "GET", "path": "/?resource=admin_questions", "expectedStatus": 401},
-    {"name": "Register validation", "method": "POST", "path": "/?resource=auth&action=register", "body": {"name": "", "email": "x", "password": "1"}, "expectedStatus": 400},
-    {"name": "Billing requires auth", "method": "GET", "path": "/?resource=billing", "expectedStatus": 401}
+    {
+      "name": "Me requires auth",
+      "method": "GET",
+      "path": "/?resource=auth&action=me",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Questions require auth",
+      "method": "GET",
+      "path": "/?resource=questions",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Admin requires CRM auth",
+      "method": "GET",
+      "path": "/?resource=admin_questions",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Register validation",
+      "method": "POST",
+      "path": "/?resource=auth&action=register",
+      "body": {
+        "name": "",
+        "email": "x",
+        "password": "1"
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "Billing requires auth",
+      "method": "GET",
+      "path": "/?resource=billing",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Register without consent",
+      "method": "POST",
+      "path": "/?resource=auth&action=register",
+      "body": {
+        "name": "Тест",
+        "email": "a@b.ru",
+        "password": "123456"
+      },
+      "expectedStatus": 400
+    }
   ]
 }

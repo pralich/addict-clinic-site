@@ -8,6 +8,7 @@ import Reveal from "./Reveal";
 import Cross3D from "./Cross3D";
 import { PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 import { sendPublicLead } from "@/lib/crm-api";
+import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 
 const TOPICS = ["Алкоголь", "Наркотики", "Лекарства", "Игромания", "Для близкого", "Другое"];
 
@@ -17,6 +18,8 @@ const Contacts = () => {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [msg, setMsg] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [consentErr, setConsentErr] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(false);
 
@@ -29,10 +32,15 @@ const Contacts = () => {
       setError("Укажите телефон или мессенджер, чтобы мы могли связаться");
       return;
     }
+    if (!consent) {
+      setConsentErr(true);
+      setError("Отметьте согласие на обработку персональных данных");
+      return;
+    }
     setError("");
     setSending(true);
     try {
-      await sendPublicLead({ name, contact, topic, message: msg });
+      await sendPublicLead({ name, contact, topic, message: msg, consent, form: "contacts" });
       setSent(true);
       toast({ title: "Заявка принята", description: "Специалист свяжется с вами в течение 5 минут." });
     } catch {
@@ -138,6 +146,7 @@ const Contacts = () => {
                   <span className="mb-2 block text-[0.9em] font-medium">Комментарий <span className="text-muted-foreground">(необязательно)</span></span>
                   <Textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={4} placeholder="Опишите ситуацию в двух словах" className="bg-background" />
                 </label>
+                <ConsentCheckbox checked={consent} error={consentErr} onChange={(v) => { setConsent(v); setConsentErr(false); if (v) setError(""); }} />
                 <button
                   type="submit"
                   disabled={sending}

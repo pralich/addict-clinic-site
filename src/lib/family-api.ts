@@ -91,7 +91,7 @@ export type AiChat = { id: number; mode: string; title: string; settings?: strin
 export type AiMessage = { id: number; role: "user" | "assistant" | "feedback"; content: string; created_at: string };
 
 export const familyApi = {
-  register: (b: { name: string; email: string; password: string; phone?: string; relation?: string }) =>
+  register: (b: { name: string; email: string; password: string; phone?: string; relation?: string; consent: boolean; offer: boolean }) =>
     call<{ token: string }>(FAMILY_URL, { resource: "auth", action: "register" }, "POST", b),
   login: (b: { email: string; password: string }) => call<{ token: string }>(FAMILY_URL, { resource: "auth", action: "login" }, "POST", b),
   logout: () => call(FAMILY_URL, { resource: "auth", action: "logout" }, "POST", {}),

@@ -1,5 +1,37 @@
-{"tests": [
-  {"name": "Catalog", "method": "GET", "path": "/", "expectedStatus": 200},
-  {"name": "Catalog by category", "method": "GET", "path": "/?category=books", "expectedStatus": 200},
-  {"name": "Checkout validation", "method": "POST", "path": "/?action=checkout", "body": {"name": "", "email": "x"}, "expectedStatus": 400}
-]}
+{
+  "tests": [
+    {
+      "name": "Catalog",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Catalog by category",
+      "method": "GET",
+      "path": "/?category=books",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Checkout validation",
+      "method": "POST",
+      "path": "/?action=checkout",
+      "body": {
+        "name": "",
+        "email": "x"
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "Checkout without consent",
+      "method": "POST",
+      "path": "/?action=checkout",
+      "body": {
+        "name": "Тест",
+        "email": "a@b.ru",
+        "return_url": "https://x.ru"
+      },
+      "expectedStatus": 400
+    }
+  ]
+}

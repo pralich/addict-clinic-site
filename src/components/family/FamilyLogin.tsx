@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { LOGO_URL, PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { familyApi, RELATIONS } from "@/lib/family-api";
 import { useFamilyAuth } from "./FamilyAuth";
+import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 
 const IMG = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/835def65-2d36-46aa-a64d-01df6f28c38f.jpg";
 
@@ -19,7 +20,8 @@ const FamilyLogin = () => {
   const { signIn } = useFamilyAuth();
   const [mode, setMode] = useState<"login" | "register">("register");
   const [form, setForm] = useState({ name: "", email: "", password: "", phone: "", relation: "spouse" });
-  const [agree, setAgree] = useState(true);
+  const [agree, setAgree] = useState(false);
+  const [offer, setOffer] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -27,10 +29,10 @@ const FamilyLogin = () => {
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
-    if (mode === "register" && !agree) { setError("Нужно согласие на обработку данных"); return; }
+    if (mode === "register" && (!agree || !offer)) { setError("Примите оферту и дайте согласие на обработку персональных данных"); return; }
     setBusy(true);
     try {
-      const r = mode === "login" ? await familyApi.login({ email: form.email, password: form.password }) : await familyApi.register(form);
+      const r = mode === "login" ? await familyApi.login({ email: form.email, password: form.password }) : await familyApi.register({ ...form, consent: agree, offer });
       await signIn(r.token);
     } catch (err) {
       setError((err as Error).message);
@@ -97,10 +99,8 @@ const FamilyLogin = () => {
             {mode === "register" && (
               <>
                 <Input value={form.phone} onChange={(e) => set("phone")(e.target.value)} placeholder="Телефон (необязательно)" className="h-12 bg-card" />
-                <label className="flex cursor-pointer items-start gap-2.5 text-xs text-muted-foreground">
-                  <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
-                  Согласен(на) на обработку персональных данных. Данные видят только специалисты клиники.
-                </label>
+                <ConsentCheckbox kind="offer" checked={offer} onChange={(v) => { setOffer(v); setError(""); }} />
+                <ConsentCheckbox checked={agree} onChange={(v) => { setAgree(v); setError(""); }} />
               </>
             )}
             {error && <p className="rounded-lg bg-primary/10 px-3 py-2 text-sm text-primary">{error}</p>}
@@ -112,8 +112,13 @@ const FamilyLogin = () => {
 
           <div className="mt-8 flex items-start gap-3 rounded-2xl bg-card p-4 text-sm text-muted-foreground">
             <Icon name="ShieldCheck" size={20} className="shrink-0 text-primary" />
-            Мы не сообщаем вашему близкому о регистрации и не передаём данные третьим лицам.
+            Мы не сообщаем вашему близкому о регистрации и не передаём данные посторонним.
           </div>
+          <p className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <a href="/privacy" className="hover:text-foreground">Политика конфиденциальности</a>
+            <a href="/offer" className="hover:text-foreground">Оферта</a>
+            <a href="/requisites" className="hover:text-foreground">Реквизиты</a>
+          </p>
         </div>
       </div>
     </div>

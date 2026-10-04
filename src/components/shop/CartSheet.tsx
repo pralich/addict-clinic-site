@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { checkout, rub, useCart } from "@/lib/shop";
+import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 
 type Props = { open: boolean; onOpenChange: (o: boolean) => void; delivery?: { price: number; free_from: number } };
 
@@ -12,6 +13,9 @@ const CartSheet = ({ open, onOpenChange, delivery = { price: 390, free_from: 500
   const { lines, setQty, remove, subtotal, count } = useCart();
   const [step, setStep] = useState<"cart" | "form">("cart");
   const [busy, setBusy] = useState(false);
+  const [consent, setConsent] = useState(false);
+  const [offer, setOffer] = useState(false);
+  const [agreeErr, setAgreeErr] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", phone: "", address: "", comment: "" });
   const physical = lines.some((l) => !l.digital);
   const ship = physical && subtotal < delivery.free_from ? delivery.price : 0;
@@ -20,10 +24,17 @@ const CartSheet = ({ open, onOpenChange, delivery = { price: 390, free_from: 500
 
   const pay = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!consent || !offer) {
+      setAgreeErr(true);
+      toast.error("Примите оферту и дайте согласие на обработку данных");
+      return;
+    }
     setBusy(true);
     try {
       const r = await checkout({
         ...form,
+        consent,
+        offer,
         items: lines.map((l) => ({ id: l.id, option: l.raw, qty: l.qty })),
         return_url: `${window.location.origin}/shop`,
       });
@@ -107,6 +118,8 @@ const CartSheet = ({ open, onOpenChange, delivery = { price: 390, free_from: 500
                 <Icon name="ShieldCheck" size={15} className="mt-0.5 shrink-0 text-primary" />
                 Упаковка и выписка без упоминания клиники. Данные используются только для доставки и чека.
               </p>
+              <ConsentCheckbox kind="offer" checked={offer} error={agreeErr && !offer} onChange={(v) => { setOffer(v); setAgreeErr(false); }} />
+              <ConsentCheckbox checked={consent} error={agreeErr && !consent} onChange={(v) => { setConsent(v); setAgreeErr(false); }} />
             </div>
             <div className="border-t p-5">
               <button disabled={busy} className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60">

@@ -66,6 +66,18 @@ def ping_crm_push():
         print(f'crm push ping failed: {e}')
 
 
+PD_DOC_VERSION = '2026-10-04'
+
+
+def log_consent(cur, event, form, subject, ref_type=None, ref_id=None, purpose='pd_processing'):
+    ident = ((event or {}).get('requestContext') or {}).get('identity') or {}
+    hdrs = (event or {}).get('headers') or {}
+    cur.execute(f"""INSERT INTO {SCHEMA}.pd_consents (form, purpose, subject, doc_version, ref_type, ref_id, ip, user_agent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (form, purpose, (subject or '')[:200] or None, PD_DOC_VERSION, ref_type, ref_id,
+                 (ident.get('sourceIp') or '')[:64] or None, (hdrs.get('User-Agent') or hdrs.get('user-agent') or '')[:400] or None))
+
+
 def t(name):
     return f'{SCHEMA}.{name}'
 
@@ -170,14 +182,17 @@ def handle_auth(cur, action, method, body, headers):
     return resp(200, {'user': {k: user[k] for k in ('id', 'name', 'email', 'role')}})
 
 
-def handle_public_lead(cur, body):
+def handle_public_lead(cur, body, event=None):
     contact = clean(body.get('contact'))
     if not contact:
         return resp(400, {'error': 'Укажите контакт'})
+    if body.get('consent') is not True:
+        return resp(400, {'error': 'Нужно согласие на обработку персональных данных'})
     q(cur, f'INSERT INTO {t("crm_leads")} (name, contact, topic, message, source) VALUES (%s, %s, %s, %s, %s) RETURNING id',
       (clean(body.get('name')), contact[:200], (clean(body.get('topic')) or '')[:200] or None, clean(body.get('message')), 'site'))
     lid = cur.fetchone()['id']
     log_activity(cur, 'leads', lid, None, 'Заявка с сайта')
+    log_consent(cur, event, body.get('form') or 'lead', contact, 'lead', lid)
     ping_crm_push()
     return resp(200, {'ok': True, 'id': lid})
 
@@ -449,7 +464,7 @@ def handler(event: dict, context) -> dict:
         if resource == 'auth':
             return handle_auth(cur, action, method, body, headers)
         if resource == 'public_lead' and method == 'POST':
-            return handle_public_lead(cur, body)
+            return handle_public_lead(cur, body, event)
 
         user = get_user(cur, headers)
         if not user:

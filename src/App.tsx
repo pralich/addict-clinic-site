@@ -13,6 +13,12 @@ import Articles from "./pages/Articles";
 import ArticlePage from "./pages/ArticlePage";
 import Family from "./pages/Family";
 import Shop from "./pages/Shop";
+import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
+import Consent from "./pages/legal/Consent";
+import Offer from "./pages/legal/Offer";
+import Cookies from "./pages/legal/Cookies";
+import Requisites from "./pages/legal/Requisites";
+import CookieBanner from "@/components/legal/CookieBanner";
 
 const queryClient = new QueryClient();
 
@@ -31,9 +37,15 @@ const App = () => (
           <Route path="/articles/:slug" element={<ArticlePage />} />
           <Route path="/family" element={<Family />} />
           <Route path="/shop" element={<Shop />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/consent" element={<Consent />} />
+          <Route path="/offer" element={<Offer />} />
+          <Route path="/cookies" element={<Cookies />} />
+          <Route path="/requisites" element={<Requisites />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <CookieBanner />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

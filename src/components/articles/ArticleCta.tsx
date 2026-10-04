@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { sendPublicLead } from "@/lib/crm-api";
+import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 
 const CTA: Record<string, { label: string; title: string; text: string; points: string[]; button: string; topic: string; dark?: boolean }> = {
   urgent: {
@@ -61,13 +62,16 @@ const ArticleCta = ({ type, source, compact = false }: { type: string; source: s
   const c = CTA[type] || CTA.consult;
   const [contact, setContact] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+  const [consent, setConsent] = useState(false);
+  const [consentErr, setConsentErr] = useState(false);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (contact.replace(/\D/g, "").length < 10 && !contact.includes("@")) { setState("error"); return; }
+    if (!consent) { setConsentErr(true); return; }
     setState("sending");
     try {
-      await sendPublicLead({ contact, topic: c.topic, message: `Со страницы статьи: ${source}` });
+      await sendPublicLead({ contact, topic: c.topic, message: `Со страницы статьи: ${source}`, consent, form: "article_cta" });
       setState("sent");
     } catch {
       setState("error");
@@ -124,6 +128,7 @@ const ArticleCta = ({ type, source, compact = false }: { type: string; source: s
                 placeholder="Телефон или Telegram"
                 className={`h-11 rounded-full border bg-background px-4 text-[0.95em] outline-none focus:border-foreground/40 ${state === "error" ? "border-primary" : ""}`}
               />
+              <ConsentCheckbox checked={consent} error={consentErr} onChange={(v) => { setConsent(v); setConsentErr(false); }} className="text-[11px]" />
               <button type="submit" disabled={state === "sending"} className="h-11 rounded-full bg-ink font-medium text-ink-foreground disabled:opacity-60">
                 {state === "sending" ? "Отправляем…" : c.button}
               </button>

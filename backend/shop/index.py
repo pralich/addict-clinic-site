@@ -35,6 +35,18 @@ def ping_crm_push():
         print(f'crm push ping failed: {e}')
 
 
+PD_DOC_VERSION = '2026-10-04'
+
+
+def log_consent(cur, event, form, subject, ref_type=None, ref_id=None, purpose='pd_processing'):
+    ident = ((event or {}).get('requestContext') or {}).get('identity') or {}
+    hdrs = (event or {}).get('headers') or {}
+    cur.execute(f"""INSERT INTO {SCHEMA}.pd_consents (form, purpose, subject, doc_version, ref_type, ref_id, ip, user_agent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (form, purpose, (subject or '')[:200] or None, PD_DOC_VERSION, ref_type, ref_id,
+                 (ident.get('sourceIp') or '')[:64] or None, (hdrs.get('User-Agent') or hdrs.get('user-agent') or '')[:400] or None))
+
+
 def t(name):
     return f'{SCHEMA}.{name}'
 
@@ -67,7 +79,7 @@ def _price(p, option):
     return p['price']
 
 
-def create_order(cur, body):
+def create_order(cur, body, event=None):
     name = (body.get('name') or '').strip()[:200]
     email = (body.get('email') or '').strip()[:200]
     phone = (body.get('phone') or '').strip()[:50]
@@ -76,6 +88,8 @@ def create_order(cur, body):
     return_url = body.get('return_url') or ''
     if not name or not re.match(r'^[^\s@]+@[^\s@]+\.[^\s@]+$', email):
         return 400, {'error': 'Укажите имя и корректный email'}
+    if body.get('consent') is not True or body.get('offer') is not True:
+        return 400, {'error': 'Нужно принять оферту и дать согласие на обработку персональных данных'}
     if not return_url.startswith('https://'):
         return 400, {'error': 'Некорректный адрес возврата'}
     raw = body.get('items') or []
@@ -125,6 +139,8 @@ def create_order(cur, body):
         cur.execute(f"INSERT INTO {t('order_items')} (order_id, product_id, product_name, product_price, quantity) VALUES (%s, 'delivery', 'Доставка', %s, 1)", (oid, delivery))
         receipt.append({'description': 'Доставка', 'quantity': '1.000', 'amount': {'value': f'{delivery:.2f}', 'currency': 'RUB'},
                         'vat_code': 1, 'payment_subject': 'service', 'payment_mode': 'full_payment'})
+    log_consent(cur, event, 'shop_checkout', email, 'order', oid)
+    log_consent(cur, event, 'shop_checkout', email, 'order', oid, 'offer')
 
     sep = '&' if '?' in return_url else '?'
     payload = {
@@ -198,7 +214,7 @@ def handler(event: dict, context) -> dict:
             items = [_serialize(p) for p in cur.fetchall()]
             return resp(200, {'items': items, 'delivery': {'price': DELIVERY_PRICE, 'free_from': FREE_DELIVERY_FROM}})
         if method == 'POST' and action == 'checkout':
-            code, data = create_order(cur, body)
+            code, data = create_order(cur, body, event)
             return resp(code, data)
         return resp(404, {'error': 'Неизвестный запрос'})
     finally:

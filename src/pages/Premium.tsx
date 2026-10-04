@@ -4,6 +4,8 @@ import Icon from "@/components/ui/icon";
 import Reveal from "@/components/clinic/Reveal";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { sendPublicLead } from "@/lib/crm-api";
+import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
+import { LEGAL_LINKS, ORG } from "@/lib/legal";
 import { SITE_URL, useSeo } from "@/lib/seo";
 
 const PREMIUM_LD = {
@@ -93,6 +95,7 @@ const Label = ({ children }: { children: string }) => (
 );
 
 const PremiumForm = () => {
+  const [consent, setConsent] = useState(false);
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
   const [msg, setMsg] = useState("");
@@ -106,10 +109,14 @@ const PremiumForm = () => {
       setError("Укажите телефон, мессенджер или email");
       return;
     }
+    if (!consent) {
+      setError("Отметьте согласие на обработку персональных данных");
+      return;
+    }
     setError("");
     setSending(true);
     try {
-      await sendPublicLead({ name, contact, topic: "PREMIUM", message: msg });
+      await sendPublicLead({ name, contact, topic: "PREMIUM", message: msg, consent, form: "premium" });
       setSent(true);
     } catch {
       setError(`Не удалось отправить. Позвоните: ${PHONE_DISPLAY}`);
@@ -138,6 +145,7 @@ const PremiumForm = () => {
       <input value={contact} onChange={(e) => { setContact(e.target.value); setError(""); }} placeholder="Телефон, Telegram или email" className={field} />
       <textarea value={msg} onChange={(e) => setMsg(e.target.value)} rows={3} placeholder="Удобное время и способ связи (необязательно)"
         className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-white placeholder:text-white/35 outline-none transition-colors focus:border-[#d9c4a1]/60" />
+      <ConsentCheckbox tone="dark" checked={consent} onChange={(v) => { setConsent(v); setError(""); }} />
       {error && <p className="text-sm text-[#ff7b7f]">{error}</p>}
       <button type="submit" disabled={sending}
         className="mt-1 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-[#c9b190] via-[#f1e3c8] to-[#b8a284] font-medium text-[#15130f] transition-transform hover:-translate-y-0.5 disabled:opacity-70">
@@ -339,6 +347,14 @@ const Premium = () => {
           <img src="/logo-premium-mark.png" alt="" className="h-7 w-auto opacity-80" />
           <p>© {new Date().getFullYear()} addict.clinic PREMIUM · Анонимно и конфиденциально</p>
           <Link to="/" className="transition-colors hover:text-white">Основной сайт клиники</Link>
+        </div>
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 border-t border-white/5 px-5 py-6 text-xs text-white/35 md:px-14">
+          <nav className="flex flex-wrap gap-x-5 gap-y-2">
+            {LEGAL_LINKS.map((l) => (
+              <a key={l.href} href={l.href} className="hover:text-white">{l.label}</a>
+            ))}
+          </nav>
+          <p>Оператор: {ORG.fullName}, ИНН {ORG.inn}, ОГРН {ORG.ogrn}. {ORG.email}</p>
         </div>
       </footer>
     </div>

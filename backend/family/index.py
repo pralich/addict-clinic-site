@@ -23,6 +23,18 @@ RELATIONS = ('spouse', 'parent', 'child', 'sibling', 'partner', 'friend', 'other
 EVENT_FIELDS = ('title', 'description', 'kind', 'starts_at', 'duration_min', 'location', 'link', 'host', 'capacity', 'cover_url', 'status')
 
 
+PD_DOC_VERSION = '2026-10-04'
+
+
+def log_consent(cur, event, form, subject, ref_type=None, ref_id=None, purpose='pd_processing'):
+    ident = ((event or {}).get('requestContext') or {}).get('identity') or {}
+    hdrs = (event or {}).get('headers') or {}
+    cur.execute(f"""INSERT INTO {SCHEMA}.pd_consents (form, purpose, subject, doc_version, ref_type, ref_id, ip, user_agent)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""",
+                (form, purpose, (subject or '')[:200] or None, PD_DOC_VERSION, ref_type, ref_id,
+                 (ident.get('sourceIp') or '')[:64] or None, (hdrs.get('User-Agent') or hdrs.get('user-agent') or '')[:400] or None))
+
+
 def t(name):
     return f'{SCHEMA}.{name}'
 
@@ -94,17 +106,21 @@ def new_session(cur, uid):
     return token
 
 
-def handle_auth(cur, action, body, headers):
+def handle_auth(cur, action, body, headers, event=None):
     if action == 'register':
         name, email, password = clean(body.get('name')), (clean(body.get('email')) or '').lower(), body.get('password') or ''
         if not name or '@' not in email or len(password) < 6:
             return resp(400, {'error': 'Укажите имя, email и пароль не короче 6 символов'})
+        if body.get('consent') is not True or body.get('offer') is not True:
+            return resp(400, {'error': 'Нужно принять оферту и дать согласие на обработку персональных данных'})
         cur.execute(f'SELECT id FROM {t("family_users")} WHERE email = %s', (email,))
         if cur.fetchone():
             return resp(400, {'error': 'Этот email уже зарегистрирован — войдите'})
         relation = body.get('relation') if body.get('relation') in RELATIONS else 'other'
         cur.execute(f"INSERT INTO {t('family_users')} (name, email, phone, relation, password_hash, trial_ends_at) VALUES (%s, %s, %s, %s, %s, NOW() + INTERVAL '3 days') RETURNING id", (name, email, clean(body.get('phone')), relation, hash_password(password)))
         uid = cur.fetchone()['id']
+        log_consent(cur, event, 'family_register', email, 'family_user', uid)
+        log_consent(cur, event, 'family_register', email, 'family_user', uid, 'offer')
         return resp(200, {'token': new_session(cur, uid)})
     if action == 'login':
         email = (clean(body.get('email')) or '').lower()
@@ -248,7 +264,7 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         if resource == 'auth':
-            return handle_auth(cur, params.get('action', 'me'), body, headers)
+            return handle_auth(cur, params.get('action', 'me'), body, headers, event)
         if resource.startswith('admin_'):
             staff = staff_user(cur, headers)
             if not staff:

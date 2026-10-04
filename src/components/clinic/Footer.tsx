@@ -1,6 +1,8 @@
 import Icon from "@/components/ui/icon";
 import { Logo } from "./Header";
 import { NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
+import { LEGAL_LINKS, ORG } from "@/lib/legal";
+import { openCookieSettings } from "@/lib/cookie-consent";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background">
@@ -31,9 +33,21 @@ const Footer = () => (
       </div>
     </div>
     <div className="border-t border-border">
-      <div className="mx-auto flex max-w-[1280px] flex-col gap-2 px-5 py-5 text-[0.8em] text-muted-foreground md:flex-row md:justify-between md:px-16">
-        <span>© {new Date().getFullYear()} addict.clinic</span>
-        <span>Имеются противопоказания. Необходима консультация специалиста.</span>
+      <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-5 py-6 text-[0.8em] text-muted-foreground md:px-16">
+        <nav className="flex flex-wrap gap-x-5 gap-y-2">
+          {LEGAL_LINKS.map((l) => (
+            <a key={l.href} href={l.href} className="hover:text-foreground">{l.label}</a>
+          ))}
+          <button onClick={openCookieSettings} className="hover:text-foreground">Настройки cookie</button>
+        </nav>
+        <p className="max-w-[900px] leading-relaxed">
+          Оператор сайта и персональных данных: {ORG.fullName}, ИНН {ORG.inn}, ОГРН {ORG.ogrn}. {ORG.legalAddress}.{" "}
+          <a href={`mailto:${ORG.email}`} className="hover:text-foreground">{ORG.email}</a>. Медицинские услуги оказывают лицензированные медицинские организации-партнёры.
+        </p>
+        <div className="flex flex-col gap-2 md:flex-row md:justify-between">
+          <span>© {new Date().getFullYear()} addict.clinic</span>
+          <span>Имеются противопоказания. Необходима консультация специалиста.</span>
+        </div>
       </div>
     </div>
   </footer>

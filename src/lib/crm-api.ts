@@ -40,5 +40,5 @@ export async function api<T = any>(params: Params, method = "GET", body?: unknow
   return data as T;
 }
 
-export const sendPublicLead = (data: { name?: string; contact: string; topic?: string; message?: string }) =>
+export const sendPublicLead = (data: { name?: string; contact: string; topic?: string; message?: string; consent: boolean; form?: string }) =>
   api({ resource: "public_lead" }, "POST", data);
