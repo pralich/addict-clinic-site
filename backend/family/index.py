@@ -74,6 +74,18 @@ def staff_user(cur, headers):
     return cur.fetchone()
 
 
+def access_info(cur, uid):
+    cur.execute(f"""SELECT u.token_balance, u.trial_ends_at, u.trial_ends_at > NOW() AS trial_active,
+        ARRAY(SELECT DISTINCT plan FROM {t('family_subscriptions')} s WHERE s.user_id = u.id AND s.ends_at > NOW()) AS plans
+        FROM {t('family_users')} u WHERE u.id = %s""", (uid,))
+    r = cur.fetchone()
+    plans = list(r['plans'] or [])
+    return {
+        'tokens': r['token_balance'], 'plans': plans, 'trial_ends_at': r['trial_ends_at'], 'trial_active': bool(r['trial_active']),
+        'can_ask': bool(r['trial_active']) or bool(plans),
+    }
+
+
 def new_session(cur, uid):
     token = secrets.token_urlsafe(32)
     cur.execute(f'INSERT INTO {t("family_sessions")} (token, user_id, expires_at) VALUES (%s, %s, %s)', (token, uid, datetime.utcnow() + timedelta(days=60)))
@@ -90,7 +102,7 @@ def handle_auth(cur, action, body, headers):
         if cur.fetchone():
             return resp(400, {'error': 'Этот email уже зарегистрирован — войдите'})
         relation = body.get('relation') if body.get('relation') in RELATIONS else 'other'
-        cur.execute(f'INSERT INTO {t("family_users")} (name, email, phone, relation, password_hash) VALUES (%s, %s, %s, %s, %s) RETURNING id', (name, email, clean(body.get('phone')), relation, hash_password(password)))
+        cur.execute(f"INSERT INTO {t('family_users')} (name, email, phone, relation, password_hash, trial_ends_at) VALUES (%s, %s, %s, %s, %s, NOW() + INTERVAL '3 days') RETURNING id", (name, email, clean(body.get('phone')), relation, hash_password(password)))
         uid = cur.fetchone()['id']
         return resp(200, {'token': new_session(cur, uid)})
     if action == 'login':
@@ -116,15 +128,14 @@ def handle_auth(cur, action, body, headers):
     ev = cur.fetchone()['c']
     cur.execute(f"SELECT COUNT(*) AS c FROM {t('family_ai_chats')} WHERE user_id = %s", (user['id'],))
     ai = cur.fetchone()['c']
-    cur.execute(f"SELECT token_balance FROM {t('family_users')} WHERE id = %s", (user['id'],))
-    tokens = cur.fetchone()['token_balance']
-    cur.execute(f"SELECT DISTINCT plan FROM {t('family_subscriptions')} WHERE user_id = %s AND ends_at > NOW()", (user['id'],))
-    plans = [r['plan'] for r in cur.fetchall()]
-    return resp(200, {'user': user, 'stats': {'answered': q['answered'], 'waiting': q['waiting'], 'events': ev, 'ai_chats': ai, 'tokens': tokens, 'plans': plans}})
+    acc = access_info(cur, user['id'])
+    return resp(200, {'user': user, 'stats': {'answered': q['answered'], 'waiting': q['waiting'], 'events': ev, 'ai_chats': ai, **acc}})
 
 
 def handle_questions(cur, method, body, user):
     if method == 'POST':
+        if not access_info(cur, user['id'])['can_ask']:
+            return resp(402, {'error': 'Пробный период закончился. Чтобы задавать вопросы психологу, оформите тариф в разделе «Тарифы и баланс».'})
         text = clean(body.get('question'))
         if not text or len(text) < 10:
             return resp(400, {'error': 'Опишите вопрос подробнее'})

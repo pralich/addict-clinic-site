@@ -10,6 +10,7 @@ import QuestionsSection from "@/components/family/QuestionsSection";
 import EventsSection from "@/components/family/EventsSection";
 import AiSection from "@/components/family/AiSection";
 import BillingSection from "@/components/family/BillingSection";
+import TrialBanner from "@/components/family/TrialBanner";
 import { RELATIONS, fmtNum } from "@/lib/family-api";
 import { useSeo } from "@/lib/seo";
 
@@ -86,6 +87,7 @@ const Shell = () => {
       </header>
       <main className="px-4 py-6 md:px-8 lg:ml-[260px] lg:py-8">
         <div className="mx-auto max-w-[1200px]">
+          <TrialBanner go={go} />
           {head && (
             <div className="mb-6">
               <h1 className="font-heading text-[1.9em] font-semibold tracking-[-0.03em]">{head.title}</h1>

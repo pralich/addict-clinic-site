@@ -93,6 +93,14 @@ def family_user(cur, headers):
     return cur.fetchone()
 
 
+def ai_allowed(cur, uid):
+    cur.execute(f"""SELECT (u.trial_ends_at > NOW()) OR u.token_balance > 0
+        OR EXISTS(SELECT 1 FROM {t('family_subscriptions')} s WHERE s.user_id = u.id AND s.ends_at > NOW()) AS ok
+        FROM {t('family_users')} u WHERE u.id = %s""", (uid,))
+    r = cur.fetchone()
+    return bool(r and r['ok'])
+
+
 def llm(messages, temperature=0.7):
     key = os.environ.get('OPENAI_API_KEY')
     if not key:
@@ -162,6 +170,9 @@ def handler(event: dict, context) -> dict:
 
         if method != 'POST':
             return resp(404, {'error': 'Неизвестный запрос'})
+
+        if not ai_allowed(cur, uid):
+            return resp(402, {'error': 'Пробный период закончился. Пополните баланс ИИ-токенов или оформите тариф в разделе «Тарифы и баланс».'})
 
         if not chat:
             mode = body.get('mode') if body.get('mode') in MODES and body.get('mode') != 'feedback' else 'coach'

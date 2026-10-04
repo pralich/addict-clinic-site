@@ -47,7 +47,7 @@ export const RELATIONS: Record<string, string> = {
 };
 
 export type FamilyUser = { id: number; name: string; email: string; phone?: string | null; relation?: string | null; created_at: string };
-export type FamilyStats = { answered: number; waiting: number; events: number; ai_chats: number; tokens?: number; plans?: string[] };
+export type FamilyStats = { answered: number; waiting: number; events: number; ai_chats: number; tokens?: number; plans?: string[]; trial_ends_at?: string | null; trial_active?: boolean; can_ask?: boolean };
 export type BillingPlan = { code: string; title: string; price: number; days: number };
 export type BillingOrder = { order_number: string; status: "pending" | "paid" | "canceled"; amount: string | number; product_code: string; tokens: number; created_at: string; paid_at?: string | null; title?: string | null };
 export type BillingOverview = {

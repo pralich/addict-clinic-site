@@ -49,7 +49,7 @@ const FamilyLogin = () => {
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground"><Icon name="HeartHandshake" size={13} />Кабинет для близких</p>
             <h1 className="mt-5 max-w-[520px] font-heading text-[2.8em] font-medium leading-[1.05] tracking-[-0.04em]">Вы не обязаны справляться в одиночку.</h1>
-            <p className="mt-4 max-w-[460px] text-white/75">Бесплатное пространство поддержки для родственников зависимых: специалисты клиники, группы и ИИ-психолог, который всегда на связи.</p>
+            <p className="mt-4 max-w-[460px] text-white/75">Пространство поддержки для родственников зависимых: специалисты клиники, группы и ИИ-психолог, который всегда на связи. Первые 3 дня — полный доступ бесплатно.</p>
             <div className="mt-8 grid max-w-[560px] grid-cols-3 gap-3">
               {FEATURES.map((f) => (
                 <div key={f.title} className="rounded-2xl bg-white/10 p-4 backdrop-blur">
@@ -72,7 +72,7 @@ const FamilyLogin = () => {
         <div className="mx-auto flex w-full max-w-[420px] flex-1 flex-col justify-center py-10">
           <p className="inline-flex w-fit items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-medium lg:hidden"><Icon name="HeartHandshake" size={13} className="text-primary" />Кабинет для близких</p>
           <h2 className="mt-4 font-heading text-[2em] font-semibold tracking-[-0.03em] lg:mt-0">{mode === "register" ? "Создать кабинет" : "Вход в кабинет"}</h2>
-          <p className="mt-2 text-muted-foreground">{mode === "register" ? "Бесплатно и конфиденциально. Можно указать имя или псевдоним." : "Рады видеть вас снова."}</p>
+          <p className="mt-2 text-muted-foreground">{mode === "register" ? "3 дня полного доступа бесплатно. Конфиденциально — можно указать псевдоним." : "Рады видеть вас снова."}</p>
 
           <div className="mt-6 grid grid-cols-2 rounded-full bg-secondary p-1">
             {(["register", "login"] as const).map((m) => (
