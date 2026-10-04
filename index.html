@@ -20,28 +20,28 @@
     <link rel="icon" href="/favicon.ico?v=2" sizes="any">
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=2">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2">
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2">
-    <link rel="manifest" href="/site.webmanifest">
     <script>
       (function () {
-        if (location.pathname.indexOf("/admin") !== 0) return;
+        var admin = location.pathname === "/admin" || location.pathname.indexOf("/admin/") === 0;
+        var c = admin
+          ? { manifest: "/admin.webmanifest?v=3", icon: "/admin-apple-touch-icon.png?v=3", title: "Clinic CRM", bar: "black-translucent", theme: "#1B1B1A", svg: "/admin-favicon.svg", png: "/admin-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
+          : { manifest: "/site.webmanifest?v=3", icon: "/apple-touch-icon.png?v=2", title: "addict.clinic", bar: "default", theme: "#F3F3F1" };
+        var head = document.head;
+        var add = function (tag, attrs) { var el = document.createElement(tag); for (var k in attrs) el.setAttribute(k, attrs[k]); head.appendChild(el); };
+        add("link", { rel: "manifest", href: c.manifest });
+        add("link", { rel: "apple-touch-icon", sizes: "180x180", href: c.icon });
+        add("meta", { name: "mobile-web-app-capable", content: "yes" });
+        add("meta", { name: "apple-mobile-web-app-capable", content: "yes" });
+        add("meta", { name: "apple-mobile-web-app-status-bar-style", content: c.bar });
+        add("meta", { name: "apple-mobile-web-app-title", content: c.title });
+        add("meta", { name: "application-name", content: c.title });
         var set = function (sel, attr, val) { var el = document.querySelector(sel); if (el) el.setAttribute(attr, val); };
-        set('link[rel="manifest"]', "href", "/admin.webmanifest");
-        set('meta[name="theme-color"]', "content", "#1B1B1A");
-        set('link[rel="apple-touch-icon"]', "href", "/admin-apple-touch-icon.png");
-        set('link[rel="icon"][type="image/svg+xml"]', "href", "/admin-favicon.svg");
-        set('link[rel="icon"][sizes="32x32"]', "href", "/admin-favicon-32.png");
-        set('meta[name="apple-mobile-web-app-title"]', "content", "Clinic CRM");
-        set('meta[name="application-name"]', "content", "Clinic CRM");
-        set('meta[name="apple-mobile-web-app-status-bar-style"]', "content", "black-translucent");
-        set('meta[name="viewport"]', "content", "width=device-width, initial-scale=1.0, viewport-fit=cover");
+        set('meta[name="theme-color"]', "content", c.theme);
+        if (c.svg) set('link[rel="icon"][type="image/svg+xml"]', "href", c.svg);
+        if (c.png) set('link[rel="icon"][sizes="32x32"]', "href", c.png);
+        if (c.viewport) set('meta[name="viewport"]', "content", c.viewport);
       })();
     </script>
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="addict.clinic">
-    <meta name="application-name" content="addict.clinic">
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="addict.clinic">
