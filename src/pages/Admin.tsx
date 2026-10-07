@@ -15,6 +15,7 @@ import EntityDrawer from "@/components/admin/EntityDrawer";
 import AdminInstall from "@/components/admin/AdminInstall";
 import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
+import SeoPage from "@/components/admin/SeoPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
@@ -48,6 +49,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { id: "articles", label: "Статьи", icon: "Newspaper" },
       { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
+      { id: "seo", label: "SEO", icon: "SearchCheck" },
     ],
   },
 ];
@@ -193,6 +195,7 @@ const Shell = () => {
           {page === "articles" && <ArticlesPage />}
           {FAMILY_SECTION[page] && <FamilyAdminPage section={FAMILY_SECTION[page]} />}
           {page === "orders" && <ShopOrdersPage />}
+          {page === "seo" && <SeoPage />}
           {page === "finance" && <FinancePage onOpen={open} />}
         </div>
       </main>

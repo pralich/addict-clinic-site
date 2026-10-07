@@ -100,11 +100,29 @@ const hmrKeepalive = {
     transformIndexHtml: () => [{tag: 'script', children: hmrClient, injectTo: 'head-prepend' as const}],
 };
 
+const sitemapFromAdmin = {
+    name: 'sitemap-from-admin',
+    apply: 'build' as const,
+    async closeBundle() {
+        try {
+            const fs = await import('fs');
+            const urls = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'backend/func2url.json'), 'utf-8'));
+            if (!urls.seo) return;
+            const res = await fetch(`${urls.seo}?action=sitemap.xml`, {signal: AbortSignal.timeout(10000)});
+            const xml = await res.text();
+            if (res.ok && xml.includes('<urlset')) fs.writeFileSync(path.resolve(__dirname, 'dist/sitemap.xml'), xml);
+        } catch {
+            return;
+        }
+    },
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({mode}) => ({
     plugins: [
         react(),
         hmrKeepalive,
+        sitemapFromAdmin,
         mode === 'development' &&
         componentTagger(),
     ].filter(Boolean),

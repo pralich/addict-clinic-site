@@ -1,0 +1,7 @@
+{
+  "tests": [
+    {"name": "Public sitemap", "method": "GET", "path": "/?action=sitemap.xml", "expectedStatus": 200},
+    {"name": "Status requires auth", "method": "GET", "path": "/?action=status", "expectedStatus": 401},
+    {"name": "Regenerate requires auth", "method": "POST", "path": "/?action=regenerate", "expectedStatus": 401}
+  ]
+}
