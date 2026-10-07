@@ -31,6 +31,7 @@ const DOCS: { id: string; title: string; required: string; fields: Field[]; exam
       ["status", "new, in_work, qualified, converted, rejected", "По умолчанию new"],
       ["manager_id, partner_id, client_id", "число", "Связи с записями CRM"],
       ["utm_source … utm_term, page_url", "строка", "Метки рекламы"],
+      ["contact_person", "объект", "Представитель: name, relation, phone, email"],
       ["external_id", "строка", "Ваш ID — защищает от дублей"],
     ],
     example: { name: "Иван", phone: "+7 999 123-45-67", topic: "Вывод из запоя", message: "Нужен врач на дом", source: "ads", utm_source: "yandex", external_id: "form-1024" },
@@ -50,6 +51,7 @@ const DOCS: { id: string; title: string; required: string; fields: Field[]; exam
       ["status", "active, treatment, rehab, finished, inactive", "По умолчанию active"],
       ["manager_id, partner_id", "число", "Ответственный и партнёр"],
       ["notes", "строка", "Заметки"],
+      ["contact_person", "объект", "Представитель: name, relation, phone, email"],
       ["external_id", "строка", "Ваш ID"],
     ],
     example: { full_name: "Петров Иван Сергеевич", phone: "89991234567", email: "ivan@example.ru", status: "active", external_id: "1c-00042" },
@@ -69,6 +71,7 @@ const DOCS: { id: string; title: string; required: string; fields: Field[]; exam
       ["expected_close", "ГГГГ-ММ-ДД", "Плановая дата закрытия"],
       ["manager_id, partner_id, lead_id", "число", "Связи"],
       ["notes", "строка", "Заметки"],
+      ["contact_person", "объект", "Представитель: name, relation, phone, email"],
       ["external_id", "строка", "Ваш ID"],
     ],
     example: { title: "Реабилитация 28 дней", amount: 180000, stage: "offer", program: "Стационар", client: { full_name: "Петров Иван", phone: "+79991234567" }, external_id: "deal-77" },
@@ -223,7 +226,10 @@ const ApiPage = () => {
             );
           })}
         </Tabs>
-        <div className="mt-4 flex flex-wrap gap-x-5 gap-y-1 border-t pt-4 text-sm text-muted-foreground">
+        <p className="mt-4 border-t pt-4 text-sm text-muted-foreground">
+          Поле <code className="font-mono text-xs text-foreground">contact_person.relation</code>: self, spouse, parent, child, sibling, relative, friend, colleague, employer, guardian, other.
+        </p>
+        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-muted-foreground">
           <span><code className="font-mono text-xs text-foreground">GET ?resource=ping</code> — проверить ключ</span>
           <span><code className="font-mono text-xs text-foreground">GET ?resource=dictionaries</code> — списки статусов и этапов</span>
         </div>

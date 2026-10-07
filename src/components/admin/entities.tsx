@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
 import {
-  CHANNELS, CLIENT_STATUS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
+  CHANNELS, CLIENT_STATUS, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
 } from "./config";
 
@@ -21,6 +21,14 @@ export type EntityDef = {
   details: { key: string; label: string; render?: (row: any) => ReactNode }[];
   filters?: ("manager" | "partner")[];
 };
+
+const REP = "Контактное лицо";
+const repFields: Field[] = [
+  { name: "rep_name", label: "Имя представителя", section: REP, placeholder: "Как обращаться" },
+  { name: "rep_relation", label: "Кем является", type: "select", options: toOptions(REP_RELATIONS), section: REP },
+  { name: "rep_phone", label: "Телефон", type: "tel", section: REP, placeholder: "+7" },
+  { name: "rep_email", label: "Эл. почта", type: "email", section: REP },
+];
 
 const sourceLabel = (r: any) => SOURCES[r.source] || r.source || "—";
 
@@ -64,6 +72,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "client_id", label: "Клиент", type: "ref", ref: "clients" },
       { name: "message", label: "Комментарий", type: "textarea" },
+      ...repFields,
     ],
     details: [
       { key: "contact", label: "Контакт" },
@@ -101,6 +110,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "expected_close", label: "Плановая дата закрытия", type: "date" },
       { name: "notes", label: "Заметки", type: "textarea" },
+      ...repFields,
     ],
     details: [
       { key: "amount", label: "Сумма", render: (r) => money(r.amount) },
@@ -141,6 +151,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "manager_id", label: "Ответственный", type: "ref", ref: "users" },
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "notes", label: "Заметки", type: "textarea" },
+      ...repFields,
     ],
     details: [
       { key: "phone", label: "Телефон" },

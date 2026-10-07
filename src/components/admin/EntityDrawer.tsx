@@ -7,6 +7,7 @@ import StatusBadge from "./StatusBadge";
 import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
+import ContactPerson from "./ContactPerson";
 import { ENTITY_DEFS } from "./entities";
 import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
@@ -109,6 +110,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
                 </>
               )}
             </dl>
+
+            {["leads", "deals", "clients"].includes(resource) && <ContactPerson item={item} onEdit={() => setEdit(true)} />}
 
             {resource === "leads" && <LeadAttribution lead={item} />}
 

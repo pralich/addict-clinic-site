@@ -24,7 +24,7 @@ LEAD_STATUS = ['new', 'in_work', 'qualified', 'converted', 'rejected']
 CLIENT_STATUS = ['active', 'treatment', 'rehab', 'finished', 'inactive']
 DEAL_STAGES = ['new', 'consult', 'diagnostics', 'offer', 'treatment', 'won', 'lost']
 
-LEAD_OUT = 'id, external_id, name, contact, topic, message, source, status, manager_id, partner_id, client_id, form, channel, page_url, page_title, landing_url, referrer, utm_source, utm_medium, utm_campaign, utm_content, utm_term, click_id, device, created_at, updated_at'
+LEAD_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, name, contact, topic, message, source, status, manager_id, partner_id, client_id, form, channel, page_url, page_title, landing_url, referrer, utm_source, utm_medium, utm_campaign, utm_content, utm_term, click_id, device, created_at, updated_at'
 PD_DOC_VERSION = '2026-10-04'
 
 CHANNELS = {
@@ -34,8 +34,8 @@ CHANNELS = {
 }
 FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта'}
 ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20}
-CLIENT_OUT = 'id, external_id, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
-DEAL_OUT = 'id, external_id, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
+CLIENT_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
+DEAL_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
 
 
 class ApiError(Exception):
@@ -156,6 +156,19 @@ def log(cur, entity, eid, api_key, text):
                 (entity, eid, 'system', f"{text} (API: {api_key['name']})"))
 
 
+REP_RELATIONS = ['self', 'spouse', 'parent', 'child', 'sibling', 'relative', 'friend', 'colleague', 'employer', 'guardian', 'other']
+
+
+def rep(body):
+    r = body.get('contact_person') if isinstance(body.get('contact_person'), dict) else {}
+    return {
+        'rep_name': s(r, 'name', 250),
+        'rep_relation': choice(r, 'relation', REP_RELATIONS),
+        'rep_phone': norm_phone(s(r, 'phone', 50)),
+        'rep_email': norm_email(s(r, 'email', 200)),
+    }
+
+
 def find_one(cur, table, cols, where, args):
     cur.execute(f'SELECT {cols} FROM {t(table)} WHERE {where} AND archived_at IS NULL ORDER BY id LIMIT 1', args)
     return cur.fetchone()
@@ -197,6 +210,7 @@ def create_client(cur, body, api_key):
         'manager_id': ref(cur, 'crm_users', 'manager_id', body.get('manager_id'), 'AND is_active') or api_key['created_by'],
         'notes': s(body, 'notes', 5000),
         'external_id': external_id,
+        **rep(body),
     }
     cur.execute(f"INSERT INTO {t('crm_clients')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING {CLIENT_OUT}", list(data.values()))
     item = cur.fetchone()
@@ -287,6 +301,7 @@ def create_lead(cur, body, api_key):
         'external_id': external_id,
         'channel': channel,
         **attr,
+        **rep(body),
     }
     cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING {LEAD_OUT}", list(data.values()))
     item = cur.fetchone()
@@ -319,6 +334,7 @@ def create_deal(cur, body, api_key):
         'expected_close': day(body, 'expected_close'),
         'notes': s(body, 'notes', 5000),
         'external_id': external_id,
+        **rep(body),
     }
     cols = list(data)
     vals = list(data.values())
@@ -414,7 +430,7 @@ def handler(event: dict, context) -> dict:
     resource = params.get('resource', '')
 
     if method == 'GET' and resource == 'dictionaries':
-        return resp(200, {'sources': SOURCES, 'lead_statuses': LEAD_STATUS, 'client_statuses': CLIENT_STATUS, 'deal_stages': DEAL_STAGES, 'channels': CHANNELS})
+        return resp(200, {'sources': SOURCES, 'lead_statuses': LEAD_STATUS, 'client_statuses': CLIENT_STATUS, 'deal_stages': DEAL_STAGES, 'channels': CHANNELS, 'contact_person_relations': REP_RELATIONS})
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     conn.autocommit = False

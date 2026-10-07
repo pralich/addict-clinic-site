@@ -22,9 +22,9 @@ CORS = {
 ENTITIES = {
     'clients': {
         'table': 'crm_clients',
-        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes'],
+        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
         'required': ['full_name'],
-        'search': ['full_name', 'phone', 'email'],
+        'search': ['full_name', 'phone', 'email', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
         'order': 'created_at DESC',
     },
@@ -38,17 +38,17 @@ ENTITIES = {
     },
     'leads': {
         'table': 'crm_leads',
-        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id'],
+        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
         'required': ['contact'],
-        'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url'],
+        'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
         'order': 'created_at DESC',
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
         'required': ['title'],
-        'search': ['title', 'program', 'notes'],
+        'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
         'order': 'updated_at DESC',
     },
@@ -392,14 +392,14 @@ def convert_lead(cur, eid, body, user):
     if not client_id:
         contact = lead['contact'] or ''
         is_email = '@' in contact
-        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id']))
+        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id, rep_name, rep_relation, rep_phone, rep_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id'], lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email')))
         client_id = cur.fetchone()['id']
         log_activity(cur, 'clients', client_id, user['id'], f'Создан из лида #{eid}')
     deal_id = None
     if body.get('create_deal', True):
-        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0)))
+        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount, rep_name, rep_relation, rep_phone, rep_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0), lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email')))
         deal_id = cur.fetchone()['id']
         log_activity(cur, 'deals', deal_id, user['id'], f'Создана из лида #{eid}')
     q(cur, f"UPDATE {t('crm_leads')} SET status = 'converted', client_id = %s, updated_at = NOW() WHERE id = %s", (client_id, eid))

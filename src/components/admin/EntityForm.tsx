@@ -16,6 +16,7 @@ export type Field = {
   required?: boolean;
   full?: boolean;
   placeholder?: string;
+  section?: string;
 };
 
 type Props = {
@@ -107,14 +108,23 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
                 />
               );
             }
+            const prev = fields[fields.indexOf(f) - 1];
+            const heading = f.section && f.section !== prev?.section ? (
+              <div className="-mb-1 mt-2 flex items-center gap-2 border-t pt-4 sm:col-span-2">
+                <span className="font-heading text-sm font-semibold">{f.section}</span>
+              </div>
+            ) : null;
             return (
-              <label key={f.name} className={`block text-sm ${full ? "sm:col-span-2" : ""}`}>
+              <div key={f.name} className="contents">
+              {heading}
+              <label className={`block text-sm ${full ? "sm:col-span-2" : ""}`}>
                 <span className="mb-1.5 block font-medium">
                   {f.label}
                   {f.required && <span className="text-primary"> *</span>}
                 </span>
                 {control}
               </label>
+              </div>
             );
           })}
           <div className="flex justify-end gap-2 sm:col-span-2">

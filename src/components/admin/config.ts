@@ -108,3 +108,17 @@ export const LEAD_FORMS: Record<string, string> = {
   article_cta: "Форма в статье",
   lead: "Форма сайта",
 };
+
+export const REP_RELATIONS: Record<string, string> = {
+  self: "Сам пациент",
+  spouse: "Супруг(а)",
+  parent: "Родитель",
+  child: "Сын / дочь",
+  sibling: "Брат / сестра",
+  relative: "Другой родственник",
+  friend: "Друг",
+  colleague: "Коллега",
+  employer: "Работодатель",
+  guardian: "Опекун",
+  other: "Другое",
+};
