@@ -25,6 +25,7 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   const mut = useCrmMutation();
   const [edit, setEdit] = useState(false);
   const item = data?.item;
+  const refs = data?.refs ?? {};
 
   const save = (body: Record<string, any>) => mut.mutateAsync({ params: { resource, id }, method: "PUT", body }).then(() => toast.success("Сохранено"));
 
@@ -100,13 +101,31 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
               {item.client_id && resource !== "clients" && (
                 <>
                   <dt className="text-muted-foreground">Клиент</dt>
-                  <dd><button className="text-primary hover:underline" onClick={() => onOpen("clients", item.client_id)}>Открыть карточку</button></dd>
+                  <dd>
+                    <RefLink onClick={() => onOpen("clients", item.client_id)} icon="UserRound"
+                      title={refs.client?.name || `Клиент #${item.client_id}`}
+                      lines={[refs.client?.phone, refs.client?.email]} />
+                  </dd>
+                </>
+              )}
+              {item.lead_id && resource === "deals" && (
+                <>
+                  <dt className="text-muted-foreground">Лид</dt>
+                  <dd>
+                    <RefLink onClick={() => onOpen("leads", item.lead_id)} icon="Inbox"
+                      title={refs.lead?.name || "Аноним"}
+                      lines={[refs.lead?.contact, refs.lead?.created_at ? `от ${fmtDate(refs.lead.created_at)}` : null]} />
+                  </dd>
                 </>
               )}
               {item.partner_id && resource !== "partners" && (
                 <>
                   <dt className="text-muted-foreground">Партнёр</dt>
-                  <dd><button className="text-primary hover:underline" onClick={() => onOpen("partners", item.partner_id)}>Открыть карточку</button></dd>
+                  <dd>
+                    <RefLink onClick={() => onOpen("partners", item.partner_id)} icon="Building2"
+                      title={refs.partner?.name || `Партнёр #${item.partner_id}`}
+                      lines={[refs.partner?.contact_person, refs.partner?.phone]} />
+                  </dd>
                 </>
               )}
             </dl>
@@ -138,6 +157,22 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
         <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`} fields={def.fields} initial={item} onSubmit={save} />
       </SheetContent>
     </Sheet>
+  );
+};
+
+const RefLink = ({ title, lines, icon, onClick }: { title: string; lines: (string | null | undefined)[]; icon: string; onClick: () => void }) => {
+  const sub = lines.filter(Boolean);
+  return (
+    <button onClick={onClick} className="group -mx-2 -my-1 flex w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 py-1 text-left hover:bg-secondary">
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground group-hover:bg-background">
+        <Icon name={icon} size={15} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium text-primary">{title}</span>
+        {sub.length > 0 && <span className="block truncate text-xs text-muted-foreground">{sub.join(" · ")}</span>}
+      </span>
+      <Icon name="ChevronRight" size={15} className="shrink-0 text-muted-foreground" />
+    </button>
   );
 };
 

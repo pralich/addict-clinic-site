@@ -299,6 +299,16 @@ def get_entity(cur, name, eid):
     item = cur.fetchone()
     if not item:
         return resp(404, {'error': 'Не найдено'})
+    refs = {}
+    if item.get('client_id') and name != 'clients':
+        q(cur, f"SELECT id, full_name AS name, phone, email, status, is_anonymous FROM {t('crm_clients')} WHERE id = %s", (item['client_id'],))
+        refs['client'] = cur.fetchone()
+    if item.get('partner_id') and name != 'partners':
+        q(cur, f"SELECT id, name, type, contact_person, phone, email FROM {t('crm_partners')} WHERE id = %s", (item['partner_id'],))
+        refs['partner'] = cur.fetchone()
+    if item.get('lead_id') and name == 'deals':
+        q(cur, f"SELECT id, name, contact, topic, status, created_at FROM {t('crm_leads')} WHERE id = %s", (item['lead_id'],))
+        refs['lead'] = cur.fetchone()
     q(cur, f'SELECT a.*, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id WHERE a.entity_type = %s AND a.entity_id = %s ORDER BY a.created_at DESC', (name, eid))
     activities = cur.fetchall()
     related = {}
@@ -311,7 +321,7 @@ def get_entity(cur, name, eid):
     if name == 'partners':
         q(cur, f"SELECT id, full_name, status, created_at FROM {t('crm_clients')} WHERE partner_id = %s AND archived_at IS NULL ORDER BY created_at DESC", (eid,))
         related['clients'] = cur.fetchall()
-    return resp(200, {'item': item, 'activities': activities, 'related': related})
+    return resp(200, {'item': item, 'activities': activities, 'related': related, 'refs': refs})
 
 
 def prepare(cfg, body, partial):

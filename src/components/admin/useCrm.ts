@@ -15,7 +15,7 @@ export const useList = (resource: string, params: Record<string, string | undefi
   });
 
 export const useItem = (resource: string, id: number | null) =>
-  useQuery<{ item: any; activities: any[]; related: Record<string, any[]> }>({
+  useQuery<{ item: any; activities: any[]; related: Record<string, any[]>; refs?: Record<string, any> }>({
     queryKey: ["crm", resource, "item", id],
     queryFn: () => api({ resource, id: id! }),
     enabled: !!id,
