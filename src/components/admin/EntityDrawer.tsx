@@ -6,6 +6,7 @@ import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import StatusBadge from "./StatusBadge";
 import EntityForm from "./EntityForm";
+import LeadAttribution from "./LeadAttribution";
 import { ENTITY_DEFS } from "./entities";
 import { ACTIVITY_KINDS, DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
@@ -114,6 +115,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
                 </>
               )}
             </dl>
+
+            {resource === "leads" && <LeadAttribution lead={item} />}
 
             {data?.related?.deals && (
               <Related title="Сделки" items={data.related.deals} onClick={(r) => onOpen("deals", r.id)}

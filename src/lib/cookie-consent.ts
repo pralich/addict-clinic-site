@@ -56,6 +56,7 @@ const loadMetrika = (id: string) => {
       { l: Date.now() },
     );
   addScript("https://mc.yandex.ru/metrika/tag.js");
+  (w as unknown as Record<string, unknown>).__ymId = Number(id);
   w.ym(Number(id), "init", { trustedDomains: ["poehali.dev"], clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: true, trackHash: true });
 };
 

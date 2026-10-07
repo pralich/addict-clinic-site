@@ -1,4 +1,5 @@
 import func2url from "../../backend/func2url.json";
+import { getAttribution } from "./attribution";
 
 const URL = (func2url as Record<string, string>).crm;
 const TOKEN_KEY = "crm_token";
@@ -40,5 +41,18 @@ export async function api<T = any>(params: Params, method = "GET", body?: unknow
   return data as T;
 }
 
-export const sendPublicLead = (data: { name?: string; contact: string; topic?: string; message?: string; consent: boolean; form?: string }) =>
-  api({ resource: "public_lead" }, "POST", data);
+const SITE_LEAD_URL = `${(func2url as Record<string, string>)["crm-api"]}?resource=site_lead`;
+
+export async function sendPublicLead(data: { name?: string; contact: string; topic?: string; message?: string; consent: boolean; form?: string }) {
+  const form = data.form || "lead";
+  const res = await fetch(SITE_LEAD_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ...data, form, attribution: getAttribution(form) }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new ApiError(body.error || "Не удалось отправить заявку", res.status);
+  const w = window as Window & { ym?: (...args: unknown[]) => void; __ymId?: number };
+  if (w.ym && w.__ymId) w.ym(w.__ymId, "reachGoal", "lead", { form });
+  return body as { ok: boolean; id?: number };
+}

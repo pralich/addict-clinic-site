@@ -84,3 +84,27 @@ export const fmtDate = (v?: string | null, withTime = false) => {
   const d = new Date(v);
   return d.toLocaleString("ru-RU", withTime ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "numeric" });
 };
+
+export const CHANNELS: Record<string, { label: string; icon: string; paid?: boolean }> = {
+  yandex_direct: { label: "Яндекс Директ", icon: "Megaphone", paid: true },
+  google_ads: { label: "Google Ads", icon: "Megaphone", paid: true },
+  vk_ads: { label: "VK Реклама", icon: "Megaphone", paid: true },
+  ads_other: { label: "Другая реклама", icon: "Megaphone", paid: true },
+  organic_yandex: { label: "Поиск Яндекса", icon: "Search" },
+  organic_google: { label: "Поиск Google", icon: "Search" },
+  organic_other: { label: "Другой поиск", icon: "Search" },
+  ai: { label: "ИИ-ассистенты", icon: "Sparkles" },
+  social: { label: "Соцсети и мессенджеры", icon: "MessagesSquare" },
+  email: { label: "Рассылка", icon: "Mail" },
+  referral: { label: "Переход с сайта", icon: "Link" },
+  direct: { label: "Прямой заход", icon: "MousePointerClick" },
+  api: { label: "Внешняя система", icon: "Webhook" },
+  unknown: { label: "Не определён", icon: "CircleHelp" },
+};
+
+export const LEAD_FORMS: Record<string, string> = {
+  contacts: "Форма «Контакты»",
+  premium: "Форма PREMIUM",
+  article_cta: "Форма в статье",
+  lead: "Форма сайта",
+};

@@ -24,7 +24,16 @@ LEAD_STATUS = ['new', 'in_work', 'qualified', 'converted', 'rejected']
 CLIENT_STATUS = ['active', 'treatment', 'rehab', 'finished', 'inactive']
 DEAL_STAGES = ['new', 'consult', 'diagnostics', 'offer', 'treatment', 'won', 'lost']
 
-LEAD_OUT = 'id, external_id, name, contact, topic, message, source, status, manager_id, partner_id, client_id, created_at, updated_at'
+LEAD_OUT = 'id, external_id, name, contact, topic, message, source, status, manager_id, partner_id, client_id, form, channel, page_url, page_title, landing_url, referrer, utm_source, utm_medium, utm_campaign, utm_content, utm_term, click_id, device, created_at, updated_at'
+PD_DOC_VERSION = '2026-10-04'
+
+CHANNELS = {
+    'yandex_direct': 'Яндекс Директ', 'google_ads': 'Google Ads', 'vk_ads': 'VK Реклама', 'ads_other': 'Реклама',
+    'organic_yandex': 'Поиск Яндекса', 'organic_google': 'Поиск Google', 'organic_other': 'Поиск', 'ai': 'ИИ-ассистенты',
+    'social': 'Соцсети и мессенджеры', 'email': 'Рассылка', 'referral': 'Переход с сайта', 'direct': 'Прямой заход', 'api': 'Внешняя система',
+}
+FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта'}
+ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20}
 CLIENT_OUT = 'id, external_id, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
 DEAL_OUT = 'id, external_id, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
 
@@ -195,6 +204,62 @@ def create_client(cur, body, api_key):
     return item, True
 
 
+def host(url):
+    m = re.match(r'^[a-z]+://([^/:?#]+)', (url or '').lower())
+    return m.group(1).removeprefix('www.') if m else ''
+
+
+def detect_channel(a):
+    click = (a.get('click_id') or '').lower()
+    src = (a.get('utm_source') or '').lower()
+    med = (a.get('utm_medium') or '').lower()
+    ref = host(a.get('referrer'))
+    paid = med in ('cpc', 'cpm', 'ppc', 'paid', 'cpa', 'display', 'banner', 'retargeting')
+    if click.startswith('yclid') or (('yandex' in src or src in ('direct', 'ya')) and (paid or not med)):
+        return 'yandex_direct'
+    if click.startswith('gclid') or (src == 'google' and paid):
+        return 'google_ads'
+    if click.startswith('vkclid') or (src in ('vk', 'vkads', 'vk_ads', 'mytarget') and paid):
+        return 'vk_ads'
+    if paid:
+        return 'ads_other'
+    if med in ('email', 'newsletter') or src in ('email', 'sendpulse', 'unisender'):
+        return 'email'
+    if med in ('social', 'smm') or src in ('vk', 'telegram', 'tg', 'ok', 'dzen', 'youtube', 'instagram', 'max'):
+        return 'social'
+    if src:
+        return 'referral'
+    if not ref or ref.endswith('addict.clinic') or ref.endswith('poehali.dev'):
+        return 'direct'
+    if any(x in ref for x in ('chatgpt.', 'openai.', 'perplexity.', 'gigachat', 'alice.yandex', 'claude.ai', 'deepseek')):
+        return 'ai'
+    if 'yandex.' in ref or ref == 'ya.ru':
+        return 'organic_yandex'
+    if 'google.' in ref:
+        return 'organic_google'
+    if any(x in ref for x in ('bing.', 'go.mail.ru', 'rambler.', 'duckduckgo.')):
+        return 'organic_other'
+    if any(x in ref for x in ('vk.com', 'vk.ru', 't.me', 'telegram', 'ok.ru', 'dzen.ru', 'youtube.', 'instagram.', 'whatsapp', 'max.ru')):
+        return 'social'
+    return 'referral'
+
+
+def read_attr(body):
+    a = body.get('attribution') if isinstance(body.get('attribution'), dict) else body
+    out = {}
+    for k, limit in ATTR_FIELDS.items():
+        v = a.get(k) if k != 'form' else (a.get('form') or body.get('form'))
+        if v not in (None, ''):
+            out[k] = str(v).strip()[:limit]
+    fv = a.get('first_visit_at')
+    if fv:
+        try:
+            out['first_visit_at'] = datetime.fromisoformat(str(fv).replace('Z', '+00:00')).replace(tzinfo=None)
+        except ValueError:
+            pass
+    return out
+
+
 def create_lead(cur, body, api_key):
     external_id = s(body, 'external_id', 100)
     if external_id:
@@ -207,9 +272,8 @@ def create_lead(cur, body, api_key):
     if not contact:
         raise ApiError(400, 'Укажите contact, phone или email', 'contact')
     message = s(body, 'message', 5000)
-    utm = {k: s(body, k, 200) for k in ('utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'page_url') if s(body, k)}
-    if utm:
-        message = ((message + '\n\n') if message else '') + '\n'.join(f'{k}: {v}' for k, v in utm.items())
+    attr = read_attr(body)
+    channel = choice(body, 'channel', list(CHANNELS)) or (detect_channel(attr) if attr else 'api')
     data = {
         'name': s(body, 'name', 250),
         'contact': contact,
@@ -221,6 +285,8 @@ def create_lead(cur, body, api_key):
         'partner_id': ref(cur, 'crm_partners', 'partner_id', body.get('partner_id')),
         'client_id': ref(cur, 'crm_clients', 'client_id', body.get('client_id')),
         'external_id': external_id,
+        'channel': channel,
+        **attr,
     }
     cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING {LEAD_OUT}", list(data.values()))
     item = cur.fetchone()
@@ -266,6 +332,55 @@ def create_deal(cur, body, api_key):
     return item, True, {'id': client_id, 'created': client_created} if client_id else None
 
 
+def log_consent(cur, event, form, subject, lead_id):
+    ident = ((event or {}).get('requestContext') or {}).get('identity') or {}
+    hdrs = {k.lower(): v for k, v in ((event or {}).get('headers') or {}).items()}
+    cur.execute(f"INSERT INTO {t('pd_consents')} (form, purpose, subject, doc_version, ref_type, ref_id, ip, user_agent) VALUES (%s, 'pd_processing', %s, %s, 'lead', %s, %s, %s)",
+                (form, (subject or '')[:200] or None, PD_DOC_VERSION, lead_id, (ident.get('sourceIp') or '')[:64] or None, (hdrs.get('user-agent') or '')[:400] or None))
+
+
+def site_lead(cur, event, body):
+    if body.get('website'):
+        return resp(200, {'ok': True})
+    if body.get('consent') is not True:
+        raise ApiError(400, 'Нужно согласие на обработку персональных данных', 'consent')
+    contact = s(body, 'contact', 200, required=True)
+    ip = (((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp') or '')[:64]
+    if ip:
+        cur.execute(f"SELECT COUNT(*) AS c FROM {t('pd_consents')} WHERE ip = %s AND created_at > NOW() - INTERVAL '10 minutes'", (ip,))
+        if cur.fetchone()['c'] >= 6:
+            raise ApiError(429, 'Слишком много заявок. Позвоните нам — ответим сразу')
+    cur.execute(f"SELECT id FROM {t('crm_leads')} WHERE contact = %s AND created_at > NOW() - INTERVAL '2 minutes' ORDER BY id DESC LIMIT 1", (contact,))
+    dup = cur.fetchone()
+    if dup:
+        return resp(200, {'ok': True, 'id': dup['id']})
+    attr = read_attr(body)
+    form = attr.get('form') or 'lead'
+    channel = detect_channel(attr)
+    paid = channel in ('yandex_direct', 'google_ads', 'vk_ads', 'ads_other')
+    data = {
+        'name': s(body, 'name', 250),
+        'contact': contact,
+        'topic': s(body, 'topic', 200),
+        'message': s(body, 'message', 5000),
+        'source': 'ads' if paid else 'site',
+        'status': 'new',
+        'channel': channel,
+        **attr,
+        'form': form,
+    }
+    cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING id", list(data.values()))
+    lid = cur.fetchone()['id']
+    parts = [f"Заявка с сайта · {FORMS.get(form, form)}", f"канал: {CHANNELS[channel]}"]
+    if attr.get('utm_campaign'):
+        parts.append(f"кампания: {attr['utm_campaign']}")
+    if attr.get('page_title') or attr.get('page_url'):
+        parts.append(f"страница: {attr.get('page_title') or attr.get('page_url')}")
+    cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'system', %s)", (lid, ' · '.join(parts)))
+    log_consent(cur, event, form, contact, lid)
+    return resp(200, {'ok': True, 'id': lid})
+
+
 def get_item(cur, resource, params):
     table, cols = {'leads': ('crm_leads', LEAD_OUT), 'clients': ('crm_clients', CLIENT_OUT), 'deals': ('crm_deals', DEAL_OUT)}[resource]
     if params.get('id'):
@@ -290,7 +405,7 @@ def ping_push():
 
 
 def handler(event: dict, context) -> dict:
-    """Открытый API CRM addict.clinic: создание и получение клиентов, лидов и сделок по API-ключу"""
+    """API CRM addict.clinic: заявки с форм сайта с источником и рекламой, создание и получение клиентов, лидов и сделок по API-ключу"""
     method = event.get('httpMethod', 'GET')
     if method == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
@@ -299,12 +414,22 @@ def handler(event: dict, context) -> dict:
     resource = params.get('resource', '')
 
     if method == 'GET' and resource == 'dictionaries':
-        return resp(200, {'sources': SOURCES, 'lead_statuses': LEAD_STATUS, 'client_statuses': CLIENT_STATUS, 'deal_stages': DEAL_STAGES})
+        return resp(200, {'sources': SOURCES, 'lead_statuses': LEAD_STATUS, 'client_statuses': CLIENT_STATUS, 'deal_stages': DEAL_STAGES, 'channels': CHANNELS})
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     conn.autocommit = False
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        if resource == 'site_lead' and method == 'POST':
+            try:
+                body = json.loads(event.get('body') or '{}')
+            except json.JSONDecodeError:
+                raise ApiError(400, 'Тело запроса должно быть JSON')
+            result = site_lead(cur, event, body if isinstance(body, dict) else {})
+            conn.commit()
+            if json.loads(result['body']).get('id'):
+                ping_push()
+            return result
         if resource not in ('leads', 'clients', 'deals', 'ping'):
             raise ApiError(404, 'Неизвестный ресурс. Доступно: leads, clients, deals, ping, dictionaries')
         api_key = auth(cur, event.get('headers') or {})

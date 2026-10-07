@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
 import {
-  CLIENT_STATUS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
+  CHANNELS, CLIENT_STATUS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
 } from "./config";
 
@@ -24,6 +24,17 @@ export type EntityDef = {
 
 const sourceLabel = (r: any) => SOURCES[r.source] || r.source || "—";
 
+const channelCell = (r: any) => {
+  const c = r.channel ? CHANNELS[r.channel] : null;
+  if (!c) return sourceLabel(r);
+  return (
+    <span className="flex flex-col">
+      <span className={c.paid ? "font-medium text-primary" : ""}>{c.label}</span>
+      {r.utm_campaign && <span className="max-w-[180px] truncate text-xs text-muted-foreground" title={r.utm_campaign}>{r.utm_campaign}</span>}
+    </span>
+  );
+};
+
 export const ENTITY_DEFS: Record<string, EntityDef> = {
   leads: {
     resource: "leads",
@@ -39,7 +50,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "contact", label: "Контакт" },
       { key: "topic", label: "Тема" },
       { key: "status", label: "Статус", render: (r) => <StatusBadge map={LEAD_STATUS} value={r.status} /> },
-      { key: "source", label: "Источник", render: sourceLabel },
+      { key: "channel", label: "Откуда", render: channelCell },
       { key: "manager_name", label: "Ответственный" },
       { key: "created_at", label: "Создан", render: (r) => fmtDate(r.created_at, true) },
     ],

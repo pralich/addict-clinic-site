@@ -3,7 +3,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
-import { DEAL_STAGES, ENTITY_LABEL, LEAD_STATUS, fmtDate, money } from "./config";
+import { CHANNELS, DEAL_STAGES, ENTITY_LABEL, LEAD_STATUS, fmtDate, money } from "./config";
 
 type Props = { onOpen: (resource: string, id: number) => void; onNavigate: (page: string) => void };
 
@@ -87,6 +87,60 @@ const Dashboard = ({ onOpen, onNavigate }: Props) => {
               </div>
             ))}
           </div>
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-5">
+        <div className="rounded-xl border bg-card p-5 lg:col-span-3">
+          <div className="mb-4 flex items-baseline justify-between">
+            <p className="font-heading font-semibold">Откуда приходят лиды</p>
+            <span className="text-xs text-muted-foreground">за 30 дней</span>
+          </div>
+          {(data.channels ?? []).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Источники появятся с первыми заявками с сайта</p>
+          ) : (
+            <div className="flex flex-col gap-2.5">
+              {data.channels.map((c: any) => {
+                const ch = CHANNELS[c.channel] || CHANNELS.unknown;
+                const max = Math.max(...data.channels.map((x: any) => Number(x.leads)));
+                return (
+                  <div key={c.channel}>
+                    <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+                      <span className="flex items-center gap-1.5"><Icon name={ch.icon} size={13} className={ch.paid ? "text-primary" : "text-muted-foreground"} />{ch.label}</span>
+                      <span className="text-muted-foreground tabular-nums">
+                        {c.leads} лид.{Number(c.won) > 0 && <> · {c.won} оплат · {money(c.revenue)}</>}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-secondary">
+                      <div className={`h-full rounded-full ${ch.paid ? "bg-primary" : "bg-foreground/40"}`} style={{ width: `${(Number(c.leads) / max) * 100}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="rounded-xl border bg-card p-5 lg:col-span-2">
+          <div className="mb-4 flex items-baseline justify-between">
+            <p className="font-heading font-semibold">Рекламные кампании</p>
+            <span className="text-xs text-muted-foreground">за 30 дней</span>
+          </div>
+          {(data.campaigns ?? []).length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">Здесь появятся кампании с UTM-метками</p>
+          ) : (
+            <div className="divide-y">
+              {data.campaigns.map((c: any) => (
+                <div key={`${c.utm_source}-${c.utm_campaign}`} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium" title={c.utm_campaign}>{c.utm_campaign}</p>
+                    <p className="text-xs text-muted-foreground">{c.utm_source || "—"}</p>
+                  </div>
+                  <span className="shrink-0 rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium tabular-nums">{c.leads}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

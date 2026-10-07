@@ -40,7 +40,7 @@ ENTITIES = {
         'table': 'crm_leads',
         'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id'],
         'required': ['contact'],
-        'search': ['name', 'contact', 'topic', 'message'],
+        'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url'],
         'filter': 'status',
         'order': 'created_at DESC',
     },
@@ -222,6 +222,17 @@ def handle_dashboard(cur):
     res['leadsByDay'] = cur.fetchall()
     q(cur, f'SELECT id, name, contact, topic, status, created_at FROM {t("crm_leads")} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 6')
     res['recentLeads'] = cur.fetchall()
+    q(cur, f'''SELECT COALESCE(l.channel, 'unknown') AS channel, COUNT(*) AS leads,
+        COUNT(DISTINCT d.id) FILTER (WHERE d.stage = 'won') AS won,
+        COALESCE(SUM(d.amount) FILTER (WHERE d.stage = 'won'), 0) AS revenue
+        FROM {t("crm_leads")} l LEFT JOIN {t("crm_deals")} d ON d.lead_id = l.id AND d.archived_at IS NULL
+        WHERE l.archived_at IS NULL AND l.created_at > NOW() - INTERVAL '30 days'
+        GROUP BY 1 ORDER BY 2 DESC''')
+    res['channels'] = cur.fetchall()
+    q(cur, f'''SELECT utm_source, utm_campaign, COUNT(*) AS leads FROM {t("crm_leads")}
+        WHERE archived_at IS NULL AND utm_campaign IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
+        GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 8''')
+    res['campaigns'] = cur.fetchall()
     q(cur, f'SELECT a.id, a.entity_type, a.entity_id, a.kind, a.text, a.created_at, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id ORDER BY a.created_at DESC LIMIT 10')
     res['activity'] = cur.fetchall()
     return resp(200, res)
@@ -255,6 +266,9 @@ def list_entity(cur, name, params):
     if params.get('partner_id') and name != 'partners':
         where.append('e.partner_id = %s')
         args.append(int(params['partner_id']))
+    if params.get('channel') and name == 'leads':
+        where.append('e.channel = %s')
+        args.append(params['channel'])
     if params.get('client_id') and name in ('deals', 'leads'):
         where.append('e.client_id = %s')
         args.append(int(params['client_id']))
