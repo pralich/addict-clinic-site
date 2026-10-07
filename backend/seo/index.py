@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from datetime import datetime, date
 from xml.sax.saxutils import escape
 
@@ -12,7 +13,7 @@ SITE = 'https://addict.clinic'
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Auth-Token',
     'Access-Control-Max-Age': '86400',
 }
@@ -28,6 +29,18 @@ STATIC_PAGES = [
     ('/cookies', 'yearly', '0.3'),
     ('/requisites', 'yearly', '0.3'),
 ]
+
+
+COUNTERS = {
+    'yandex_metrika': (r'^\d{5,12}$', 'Номер счётчика Метрики — только цифры'),
+    'google_analytics': (r'^G-[A-Z0-9]{4,20}$', 'Идентификатор Google Analytics вида G-XXXXXXX'),
+    'vk_pixel': (r'^VK-RTRG-\d+-[A-Za-z0-9]+$', 'Код пикселя VK вида VK-RTRG-123456-AbCdE'),
+    'top_mail_ru': (r'^\d{5,10}$', 'Номер счётчика Top.Mail.Ru — только цифры'),
+    'yandex_verification': (r'^[A-Za-z0-9_-]{8,100}$', 'Код подтверждения Яндекс Вебмастера'),
+    'google_verification': (r'^[A-Za-z0-9_-]{10,100}$', 'Код подтверждения Google Search Console'),
+}
+
+META_RE = re.compile(r'content=["\']([^"\']+)["\']')
 
 
 def _ser(o):
@@ -77,6 +90,38 @@ def locs(xml):
     return {line.strip()[5:-6] for line in (xml or '').splitlines() if line.strip().startswith('<loc>')}
 
 
+def read_counters(cur, only_enabled):
+    cur.execute(f'SELECT c.kind, c.value, c.enabled, c.updated_at, u.name AS author FROM {SCHEMA}.seo_counters c LEFT JOIN {SCHEMA}.crm_users u ON u.id = c.updated_by')
+    rows = cur.fetchall()
+    if only_enabled:
+        return {r['kind']: r['value'] for r in rows if r['enabled'] and r['value']}
+    return {r['kind']: r for r in rows}
+
+
+def save_counters(cur, body, user_id):
+    items = body.get('counters') or {}
+    errors = {}
+    for kind, item in items.items():
+        if kind not in COUNTERS:
+            continue
+        value = str(item.get('value') or '').strip()
+        m = META_RE.search(value)
+        if m:
+            value = m.group(1)
+        if kind == 'yandex_metrika':
+            value = re.sub(r'\D', '', value) if re.fullmatch(r'[\d\s]+', value or 'x') else value
+        enabled = bool(item.get('enabled', True))
+        if value and not re.match(COUNTERS[kind][0], value):
+            errors[kind] = COUNTERS[kind][1]
+            continue
+        cur.execute(
+            f'INSERT INTO {SCHEMA}.seo_counters (kind, value, enabled, updated_by, updated_at) VALUES (%s, %s, %s, %s, NOW()) '
+            f'ON CONFLICT (kind) DO UPDATE SET value = EXCLUDED.value, enabled = EXCLUDED.enabled, updated_by = EXCLUDED.updated_by, updated_at = NOW()',
+            (kind, value, enabled, user_id),
+        )
+    return errors
+
+
 def handler(event: dict, context) -> dict:
     """SEO-раздел админки: карта сайта — публичная выдача XML, статус и обновление для администратора"""
     method = event.get('httpMethod', 'GET')
@@ -86,6 +131,7 @@ def handler(event: dict, context) -> dict:
     params = event.get('queryStringParameters') or {}
     headers = event.get('headers') or {}
     action = params.get('action', '')
+    body = json.loads(event.get('body') or '{}') if method in ('POST', 'PUT') else {}
 
     conn = psycopg2.connect(os.environ['DATABASE_URL'])
     conn.autocommit = True
@@ -97,9 +143,21 @@ def handler(event: dict, context) -> dict:
             xml = row['xml'] if row else build_sitemap(cur)[0]
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600'}, 'body': xml}
 
+        if method == 'GET' and action == 'counters':
+            return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300'}, 'body': json.dumps(read_counters(cur, True))}
+
         user = get_user(cur, headers)
         if not user:
             return resp(401, {'error': 'Требуется вход'})
+
+        if method == 'GET' and action == 'counters_admin':
+            return resp(200, {'counters': read_counters(cur, False)})
+
+        if method == 'PUT' and action == 'counters':
+            if user['role'] != 'admin':
+                return resp(403, {'error': 'Менять счётчики может только администратор'})
+            errors = save_counters(cur, body, user['id'])
+            return resp(400 if errors else 200, {'errors': errors, 'error': 'Проверьте коды' if errors else None, 'counters': read_counters(cur, False)})
 
         if method == 'GET' and action == 'status':
             cur.execute(f'SELECT s.id, s.xml, s.urls_count, s.articles_count, s.file_url, s.created_at, u.name AS author FROM {SCHEMA}.seo_sitemaps s LEFT JOIN {SCHEMA}.crm_users u ON u.id = s.created_by ORDER BY s.id DESC LIMIT 1')

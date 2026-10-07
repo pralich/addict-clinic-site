@@ -1,7 +1,41 @@
 {
   "tests": [
-    {"name": "Public sitemap", "method": "GET", "path": "/?action=sitemap.xml", "expectedStatus": 200},
-    {"name": "Status requires auth", "method": "GET", "path": "/?action=status", "expectedStatus": 401},
-    {"name": "Regenerate requires auth", "method": "POST", "path": "/?action=regenerate", "expectedStatus": 401}
+    {
+      "name": "Public sitemap",
+      "method": "GET",
+      "path": "/?action=sitemap.xml",
+      "expectedStatus": 200
+    },
+    {
+      "name": "Status requires auth",
+      "method": "GET",
+      "path": "/?action=status",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Regenerate requires auth",
+      "method": "POST",
+      "path": "/?action=regenerate",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Public counters",
+      "method": "GET",
+      "path": "/?action=counters",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "yandex_metrika": "101026698"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Save counters requires auth",
+      "method": "PUT",
+      "path": "/?action=counters",
+      "body": {
+        "counters": {}
+      },
+      "expectedStatus": 401
+    }
   ]
 }

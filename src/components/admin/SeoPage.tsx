@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
 import { SITEMAP_LIVE_URL, SITEMAP_PUBLIC_URL, seoApi, type RegenerateResult } from "@/lib/seo-api";
 import { fmtDate } from "./config";
+import SeoCounters from "./SeoCounters";
 
 const short = (u: string) => u.replace("https://addict.clinic", "") || "/";
 
@@ -45,7 +46,7 @@ const SeoPage = () => {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">SEO</h1>
-        <p className="text-sm text-muted-foreground">Карта сайта для Яндекса и Google</p>
+        <p className="text-sm text-muted-foreground">Карта сайта, счётчики и подтверждение сайта в поисковиках</p>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
@@ -129,6 +130,8 @@ const SeoPage = () => {
           </button>
         </div>
       </div>
+
+      <SeoCounters />
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-3">
