@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOptions, type Options } from "./useCrm";
+import { TagField } from "./Tags";
 
 export type Field = {
   name: string;
   label: string;
-  type?: "text" | "email" | "tel" | "number" | "date" | "textarea" | "select" | "switch" | "ref" | "password";
+  type?: "text" | "email" | "tel" | "number" | "date" | "textarea" | "select" | "switch" | "ref" | "password" | "tags";
   options?: { value: string; label: string }[];
   ref?: keyof Options;
   required?: boolean;
@@ -40,7 +41,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
       const d: Record<string, any> = {};
       fields.forEach((f) => {
         const v = initial?.[f.name];
-        d[f.name] = f.type === "date" && v ? String(v).slice(0, 10) : v ?? (f.type === "switch" ? false : "");
+        d[f.name] = f.type === "tags" ? v || [] : f.type === "date" && v ? String(v).slice(0, 10) : v ?? (f.type === "switch" ? false : "");
       });
       setData(d);
     }
@@ -56,7 +57,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
       fields.forEach((f) => {
         const v = data[f.name];
         if (f.type === "password" && !v) return;
-        out[f.name] = v === "" ? null : v;
+        out[f.name] = f.type === "tags" ? v || [] : v === "" ? null : v;
       });
       await onSubmit(out);
       onOpenChange(false);
@@ -76,9 +77,11 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           {fields.map((f) => {
             const v = data[f.name];
-            const full = f.full || f.type === "textarea";
+            const full = f.full || f.type === "textarea" || f.type === "tags";
             let control;
-            if (f.type === "textarea") {
+            if (f.type === "tags") {
+              control = <TagField value={v || []} onChange={(nv) => set(f.name, nv)} />;
+            } else if (f.type === "textarea") {
               control = <Textarea rows={3} value={v ?? ""} onChange={(e) => set(f.name, e.target.value)} placeholder={f.placeholder} />;
             } else if (f.type === "switch") {
               control = (
@@ -117,7 +120,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
             return (
               <div key={f.name} className="contents">
               {heading}
-              <label className={`block text-sm ${full ? "sm:col-span-2" : ""}`}>
+              <label className={`block text-sm ${full ? "sm:col-span-2" : ""}`} onClick={f.type === "tags" ? (e) => e.preventDefault() : undefined}>
                 <span className="mb-1.5 block font-medium">
                   {f.label}
                   {f.required && <span className="text-primary"> *</span>}

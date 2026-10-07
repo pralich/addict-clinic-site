@@ -3,7 +3,8 @@ import { api } from "@/lib/crm-api";
 import { toast } from "sonner";
 
 export type Option = { id: number; name: string };
-export type Options = { users: Option[]; partners: Option[]; clients: Option[] };
+export type Tag = { id: number; grp: string; name: string; color: string; sort: number; is_active: boolean };
+export type Options = { users: Option[]; partners: Option[]; clients: Option[]; tags: Tag[] };
 
 export const useOptions = () =>
   useQuery<Options>({ queryKey: ["crm", "options"], queryFn: () => api({ resource: "options" }), staleTime: 30000 });

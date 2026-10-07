@@ -22,7 +22,7 @@ CORS = {
 ENTITIES = {
     'clients': {
         'table': 'crm_clients',
-        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
+        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
         'required': ['full_name'],
         'search': ['full_name', 'phone', 'email', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
@@ -30,7 +30,7 @@ ENTITIES = {
     },
     'partners': {
         'table': 'crm_partners',
-        'fields': ['name', 'type', 'contact_person', 'phone', 'email', 'commission_percent', 'status', 'notes'],
+        'fields': ['name', 'type', 'contact_person', 'phone', 'email', 'commission_percent', 'status', 'notes', 'tags'],
         'required': ['name'],
         'search': ['name', 'contact_person', 'phone', 'email'],
         'filter': 'status',
@@ -38,7 +38,7 @@ ENTITIES = {
     },
     'leads': {
         'table': 'crm_leads',
-        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
+        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
         'required': ['contact'],
         'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
@@ -46,7 +46,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -245,7 +245,9 @@ def handle_options(cur):
     partners = cur.fetchall()
     q(cur, f'SELECT id, full_name AS name FROM {t("crm_clients")} WHERE archived_at IS NULL ORDER BY full_name LIMIT 1000')
     clients = cur.fetchall()
-    return resp(200, {'users': users, 'partners': partners, 'clients': clients})
+    q(cur, f'SELECT id, grp, name, color, sort, is_active FROM {t("crm_tags")} ORDER BY grp, sort, name')
+    tags = cur.fetchall()
+    return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags})
 
 
 def list_entity(cur, name, params):
@@ -266,6 +268,9 @@ def list_entity(cur, name, params):
     if params.get('partner_id') and name != 'partners':
         where.append('e.partner_id = %s')
         args.append(int(params['partner_id']))
+    if params.get('tag'):
+        where.append('%s = ANY(e.tags)')
+        args.append(int(params['tag']))
     if params.get('channel') and name == 'leads':
         where.append('e.channel = %s')
         args.append(params['channel'])
@@ -335,6 +340,8 @@ def prepare(cfg, body, partial):
                 v = float(v or 0)
             if f == 'is_anonymous':
                 v = bool(v)
+            if f == 'tags':
+                v = sorted({int(x) for x in (body[f] or []) if str(x).isdigit()})[:30]
             data[f] = v
     if not partial:
         for r in cfg['required']:
@@ -402,14 +409,14 @@ def convert_lead(cur, eid, body, user):
     if not client_id:
         contact = lead['contact'] or ''
         is_email = '@' in contact
-        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id, rep_name, rep_relation, rep_phone, rep_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id'], lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email')))
+        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id, rep_name, rep_relation, rep_phone, rep_email, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id'], lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('tags') or []))
         client_id = cur.fetchone()['id']
         log_activity(cur, 'clients', client_id, user['id'], f'Создан из лида #{eid}')
     deal_id = None
     if body.get('create_deal', True):
-        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount, rep_name, rep_relation, rep_phone, rep_email) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0), lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email')))
+        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount, rep_name, rep_relation, rep_phone, rep_email, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0), lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('tags') or []))
         deal_id = cur.fetchone()['id']
         log_activity(cur, 'deals', deal_id, user['id'], f'Создана из лида #{eid}')
     q(cur, f"UPDATE {t('crm_leads')} SET status = 'converted', client_id = %s, updated_at = NOW() WHERE id = %s", (client_id, eid))
@@ -547,6 +554,40 @@ def handle_activity(cur, method, eid, body, user):
     return resp(400, {'error': 'Неверный запрос'})
 
 
+TAG_COLORS = ('slate', 'stone', 'red', 'rose', 'orange', 'amber', 'yellow', 'lime', 'green', 'emerald', 'teal', 'cyan', 'sky', 'blue', 'indigo', 'violet', 'purple', 'pink')
+
+
+def handle_tags(cur, method, eid, body, user):
+    if method != 'GET' and user['role'] != 'admin':
+        return resp(403, {'error': 'Теги настраивает администратор'})
+    if method == 'GET':
+        q(cur, f'SELECT id, grp, name, color, sort, is_active FROM {t("crm_tags")} ORDER BY grp, sort, name')
+        return resp(200, {'items': cur.fetchall()})
+    if method in ('POST', 'PUT'):
+        name = clean(body.get('name'))
+        grp = body.get('grp')
+        color = body.get('color') if body.get('color') in TAG_COLORS else 'slate'
+        if method == 'POST':
+            if not name or grp not in ('addiction', 'service'):
+                return resp(400, {'error': 'Укажите название и группу'})
+            q(cur, f'SELECT COALESCE(MAX(sort), 0) + 10 AS s FROM {t("crm_tags")} WHERE grp = %s', (grp,))
+            sort = cur.fetchone()['s']
+            q(cur, f'INSERT INTO {t("crm_tags")} (grp, name, color, sort) VALUES (%s, %s, %s, %s) ON CONFLICT (grp, name) DO UPDATE SET is_active = TRUE, color = EXCLUDED.color RETURNING *', (grp, name[:80], color, sort))
+            return resp(200, {'item': cur.fetchone()})
+        sets, args = [], []
+        if name:
+            sets.append('name = %s'); args.append(name[:80])
+        if 'color' in body:
+            sets.append('color = %s'); args.append(color)
+        if 'is_active' in body:
+            sets.append('is_active = %s'); args.append(bool(body['is_active']))
+        if not sets or not eid:
+            return resp(400, {'error': 'Нет данных'})
+        q(cur, f'UPDATE {t("crm_tags")} SET {", ".join(sets)} WHERE id = %s RETURNING *', args + [eid])
+        return resp(200, {'item': cur.fetchone()})
+    return resp(400, {'error': 'Неверный запрос'})
+
+
 def handle_shop_orders(cur, params):
     status = params.get('status') or 'paid'
     where = "o.source = 'shop'" + ('' if status == 'all' else ' AND o.status = %s')
@@ -600,6 +641,8 @@ def handler(event: dict, context) -> dict:
             return handle_options(cur)
         if resource == 'shop_orders':
             return handle_shop_orders(cur, params)
+        if resource == 'tags':
+            return handle_tags(cur, method, eid, body, user)
         if resource == 'api_keys':
             return handle_api_keys(cur, method, eid, body, user)
         if resource == 'users':

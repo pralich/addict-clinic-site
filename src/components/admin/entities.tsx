@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
+import { TagList } from "./Tags";
 import {
   CHANNELS, CLIENT_STATUS, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
@@ -21,6 +22,9 @@ export type EntityDef = {
   details: { key: string; label: string; render?: (row: any) => ReactNode }[];
   filters?: ("manager" | "partner")[];
 };
+
+const tagsField: Field = { name: "tags", label: "Теги", type: "tags" };
+const tagsCol: Column = { key: "tags", label: "Теги", render: (r) => <TagList ids={r.tags} max={3} /> || "—" };
 
 const REP = "Контактное лицо";
 const repFields: Field[] = [
@@ -55,6 +59,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     filters: ["manager", "partner"],
     columns: [
       { key: "name", label: "Имя", render: (r) => <span className="font-medium">{r.name || "Аноним"}</span> },
+      tagsCol,
       { key: "contact", label: "Контакт" },
       { key: "topic", label: "Тема" },
       { key: "status", label: "Статус", render: (r) => <StatusBadge map={LEAD_STATUS} value={r.status} /> },
@@ -63,6 +68,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "created_at", label: "Создан", render: (r) => fmtDate(r.created_at, true) },
     ],
     fields: [
+      tagsField,
       { name: "name", label: "Имя / псевдоним" },
       { name: "contact", label: "Телефон или мессенджер", required: true },
       { name: "topic", label: "Тема обращения" },
@@ -93,6 +99,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     filters: ["manager", "partner"],
     columns: [
       { key: "title", label: "Название", render: (r) => <span className="font-medium">{r.title}</span> },
+      tagsCol,
       { key: "client_name", label: "Клиент" },
       { key: "stage", label: "Этап", render: (r) => <StatusBadge map={DEAL_STAGES} value={r.stage} /> },
       { key: "amount", label: "Сумма", render: (r) => money(r.amount), className: "text-right whitespace-nowrap" },
@@ -101,6 +108,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "expected_close", label: "План закрытия", render: (r) => fmtDate(r.expected_close) },
     ],
     fields: [
+      tagsField,
       { name: "title", label: "Название", required: true, full: true },
       { name: "client_id", label: "Клиент", type: "ref", ref: "clients" },
       { name: "stage", label: "Этап", type: "select", options: toOptions(DEAL_STAGES), required: true },
@@ -131,6 +139,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     filters: ["manager", "partner"],
     columns: [
       { key: "full_name", label: "ФИО / псевдоним", render: (r) => (
+      tagsCol,
         <span className="font-medium">{r.full_name}{r.is_anonymous && <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">аноним</span>}</span>
       ) },
       { key: "phone", label: "Телефон" },
@@ -141,6 +150,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "created_at", label: "Добавлен", render: (r) => fmtDate(r.created_at) },
     ],
     fields: [
+      tagsField,
       { name: "full_name", label: "ФИО или псевдоним", required: true },
       { name: "is_anonymous", label: "Анонимный клиент", type: "switch" },
       { name: "phone", label: "Телефон", type: "tel" },
@@ -172,6 +182,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     statusMap: PARTNER_STATUS,
     columns: [
       { key: "name", label: "Название", render: (r) => <span className="font-medium">{r.name}</span> },
+      tagsCol,
       { key: "type", label: "Тип", render: (r) => PARTNER_TYPES[r.type] || r.type },
       { key: "contact_person", label: "Контактное лицо" },
       { key: "phone", label: "Телефон" },
@@ -181,6 +192,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "status", label: "Статус", render: (r) => <StatusBadge map={PARTNER_STATUS} value={r.status} /> },
     ],
     fields: [
+      tagsField,
       { name: "name", label: "Название", required: true },
       { name: "type", label: "Тип", type: "select", options: toOptions(PARTNER_TYPES), required: true },
       { name: "contact_person", label: "Контактное лицо" },

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
@@ -8,6 +8,7 @@ import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
 import ContactPerson from "./ContactPerson";
+import { TAG_GROUPS, TagBadge, TagPicker, useTagMap } from "./Tags";
 import { ENTITY_DEFS } from "./entities";
 import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
@@ -58,6 +59,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
               <SheetTitle className="font-heading text-2xl">{item[def.titleKey] || "Аноним"}</SheetTitle>
               {item.archived_at && <p className="text-sm text-primary">В архиве с {fmtDate(item.archived_at)}</p>}
             </SheetHeader>
+
+            <DrawerTags value={item.tags || []} onChange={(tags) => mut.mutate({ params: { resource, id }, method: "PUT", body: { tags } })} />
 
             <div className="flex flex-wrap gap-2">
               <Button size="sm" onClick={() => setEdit(true)}><Icon name="Pencil" size={14} className="mr-1.5" />Редактировать</Button>
@@ -157,6 +160,35 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
         <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`} fields={def.fields} initial={item} onSubmit={save} />
       </SheetContent>
     </Sheet>
+  );
+};
+
+const DrawerTags = ({ value: initial, onChange: save }: { value: number[]; onChange: (v: number[]) => void }) => {
+  const { map } = useTagMap();
+  const [value, setValue] = useState(initial);
+  useEffect(() => setValue(initial), [initial.join(",")]); // eslint-disable-line react-hooks/exhaustive-deps
+  const onChange = (v: number[]) => { setValue(v); save(v); };
+  const tags = value.map((id) => map.get(id)).filter(Boolean) as NonNullable<ReturnType<typeof map.get>>[];
+  return (
+    <div className="-mt-2 flex flex-col gap-1.5">
+      {Object.entries(TAG_GROUPS).map(([g, meta]) => {
+        const items = tags.filter((t) => t.grp === g);
+        if (!items.length) return null;
+        return (
+          <div key={g} className="flex flex-wrap items-center gap-1.5">
+            <span className="w-[112px] shrink-0 text-xs text-muted-foreground">{meta.label}</span>
+            {items.map((t) => <TagBadge key={t.id} tag={t} onRemove={() => onChange(value.filter((x) => x !== t.id))} />)}
+          </div>
+        );
+      })}
+      <div>
+        <TagPicker value={value} onChange={onChange} trigger={
+          <button type="button" className="inline-flex items-center gap-1 rounded-full border border-dashed px-2.5 py-1 text-xs text-muted-foreground hover:border-foreground/40 hover:text-foreground">
+            <Icon name="Tag" size={12} />{tags.length ? "Изменить теги" : "Добавить теги"}
+          </button>
+        } />
+      </div>
+    </div>
   );
 };
 

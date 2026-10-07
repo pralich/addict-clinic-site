@@ -1,13 +1,14 @@
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TAG_DOT, TAG_GROUPS, TagList } from "./Tags";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import EntityForm from "./EntityForm";
 import { DEFAULTS, ENTITY_DEFS } from "./entities";
-import { useCrmMutation, useList, useOptions } from "./useCrm";
+import { useCrmMutation, useList, useOptions, type Tag } from "./useCrm";
 import { money } from "./config";
 import { useAuth } from "./AuthContext";
 
@@ -23,6 +24,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const [status, setStatus] = useState(ALL);
   const [manager, setManager] = useState(ALL);
   const [partner, setPartner] = useState(ALL);
+  const [tag, setTag] = useState(ALL);
   const [archived, setArchived] = useState(false);
   const [view, setView] = useState<"table" | "board">(resource === "deals" ? "board" : "table");
   const [creating, setCreating] = useState(false);
@@ -33,6 +35,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
     status: status === ALL ? undefined : status,
     manager_id: manager === ALL ? undefined : manager,
     partner_id: partner === ALL ? undefined : partner,
+    tag: tag === ALL ? undefined : tag,
     archived: archived ? "1" : undefined,
   };
   const { data, isLoading } = useList(resource, params);
@@ -100,6 +103,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
           <FilterSelect value={partner} onChange={setPartner} placeholder="Все партнёры"
             items={(opts?.partners || []).map((u) => ({ value: String(u.id), label: u.name }))} />
         )}
+        <TagFilter value={tag} onChange={setTag} tags={opts?.tags || []} />
         <Button variant={archived ? "default" : "outline"} size="sm" className="h-10" onClick={() => setArchived(!archived)}>
           <Icon name="Archive" size={14} className="mr-1.5" />Архив
         </Button>
@@ -143,6 +147,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
                             {i.topic && <p className="mt-1.5 inline-block rounded bg-secondary px-1.5 py-0.5 text-[11px]">{i.topic}</p>}
                           </>
                         )}
+                        {i.tags?.length > 0 && <div className="mt-2"><TagList ids={i.tags} max={4} /></div>}
                         {i.manager_name && <p className="mt-2 flex items-center gap-1 text-[11px] text-muted-foreground"><Icon name="User" size={11} />{i.manager_name}</p>}
                       </button>
                     ))}
@@ -188,6 +193,25 @@ const EntityPage = ({ resource, onOpen }: Props) => {
     </div>
   );
 };
+
+const TagFilter = ({ value, onChange, tags }: { value: string; onChange: (v: string) => void; tags: Tag[] }) => (
+  <Select value={value} onValueChange={onChange}>
+    <SelectTrigger className="h-10 w-auto min-w-[160px] bg-card"><SelectValue /></SelectTrigger>
+    <SelectContent>
+      <SelectItem value={ALL}>Все теги</SelectItem>
+      {Object.entries(TAG_GROUPS).map(([g, meta]) => (
+        <SelectGroup key={g}>
+          <SelectLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">{meta.label}</SelectLabel>
+          {tags.filter((t) => t.grp === g && t.is_active).map((t) => (
+            <SelectItem key={t.id} value={String(t.id)}>
+              <span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${TAG_DOT[t.color]}`} />{t.name}</span>
+            </SelectItem>
+          ))}
+        </SelectGroup>
+      ))}
+    </SelectContent>
+  </Select>
+);
 
 const FilterSelect = ({ value, onChange, placeholder, items }: { value: string; onChange: (v: string) => void; placeholder: string; items: { value: string; label: string }[] }) => (
   <Select value={value} onValueChange={onChange}>
