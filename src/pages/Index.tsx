@@ -5,6 +5,7 @@ import Problems from "@/components/clinic/Problems";
 import Methods from "@/components/clinic/Methods";
 import Support from "@/components/clinic/Support";
 import Denial from "@/components/clinic/Denial";
+import Teens from "@/components/clinic/Teens";
 import FamilyCabinet from "@/components/clinic/FamilyCabinet";
 import Privacy from "@/components/clinic/Privacy";
 import Doctors from "@/components/clinic/Doctors";
@@ -39,6 +40,7 @@ const Index = () => {
         <Methods />
         <Support />
         <Denial />
+        <Teens />
         <FamilyCabinet />
         <Privacy />
         <Doctors />
