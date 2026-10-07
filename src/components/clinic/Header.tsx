@@ -25,13 +25,21 @@ const MENU: Group[] = [
       { href: "#faq", label: "Вопросы и ответы", icon: "CircleHelp", hint: "Частые вопросы" },
     ],
   },
-  { label: "Близким", href: "#cabinet" },
+  {
+    label: "Близким",
+    items: [
+      { href: "#cabinet", label: "Кабинет для близких", icon: "HeartHandshake", hint: "Психолог, ИИ-помощник, встречи" },
+      { href: "#denial", label: "Если близкий отказывается", icon: "MessageCircleHeart", hint: "Мотивация к лечению" },
+      { href: "#teens", label: "Подросткам", icon: "Backpack", hint: "Помощь родителям подростков" },
+      { href: "/articles/kak-ponyat-chto-rebenok-upotreblyaet", label: "Как понять, что ребёнок употребляет", icon: "Eye", hint: "Признаки для родителей" },
+    ],
+  },
   { label: "Статьи", href: "/articles" },
   { label: "Магазин", href: "/shop" },
   { label: "Контакты", href: "#contacts" },
 ];
 
-const SECTIONS = ["problems", "methods", "support", "cabinet", "privacy", "doctors", "steps", "faq", "articles", "contacts"];
+const SECTIONS = ["problems", "methods", "support", "denial", "teens", "cabinet", "privacy", "doctors", "steps", "faq", "articles", "contacts"];
 
 const PremiumLink = ({ compact = false }: { compact?: boolean }) => (
   <Link
