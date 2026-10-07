@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import StatusBadge from "./StatusBadge";
 import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
+import ActivityPanel from "./ActivityPanel";
 import { ENTITY_DEFS } from "./entities";
-import { ACTIVITY_KINDS, DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
+import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
 
 type Props = {
@@ -23,8 +23,6 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   const { data, isLoading } = useItem(resource, id);
   const mut = useCrmMutation();
   const [edit, setEdit] = useState(false);
-  const [note, setNote] = useState("");
-  const [kind, setKind] = useState("note");
   const item = data?.item;
 
   const save = (body: Record<string, any>) => mut.mutateAsync({ params: { resource, id }, method: "PUT", body }).then(() => toast.success("Сохранено"));
@@ -39,11 +37,6 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
       { onSuccess: () => { toast.success(item?.archived_at ? "Восстановлено" : "Перемещено в архив"); onClose(); } },
     );
 
-  const addNote = () => {
-    if (!note.trim()) return;
-    mut.mutate({ params: { resource: "activities" }, method: "POST", body: { entity_type: resource, entity_id: id, text: note, kind } }, { onSuccess: () => setNote("") });
-  };
-
   const convert = () =>
     mut.mutate(
       { params: { resource: "leads", id, action: "convert" }, method: "POST", body: { create_deal: true } },
@@ -52,12 +45,13 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
 
   return (
     <Sheet open={!!id} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-xl">
+      <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl lg:w-[min(1152px,96vw)] lg:max-w-none lg:overflow-hidden">
         {isLoading || !item ? (
-          <div className="flex h-40 items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>
+          <div className="flex h-40 items-center justify-center lg:h-full"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>
         ) : (
-          <div className="flex flex-col gap-6">
-            <SheetHeader className="text-left">
+          <div className="grid lg:h-full lg:grid-cols-2">
+          <div className="flex flex-col gap-6 border-b px-5 py-6 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-6">
+            <SheetHeader className="pr-8 text-left">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">{def.title} · #{item.id}</p>
               <SheetTitle className="font-heading text-2xl">{item[def.titleKey] || "Аноним"}</SheetTitle>
               {item.archived_at && <p className="text-sm text-primary">В архиве с {fmtDate(item.archived_at)}</p>}
@@ -131,34 +125,11 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
                 render={(r) => <><span className="truncate">{r.full_name}</span><StatusBadge map={CLIENT_STATUS} value={r.status} /></>} />
             )}
 
-            <div>
-              <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">История и заметки</p>
-              <div className="rounded-xl border bg-card p-3">
-                <div className="mb-2 flex flex-wrap gap-1">
-                  {["note", "call", "meeting", "task"].map((k) => (
-                    <button key={k} onClick={() => setKind(k)} className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs ${kind === k ? "bg-ink text-ink-foreground" : "bg-secondary"}`}>
-                      <Icon name={ACTIVITY_KINDS[k].icon} size={12} />{ACTIVITY_KINDS[k].label}
-                    </button>
-                  ))}
-                </div>
-                <Textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Добавить запись…" />
-                <div className="mt-2 flex justify-end">
-                  <Button size="sm" onClick={addNote} disabled={!note.trim()}>Добавить</Button>
-                </div>
-              </div>
-              <ol className="mt-4 space-y-3 border-l pl-4">
-                {data?.activities.map((a) => (
-                  <li key={a.id} className="relative text-sm">
-                    <span className="absolute -left-[23px] top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background ring-2 ring-border" />
-                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Icon name={ACTIVITY_KINDS[a.kind]?.icon || "Dot"} size={12} />
-                      {ACTIVITY_KINDS[a.kind]?.label} · {a.user_name || "Сайт"} · {fmtDate(a.created_at, true)}
-                    </div>
-                    <p className="mt-0.5 whitespace-pre-wrap">{a.text}</p>
-                  </li>
-                ))}
-              </ol>
-            </div>
+          </div>
+          <div className="flex flex-col gap-5 bg-secondary/30 px-5 py-6 lg:h-full lg:overflow-y-auto lg:px-6">
+            <p className="font-heading text-lg font-semibold lg:pr-8">Активность</p>
+            <ActivityPanel resource={resource} id={id!} activities={data?.activities ?? []} />
+          </div>
           </div>
         )}
         <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`} fields={def.fields} initial={item} onSubmit={save} />

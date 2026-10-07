@@ -466,6 +466,77 @@ def handle_api_keys(cur, method, eid, body, user):
     return resp(400, {'error': 'Неверный запрос'})
 
 
+CALL_RESULTS = ('reached', 'no_answer', 'busy', 'callback', 'wrong_number')
+MEETING_RESULTS = ('held', 'rescheduled', 'cancelled', 'no_show')
+
+
+def parse_dt(v):
+    if not v:
+        return None
+    try:
+        return datetime.fromisoformat(str(v).replace('Z', '+00:00')).replace(tzinfo=None)
+    except ValueError:
+        return None
+
+
+def handle_activity(cur, method, eid, body, user):
+    if method == 'POST':
+        et, ei, text = body.get('entity_type'), body.get('entity_id'), clean(body.get('text'))
+        kind = body.get('kind') if body.get('kind') in ('note', 'call', 'meeting', 'task') else 'note'
+        if et not in ENTITIES or not ei or not text:
+            return resp(400, {'error': 'Неверные данные'})
+        due = parse_dt(body.get('due_at')) if kind in ('task', 'meeting') else None
+        if kind == 'task' and not due:
+            return resp(400, {'error': 'Укажите срок задачи'})
+        result = body.get('result')
+        if kind == 'call' and result not in CALL_RESULTS:
+            result = None
+        if kind == 'meeting' and result not in MEETING_RESULTS:
+            result = None
+        if kind not in ('call', 'meeting'):
+            result = None
+        direction = body.get('direction') if kind == 'call' and body.get('direction') in ('in', 'out') else None
+        duration = int(body['duration_min']) if kind in ('call', 'meeting') and str(body.get('duration_min') or '').isdigit() else None
+        done = None
+        if kind == 'call' or (kind == 'meeting' and result):
+            done = datetime.utcnow()
+        q(cur, f'''INSERT INTO {t("crm_activities")} (entity_type, entity_id, user_id, kind, text, due_at, done_at, result, direction, duration_min)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id''',
+          (et, int(ei), user['id'], kind, text, due, done, result, direction, duration))
+        return resp(200, {'ok': True, 'id': cur.fetchone()['id']})
+    if not eid:
+        return resp(400, {'error': 'Не указана запись'})
+    q(cur, f'SELECT * FROM {t("crm_activities")} WHERE id = %s', (eid,))
+    act = cur.fetchone()
+    if not act or act['kind'] == 'system':
+        return resp(404, {'error': 'Не найдено'})
+    if method == 'PUT':
+        sets, args = [], []
+        if 'done' in body:
+            sets.append('done_at = ' + ('NOW()' if body['done'] else 'NULL'))
+        if 'result' in body and body['result'] in (CALL_RESULTS + MEETING_RESULTS):
+            sets.append('result = %s')
+            args.append(body['result'])
+            if act['kind'] == 'meeting':
+                sets.append('done_at = COALESCE(done_at, NOW())')
+        if 'text' in body and clean(body['text']):
+            sets.append('text = %s')
+            args.append(clean(body['text']))
+        if 'due_at' in body and act['kind'] in ('task', 'meeting'):
+            sets.append('due_at = %s')
+            args.append(parse_dt(body['due_at']))
+        if not sets:
+            return resp(400, {'error': 'Нет данных'})
+        q(cur, f'UPDATE {t("crm_activities")} SET {", ".join(sets)}, updated_at = NOW() WHERE id = %s', args + [eid])
+        return resp(200, {'ok': True})
+    if method == 'DELETE':
+        if act['user_id'] != user['id'] and user['role'] != 'admin':
+            return resp(403, {'error': 'Удалить можно только свою запись'})
+        q(cur, f'DELETE FROM {t("crm_activities")} WHERE id = %s', (eid,))
+        return resp(200, {'ok': True})
+    return resp(400, {'error': 'Неверный запрос'})
+
+
 def handle_shop_orders(cur, params):
     status = params.get('status') or 'paid'
     where = "o.source = 'shop'" + ('' if status == 'all' else ' AND o.status = %s')
@@ -523,12 +594,8 @@ def handler(event: dict, context) -> dict:
             return handle_api_keys(cur, method, eid, body, user)
         if resource == 'users':
             return handle_users(cur, method, eid, body, user, params)
-        if resource == 'activities' and method == 'POST':
-            et, ei, text = body.get('entity_type'), body.get('entity_id'), clean(body.get('text'))
-            if et not in ENTITIES or not ei or not text:
-                return resp(400, {'error': 'Неверные данные'})
-            log_activity(cur, et, int(ei), user['id'], text, body.get('kind') if body.get('kind') in ('note', 'call', 'meeting', 'task') else 'note')
-            return resp(200, {'ok': True})
+        if resource == 'activities':
+            return handle_activity(cur, method, eid, body, user)
         if resource in ENTITIES:
             if resource == 'leads' and action == 'convert' and eid:
                 return convert_lead(cur, eid, body, user)
