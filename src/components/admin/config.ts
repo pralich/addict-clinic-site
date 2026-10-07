@@ -48,6 +48,7 @@ export const SOURCES: Record<string, string> = {
   partner: "Партнёр",
   referral: "Рекомендация",
   ads: "Реклама",
+  api: "API",
   other: "Другое",
 };
 

@@ -16,6 +16,7 @@ import AdminInstall from "@/components/admin/AdminInstall";
 import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import SeoPage from "@/components/admin/SeoPage";
+import ApiPage from "@/components/admin/ApiPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
@@ -34,6 +35,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: "partners", label: "Партнёры", icon: "Building2" },
       { id: "finance", label: "Финансы", icon: "Wallet", admin: true },
       { id: "users", label: "Пользователи", icon: "UserCog" },
+      { id: "api", label: "API", icon: "Webhook" },
     ],
   },
   {
@@ -196,6 +198,7 @@ const Shell = () => {
           {FAMILY_SECTION[page] && <FamilyAdminPage section={FAMILY_SECTION[page]} />}
           {page === "orders" && <ShopOrdersPage />}
           {page === "seo" && <SeoPage />}
+          {page === "api" && <ApiPage />}
           {page === "finance" && <FinancePage onOpen={open} />}
         </div>
       </main>

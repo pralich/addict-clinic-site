@@ -1,0 +1,8 @@
+{
+  "tests": [
+    {"name": "Dictionaries", "method": "GET", "path": "/?resource=dictionaries", "expectedStatus": 200, "expectedBody": {"deal_stages": ["new", "consult", "diagnostics", "offer", "treatment", "won", "lost"]}, "bodyMatcher": "partial"},
+    {"name": "Lead without key", "method": "POST", "path": "/?resource=leads", "body": {"contact": "+79990000000"}, "expectedStatus": 401},
+    {"name": "Wrong key", "method": "POST", "path": "/?resource=clients", "headers": {"X-Api-Key": "wrong"}, "body": {"full_name": "Тест"}, "expectedStatus": 401},
+    {"name": "Unknown resource", "method": "GET", "path": "/?resource=unknown", "expectedStatus": 404}
+  ]
+}

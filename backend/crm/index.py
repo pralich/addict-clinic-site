@@ -432,6 +432,26 @@ def handle_users(cur, method, eid, body, user, params):
     return resp(405, {'error': 'Метод не поддерживается'})
 
 
+def handle_api_keys(cur, method, eid, body, user):
+    if user['role'] != 'admin':
+        return resp(403, {'error': 'Доступно только администратору'})
+    if method == 'GET':
+        q(cur, f'SELECT k.id, k.name, k.key_prefix, k.is_active, k.requests_count, k.last_used_at, k.created_at, k.revoked_at, u.name AS author FROM {t("crm_api_keys")} k LEFT JOIN {t("crm_users")} u ON u.id = k.created_by ORDER BY k.is_active DESC, k.id DESC')
+        return resp(200, {'items': cur.fetchall()})
+    if method == 'POST':
+        name = clean(body.get('name'))
+        if not name:
+            return resp(400, {'error': 'Укажите название ключа'})
+        key = 'ac_' + secrets.token_urlsafe(32)
+        q(cur, f'INSERT INTO {t("crm_api_keys")} (name, key_hash, key_prefix, created_by) VALUES (%s, %s, %s, %s) RETURNING id',
+          (name[:200], hashlib.sha256(key.encode()).hexdigest(), key[:10], user['id']))
+        return resp(200, {'id': cur.fetchone()['id'], 'key': key})
+    if method == 'DELETE' and eid:
+        q(cur, f'UPDATE {t("crm_api_keys")} SET is_active = FALSE, revoked_at = NOW() WHERE id = %s', (eid,))
+        return resp(200, {'ok': True})
+    return resp(400, {'error': 'Неверный запрос'})
+
+
 def handle_shop_orders(cur, params):
     status = params.get('status') or 'paid'
     where = "o.source = 'shop'" + ('' if status == 'all' else ' AND o.status = %s')
@@ -485,6 +505,8 @@ def handler(event: dict, context) -> dict:
             return handle_options(cur)
         if resource == 'shop_orders':
             return handle_shop_orders(cur, params)
+        if resource == 'api_keys':
+            return handle_api_keys(cur, method, eid, body, user)
         if resource == 'users':
             return handle_users(cur, method, eid, body, user, params)
         if resource == 'activities' and method == 'POST':
