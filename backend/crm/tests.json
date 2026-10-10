@@ -53,6 +53,12 @@
       "method": "GET",
       "path": "/?resource=in_treatment",
       "expectedStatus": 401
+    },
+    {
+      "name": "Tasks require auth",
+      "method": "GET",
+      "path": "/?resource=tasks",
+      "expectedStatus": 401
     }
   ]
 }

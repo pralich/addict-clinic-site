@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import Icon from "@/components/ui/icon";
 import { useAuth } from "./AuthContext";
-import { useCrmMutation } from "./useCrm";
+import { useCrmMutation, useOptions } from "./useCrm";
 import { ACTIVITY_KINDS, fmtDate } from "./config";
 
 type Activity = {
@@ -20,6 +20,8 @@ type Activity = {
   result?: string | null;
   direction?: string | null;
   duration_min?: number | null;
+  assignee_id?: number | null;
+  assignee_name?: string | null;
 };
 
 const CALL_RESULTS: Record<string, { label: string; cls: string }> = {
@@ -103,6 +105,8 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
   const [direction, setDirection] = useState("out");
   const [duration, setDuration] = useState("");
   const [filter, setFilter] = useState("all");
+  const { data: opts } = useOptions();
+  const [assignee, setAssignee] = useState<string>("");
 
   const reset = () => { setText(""); setDue(""); setResult(""); setDuration(""); };
 
@@ -119,6 +123,7 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
           result: result || undefined,
           direction: kind === "call" ? direction : undefined,
           duration_min: duration || undefined,
+          assignee_id: kind === "task" ? Number(assignee || user?.id) : undefined,
         },
       },
       { onSuccess: () => { reset(); toast.success(kind === "task" ? "Задача поставлена" : kind === "meeting" ? "Встреча запланирована" : "Добавлено"); } },
@@ -191,7 +196,14 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
                   <button key={p.label} onClick={() => setDue(p.value)} className={`rounded-full px-2.5 py-1 text-xs ${due === p.value ? "bg-ink text-ink-foreground" : "bg-secondary hover:bg-secondary/70"}`}>{p.label}</button>
                 ))}
               </div>
-              <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="h-9 w-full sm:w-[220px]" />
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} className="h-9 w-full sm:w-[220px]" />
+                {kind === "task" && (
+                  <select value={assignee || String(user?.id ?? "")} onChange={(e) => setAssignee(e.target.value)} className="h-9 rounded-md border bg-background px-2 text-sm">
+                    {(opts?.users || []).map((u) => <option key={u.id} value={u.id}>{u.id === user?.id ? `Мне (${u.name})` : u.name}</option>)}
+                  </select>
+                )}
+              </div>
             </div>
           )}
 
@@ -236,7 +248,8 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
                       <Icon name="Clock" size={12} />
                       <span className={st?.cls}>{fmtDate(a.due_at!, true)}{st ? ` · ${st.label}` : ""}</span>
-                      <span>· {a.user_name || "—"}</span>
+                      <span>· {a.kind === "task" && a.assignee_name ? (a.assignee_id === user?.id ? "вам" : a.assignee_name) : a.user_name || "—"}</span>
+                      {a.kind === "task" && a.assignee_id !== a.user_id && a.user_name && <span>· от {a.user_name}</span>}
                     </p>
                     {a.kind === "meeting" && (
                       <div className="mt-2 flex flex-wrap gap-1">

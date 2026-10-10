@@ -11,6 +11,7 @@ export type Options = {
   tags: Tag[];
   counterparties: (Option & { inn?: string | null })[];
   deals: (Option & { client_id: number | null; partner_id: number | null })[];
+  leads?: Option[];
 };
 
 export const useOptions = () =>

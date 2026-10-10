@@ -19,6 +19,7 @@ import SeoPage from "@/components/admin/SeoPage";
 import ApiPage from "@/components/admin/ApiPage";
 import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
+import TasksPage from "@/components/admin/tasks/TasksPage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { useSeo } from "@/lib/seo";
@@ -30,6 +31,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "CRM",
     items: [
       { id: "dashboard", label: "Сводка", icon: "LayoutDashboard" },
+      { id: "tasks", label: "Задачи", icon: "ListTodo" },
       { id: "leads", label: "Лиды", icon: "Inbox" },
       { id: "deals", label: "Сделки", icon: "Handshake" },
       { id: "clients", label: "Клиенты", icon: "Users" },
@@ -100,7 +102,7 @@ const Shell = () => {
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
   }, [qc]);
 
-  const { data: counters } = useQuery<{ leads: number; questions: number }>({
+  const { data: counters } = useQuery<{ leads: number; questions: number; tasks: number }>({
     queryKey: ["crm", "counters"],
     queryFn: () => api({ resource: "counters" }),
     enabled: !!user,
@@ -108,8 +110,8 @@ const Shell = () => {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
-  const badges: Record<string, number> = { leads: counters?.leads ?? 0, family: counters?.questions ?? 0 };
-  const badgeTotal = badges.leads + badges.family;
+  const badges: Record<string, number> = { leads: counters?.leads ?? 0, family: counters?.questions ?? 0, tasks: counters?.tasks ?? 0 };
+  const badgeTotal = badges.leads + badges.family + badges.tasks;
 
   useEffect(() => {
     const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
@@ -203,6 +205,7 @@ const Shell = () => {
           {page === "api" && <ApiPage />}
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
+          {page === "tasks" && <TasksPage onOpen={open} />}
         </div>
       </main>
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}

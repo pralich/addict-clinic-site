@@ -11,6 +11,7 @@ import psycopg2.extras
 from finance import handle_finance
 from billing import handle_billing
 from schedule import attach_plans
+from tasks import handle_tasks
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -235,7 +236,7 @@ def handle_dashboard(cur):
         WHERE archived_at IS NULL AND utm_campaign IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
         GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 8''')
     res['campaigns'] = cur.fetchall()
-    q(cur, f'SELECT a.id, a.entity_type, a.entity_id, a.kind, a.text, a.created_at, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id ORDER BY a.created_at DESC LIMIT 10')
+    q(cur, f'SELECT a.id, a.entity_type, a.entity_id, a.kind, a.text, a.created_at, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id WHERE a.entity_type <> \'none\' ORDER BY a.created_at DESC LIMIT 10')
     res['activity'] = cur.fetchall()
     return resp(200, res)
 
@@ -253,7 +254,9 @@ def handle_options(cur):
     counterparties = cur.fetchall()
     q(cur, f"SELECT id, title AS name, client_id, partner_id FROM {t('crm_deals')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 1000")
     deals = cur.fetchall()
-    return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags, 'counterparties': counterparties, 'deals': deals})
+    q(cur, f"SELECT id, COALESCE(name, contact, 'Лид #' || id) AS name FROM {t('crm_leads')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 500")
+    leads = cur.fetchall()
+    return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags, 'counterparties': counterparties, 'deals': deals, 'leads': leads})
 
 
 def list_entity(cur, name, params):
@@ -361,7 +364,7 @@ def get_entity(cur, name, eid):
     if item.get('lead_id') and name == 'deals':
         q(cur, f"SELECT id, name, contact, topic, status, created_at FROM {t('crm_leads')} WHERE id = %s", (item['lead_id'],))
         refs['lead'] = cur.fetchone()
-    q(cur, f'SELECT a.*, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id WHERE a.entity_type = %s AND a.entity_id = %s ORDER BY a.created_at DESC', (name, eid))
+    q(cur, f'SELECT a.*, u.name AS user_name, s.name AS assignee_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id LEFT JOIN {t("crm_users")} s ON s.id = a.assignee_id WHERE a.entity_type = %s AND a.entity_id = %s ORDER BY a.created_at DESC', (name, eid))
     activities = cur.fetchall()
     related = {}
     if name in ('clients', 'partners'):
@@ -572,9 +575,10 @@ def handle_activity(cur, method, eid, body, user):
         done = None
         if kind == 'call' or (kind == 'meeting' and result):
             done = datetime.utcnow()
-        q(cur, f'''INSERT INTO {t("crm_activities")} (entity_type, entity_id, user_id, kind, text, due_at, done_at, result, direction, duration_min)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id''',
-          (et, int(ei), user['id'], kind, text, due, done, result, direction, duration))
+        assignee = (int(body['assignee_id']) if str(body.get('assignee_id') or '').isdigit() else user['id']) if kind == 'task' else None
+        q(cur, f'''INSERT INTO {t("crm_activities")} (entity_type, entity_id, user_id, kind, text, due_at, done_at, result, direction, duration_min, assignee_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id''',
+          (et, int(ei), user['id'], kind, text, due, done, result, direction, duration, assignee))
         return resp(200, {'ok': True, 'id': cur.fetchone()['id']})
     if not eid:
         return resp(400, {'error': 'Не указана запись'})
@@ -683,6 +687,8 @@ def handler(event: dict, context) -> dict:
         if not user:
             return resp(401, {'error': 'Требуется вход'})
 
+        if resource == 'tasks':
+            return handle_tasks(cur, t, method, params, body, user, eid, resp)
         if resource == 'billing':
             return handle_billing(cur, t, method, params, body, user, eid, resp)
         if resource == 'finance':
@@ -690,7 +696,8 @@ def handler(event: dict, context) -> dict:
         if resource == 'counters':
             q(cur, f"""SELECT
                 (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL) AS leads,
-                (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions""")
+                (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions,
+                (SELECT COUNT(*) FROM {t('crm_activities')} WHERE kind = 'task' AND done_at IS NULL AND assignee_id = %s AND (due_at IS NULL OR due_at < CURRENT_DATE + 1)) AS tasks""", (user['id'],))
             return resp(200, cur.fetchone())
         if resource == 'dashboard':
             return handle_dashboard(cur)
