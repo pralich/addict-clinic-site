@@ -1,0 +1,2 @@
+ALTER TABLE t_p15395438_addict_clinic_site.crm_deals ADD COLUMN IF NOT EXISTS payment_amount NUMERIC(14,2);
+UPDATE t_p15395438_addict_clinic_site.crm_deals SET payment_amount = next_payment_amount WHERE next_payment_amount IS NOT NULL AND payment_amount IS NULL;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import InvoiceDialog, { type InvoicePreset } from "./InvoiceDialog";
-import { PAYMENT_SCHEDULES, daysUntil, dueTone, fmtDate, money } from "../config";
+import { PAYMENT_SCHEDULES, PAY_SCHEDULE_HINT, daysUntil, dueTone, fmtDate, money } from "../config";
 
 type Deal = Record<string, any>;
 
@@ -15,9 +15,9 @@ export const nextPaymentPreset = (d: Deal, dealId: number): InvoicePreset => {
     deal_id: dealId,
     title: d.title,
     amount: Number(d.next_payment_amount) || undefined,
-    itemName: `Оплата лечения${d.program ? ` (${d.program})` : ""}${due ? ` — платёж до ${fmtDate(due)}` : ""}`,
+    itemName: `Оплата лечения${d.program ? ` (${d.program})` : ""}${d.payment_index ? `, платёж ${d.payment_index} из ${d.payments_total}` : ""}${due ? ` — до ${fmtDate(due)}` : ""}`,
     dueDate: due,
-    advanceNext: true,
+    periodDate: due,
   };
 };
 
@@ -51,9 +51,15 @@ const NextPayment = ({ deal, onEdit }: { deal: Deal; onEdit: () => void }) => {
     <div>
       <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Ближайший платёж</p>
       {!has ? (
-        <button onClick={onEdit} className="flex w-full items-center gap-3 rounded-xl border border-dashed p-4 text-left text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
-          <Icon name="CalendarPlus" size={18} />Запланировать дату и сумму ближайшего платежа
-        </button>
+        deal.check_in_date && deal.payments_total ? (
+          <div className="flex items-center gap-3 rounded-xl border bg-emerald-50/60 p-4 text-sm text-emerald-900">
+            <Icon name="CircleCheck" size={18} />Все {deal.payments_total} {deal.payments_total === 1 ? "платёж выставлен" : "платежей выставлены"} по графику
+          </div>
+        ) : (
+          <button onClick={onEdit} className="flex w-full items-center gap-3 rounded-xl border border-dashed p-4 text-left text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
+            <Icon name="CalendarPlus" size={18} />Укажите дату заезда — график платежей рассчитается от неё
+          </button>
+        )
       ) : (
         <div className={`flex flex-wrap items-center gap-3 rounded-xl border p-4 ${urgent ? "border-amber-300 bg-amber-50/60" : "bg-card"} ${days !== null && days < 0 ? "border-primary/40 bg-primary/5" : ""}`}>
           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${t.cls}`}><Icon name="CalendarClock" size={20} /></span>
@@ -61,7 +67,9 @@ const NextPayment = ({ deal, onEdit }: { deal: Deal; onEdit: () => void }) => {
             <p className="font-heading text-lg font-semibold leading-tight">{deal.next_payment_amount ? money(deal.next_payment_amount) : "Сумма не указана"}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               до {fmtDate(deal.next_payment_date)} <DueBadge date={deal.next_payment_date} />
-              {deal.payment_schedule && <span className="text-xs">· {PAYMENT_SCHEDULES[deal.payment_schedule]?.toLowerCase()}</span>}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground" title={PAY_SCHEDULE_HINT}>
+              Платёж {deal.payment_index} из {deal.payments_total} · {(PAYMENT_SCHEDULES[deal.payment_schedule] || "Ежемесячно").toLowerCase()} от заезда {fmtDate(deal.check_in_date)}
             </p>
           </div>
           <div className="flex items-center gap-1.5">

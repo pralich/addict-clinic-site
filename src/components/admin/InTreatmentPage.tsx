@@ -83,14 +83,14 @@ const Payment = ({ r }: { r: Row }) => {
   if (!r.next_payment_date)
     return (
       <div className="flex flex-col items-start gap-1.5">
-        <span className="text-xs text-muted-foreground">Не запланирован</span>
+        <span className="text-xs text-muted-foreground">{r.payments_total ? "Все платежи выставлены" : "Нет графика"}</span>
         {Number(r.debt) > 0 && <span className="text-xs text-primary">Долг {money(r.debt)}</span>}
       </div>
     );
   return (
     <div className="flex min-w-[150px] flex-col items-start gap-1.5">
       <span className="font-medium tabular-nums">{r.next_payment_amount ? money(r.next_payment_amount) : "—"}</span>
-      <span className="text-xs text-muted-foreground">до {fmtDate(r.next_payment_date)}</span>
+      <span className="text-xs text-muted-foreground">до {fmtDate(r.next_payment_date)} · {r.payment_index} из {r.payments_total}</span>
       <DueBadge date={r.next_payment_date} />
       <InvoiceButton deal={deal} dealId={r.deal_id} compact />
     </div>

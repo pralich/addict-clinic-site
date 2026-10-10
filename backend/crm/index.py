@@ -10,6 +10,7 @@ import psycopg2.extras
 
 from finance import handle_finance
 from billing import handle_billing
+from schedule import attach_plans
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -47,7 +48,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date', 'commission_type', 'commission_value', 'payment_schedule', 'next_payment_date', 'next_payment_amount'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date', 'commission_type', 'commission_value', 'payment_schedule', 'payment_amount'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -297,7 +298,10 @@ def list_entity(cur, name, params):
 
     limit = min(int(params.get('limit') or 500), 1000)
     q(cur, f"SELECT e.*{extra} FROM {t(tbl)} e{joins} WHERE {' AND '.join(where)} ORDER BY e.{cfg['order']} LIMIT {limit}", args)
-    return resp(200, {'items': cur.fetchall()})
+    items = cur.fetchall()
+    if name == 'deals':
+        attach_plans(cur, t, items)
+    return resp(200, {'items': items})
 
 
 CHECKOUT_SQL = "COALESCE(d.check_out_date, (d.check_in_date + make_interval(months => FLOOR(d.treatment_months)::int, days => ROUND((d.treatment_months - FLOOR(d.treatment_months)) * 30)::int))::date)"
@@ -307,7 +311,7 @@ def handle_in_treatment(cur, params):
     day = params.get('date') or date.today().isoformat()
     q(cur, f"""SELECT d.id AS deal_id, d.title, d.stage, d.program, d.amount, d.check_in_date, {CHECKOUT_SQL} AS check_out_date,
             d.treatment_months, d.rep_name, d.rep_relation, d.rep_phone, d.rep_email, d.rep_messenger,
-            d.commission_type, d.commission_value, d.payment_schedule, d.next_payment_date, d.next_payment_amount, d.partner_id,
+            d.commission_type, d.commission_value, d.payment_schedule, d.payment_amount, d.partner_id,
             pp.name AS partner_name,
             COALESCE((SELECT SUM(i.amount - COALESCE((SELECT SUM(pm.amount) FROM {t('crm_payments')} pm WHERE pm.invoice_id = i.id AND pm.archived_at IS NULL), 0))
                 FROM {t('crm_invoices')} i WHERE i.deal_id = d.id AND i.archived_at IS NULL AND i.status <> 'canceled'), 0) AS debt,
@@ -324,6 +328,7 @@ def handle_in_treatment(cur, params):
           AND {CHECKOUT_SQL} >= %s::date
         ORDER BY {CHECKOUT_SQL} ASC, d.check_in_date ASC""", (day, day))
     items = cur.fetchall()
+    attach_plans(cur, t, items, key='deal_id')
     q(cur, f"""SELECT d.id AS deal_id, d.title, d.check_in_date, c.full_name, c.id AS client_id
         FROM {t('crm_deals')} d LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
         WHERE d.archived_at IS NULL AND d.stage <> 'lost' AND d.check_in_date > %s::date AND d.check_in_date <= %s::date + 14
@@ -344,6 +349,8 @@ def get_entity(cur, name, eid):
     item = cur.fetchone()
     if not item:
         return resp(404, {'error': 'Не найдено'})
+    if name == 'deals':
+        attach_plans(cur, t, [item])
     refs = {}
     if item.get('client_id') and name != 'clients':
         q(cur, f"SELECT id, full_name AS name, phone, email, messenger, status, is_anonymous FROM {t('crm_clients')} WHERE id = %s", (item['client_id'],))
@@ -378,7 +385,7 @@ def prepare(cfg, body, partial):
                 v = int(v)
             if f in ('amount', 'commission_percent'):
                 v = float(v or 0)
-            if f in ('commission_value', 'next_payment_amount'):
+            if f in ('commission_value', 'payment_amount'):
                 v = round(float(v), 2) if v not in (None, '') else None
             if f == 'commission_type' and v not in ('percent', 'fixed'):
                 v = None

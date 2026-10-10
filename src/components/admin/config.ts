@@ -135,6 +135,8 @@ export const PAYMENT_SCHEDULES: Record<string, string> = {
   monthly: "Ежемесячно",
 };
 
+export const PAY_SCHEDULE_HINT = "Платежи считаются от даты заезда: первый — в день заезда, далее по выбранной периодичности до даты выезда";
+
 export const commissionAmount = (r: { amount?: any; commission_type?: string | null; commission_value?: any }) => {
   const v = Number(r.commission_value || 0);
   if (!r.commission_type || !v) return 0;
