@@ -149,7 +149,6 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "notes", label: "Заметки", type: "textarea" },
       { name: "commission_type", label: "Комиссия", type: "commission", section: PAY },
       { name: "payment_schedule", label: "Периодичность платежей", type: "select", options: toOptions(PAYMENT_SCHEDULES), section: PAY, placeholder: "Ежемесячно" },
-      { name: "payment_amount", label: "Сумма одного платежа, ₽", type: "number", section: PAY, placeholder: "Пусто — сумма сделки поровну на все платежи" },
       ...repFields,
     ],
     details: [

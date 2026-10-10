@@ -6,7 +6,7 @@ import { PAYMENT_SCHEDULES, PAY_SCHEDULE_HINT, daysUntil, dueTone, fmtDate, mone
 type Deal = Record<string, any>;
 
 export const nextPaymentPreset = (d: Deal, dealId: number): InvoicePreset => {
-  const base = d.partner_id && !d.client_id
+  const base = d.partner_id
     ? { payer_type: "partner" as const, partner_id: d.partner_id }
     : { payer_type: "client" as const, client_id: d.client_id };
   const due = d.next_payment_date ? String(d.next_payment_date).slice(0, 10) : undefined;
@@ -15,7 +15,7 @@ export const nextPaymentPreset = (d: Deal, dealId: number): InvoicePreset => {
     deal_id: dealId,
     title: d.title,
     amount: Number(d.next_payment_amount) || undefined,
-    itemName: `Оплата лечения${d.program ? ` (${d.program})` : ""}${d.payment_index ? `, платёж ${d.payment_index} из ${d.payments_total}` : ""}${due ? ` — до ${fmtDate(due)}` : ""}`,
+    itemName: `Комиссия по сделке «${d.title}»${d.full_name ? `, пациент ${d.full_name}` : ""}${d.payment_index ? `, платёж ${d.payment_index} из ${d.payments_total}` : ""}${due ? ` — до ${fmtDate(due)}` : ""}`,
     dueDate: due,
     periodDate: due,
   };
@@ -64,7 +64,7 @@ const NextPayment = ({ deal, onEdit }: { deal: Deal; onEdit: () => void }) => {
         <div className={`flex flex-wrap items-center gap-3 rounded-xl border p-4 ${urgent ? "border-amber-300 bg-amber-50/60" : "bg-card"} ${days !== null && days < 0 ? "border-primary/40 bg-primary/5" : ""}`}>
           <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${t.cls}`}><Icon name="CalendarClock" size={20} /></span>
           <div className="min-w-0 flex-1">
-            <p className="font-heading text-lg font-semibold leading-tight">{deal.next_payment_amount ? money(deal.next_payment_amount) : "Сумма не указана"}</p>
+            <p className="font-heading text-lg font-semibold leading-tight">{deal.next_payment_amount ? money(deal.next_payment_amount) : "Комиссия не указана"}</p>
             <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
               до {fmtDate(deal.next_payment_date)} <DueBadge date={deal.next_payment_date} />
             </p>

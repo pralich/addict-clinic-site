@@ -22,6 +22,13 @@ def _checkout(deal):
     return None
 
 
+def commission(deal):
+    v = float(deal.get('commission_value') or 0)
+    if not v or deal.get('commission_type') not in ('percent', 'fixed'):
+        return 0.0
+    return round(float(deal.get('amount') or 0) * v / 100) if deal['commission_type'] == 'percent' else round(v, 2)
+
+
 def payment_dates(deal):
     start = deal.get('check_in_date')
     if not start:
@@ -44,8 +51,7 @@ def payment_plan(deal, invoiced, loose=0.0):
     dates = payment_dates(deal)
     if not dates:
         return {'next_payment_date': None, 'next_payment_amount': None, 'payment_index': None, 'payments_total': 0, 'payments_invoiced': 0}
-    per = deal.get('payment_amount')
-    per = float(per) if per else (round(float(deal.get('amount') or 0) / len(dates), 2) or None)
+    per = commission(deal) or None
     done = {d for d in invoiced if d}
     left = [(i, d) for i, d in enumerate(dates) if d not in done]
     if per and loose > 0:
@@ -60,12 +66,14 @@ def attach_plans(cur, t, deals, key='id'):
     ids = [d[key] for d in deals if d.get(key)]
     periods, loose = {}, {}
     if ids:
-        cur.execute(f"SELECT deal_id, period_date, amount FROM {t('crm_invoices')} WHERE deal_id = ANY(%s) AND archived_at IS NULL AND status <> 'canceled'", (ids,))
+        cur.execute(f"SELECT deal_id, period_date, amount, payer_type FROM {t('crm_invoices')} WHERE deal_id = ANY(%s) AND archived_at IS NULL AND status <> 'canceled'", (ids,))
         for r in cur.fetchall():
             if r['period_date']:
                 periods.setdefault(r['deal_id'], set()).add(r['period_date'])
             else:
-                loose[r['deal_id']] = loose.get(r['deal_id'], 0.0) + float(r['amount'] or 0)
+                loose.setdefault(r['deal_id'], []).append((r['payer_type'], float(r['amount'] or 0)))
     for d in deals:
-        d.update(payment_plan(d, periods.get(d.get(key), set()), loose.get(d.get(key), 0.0)))
+        payer = 'partner' if d.get('partner_id') else 'client'
+        lz = sum(a for p, a in loose.get(d.get(key), []) if p == payer)
+        d.update(payment_plan(d, periods.get(d.get(key), set()), lz))
     return deals
