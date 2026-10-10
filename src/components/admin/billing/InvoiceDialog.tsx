@@ -8,7 +8,7 @@ import { useOptions } from "../useCrm";
 import CounterpartyDialog from "./CounterpartyDialog";
 import { Combo, PAYER_TYPES, addDays, field, num, today, useBillingReload, type Invoice, type InvoiceItem, type PayerType } from "./shared";
 
-export type InvoicePreset = Partial<Pick<Invoice, "payer_type" | "client_id" | "partner_id" | "counterparty_id" | "deal_id">> & { amount?: number; title?: string };
+export type InvoicePreset = Partial<Pick<Invoice, "payer_type" | "client_id" | "partner_id" | "counterparty_id" | "deal_id">> & { amount?: number; title?: string; itemName?: string; dueDate?: string; advanceNext?: boolean };
 
 type Row = { name: string; qty: string; price: string; unit: string };
 
@@ -26,12 +26,12 @@ const InvoiceDialog = ({ invoice, preset, onClose }: { invoice?: Invoice | null;
   });
   const [dealId, setDealId] = useState<number | null>(src.deal_id ?? null);
   const [issue, setIssue] = useState(invoice?.issue_date?.slice(0, 10) || today());
-  const [due, setDue] = useState(invoice?.due_date?.slice(0, 10) || addDays(today(), 5));
+  const [due, setDue] = useState(invoice?.due_date?.slice(0, 10) || preset?.dueDate || addDays(today(), 5));
   const [notes, setNotes] = useState(invoice?.notes || "");
   const [rows, setRows] = useState<Row[]>(() =>
     invoice?.items?.length
       ? invoice.items.map(toRow)
-      : [{ name: preset?.title ? `Оплата услуг по договору: ${preset.title}` : "", qty: "1", price: preset?.amount ? String(preset.amount) : "", unit: "усл." }],
+      : [{ name: preset?.itemName || (preset?.title ? `Оплата услуг по договору: ${preset.title}` : ""), qty: "1", price: preset?.amount ? String(preset.amount) : "", unit: "усл." }],
   );
   const [busy, setBusy] = useState(false);
   const [newCp, setNewCp] = useState(false);
@@ -56,6 +56,7 @@ const InvoiceDialog = ({ invoice, preset, onClose }: { invoice?: Invoice | null;
         issue_date: issue,
         due_date: due || null,
         notes,
+        advance_next_payment: !invoice && !!preset?.advanceNext,
         items: rows.filter((r) => r.name.trim()).map((r) => ({ name: r.name, qty: num(r.qty), price: num(r.price), unit: r.unit })),
       };
       const res = await api<{ item: Invoice }>({ resource: "billing", action: "invoices", id: invoice?.id }, invoice ? "PUT" : "POST", body);
@@ -72,7 +73,12 @@ const InvoiceDialog = ({ invoice, preset, onClose }: { invoice?: Invoice | null;
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-heading">{invoice ? `Счёт № ${invoice.number}` : "Новый счёт"}</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle className="font-heading">{invoice ? `Счёт № ${invoice.number}` : preset?.advanceNext ? "Счёт на ближайший платёж" : "Новый счёт"}</DialogTitle></DialogHeader>
+        {!invoice && preset?.advanceNext && (
+          <p className="-mt-2 flex items-start gap-2 rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">
+            <Icon name="Info" size={13} className="mt-0.5 shrink-0" />После выставления дата ближайшего платежа в сделке сдвинется по периодичности платежей.
+          </p>
+        )}
         <form onSubmit={save} className="flex flex-col gap-4">
           <div>
             <p className="mb-1.5 text-sm font-medium">Кому выставляем</p>

@@ -122,3 +122,49 @@ export const REP_RELATIONS: Record<string, string> = {
   guardian: "Опекун",
   other: "Другое",
 };
+
+export const COMMISSION_TYPES: Record<string, string> = {
+  percent: "Процент от суммы сделки",
+  fixed: "Фиксированная сумма",
+};
+
+export const PAYMENT_SCHEDULES: Record<string, string> = {
+  once: "Разовый",
+  weekly: "Еженедельно",
+  biweekly: "Раз в 2 недели",
+  monthly: "Ежемесячно",
+};
+
+export const commissionAmount = (r: { amount?: any; commission_type?: string | null; commission_value?: any }) => {
+  const v = Number(r.commission_value || 0);
+  if (!r.commission_type || !v) return 0;
+  return r.commission_type === "percent" ? Math.round((Number(r.amount || 0) * v) / 100) : v;
+};
+
+export const commissionText = (r: { amount?: any; commission_type?: string | null; commission_value?: any }) => {
+  const sum = commissionAmount(r);
+  if (!sum) return null;
+  return r.commission_type === "percent" ? `${money(sum)} · ${String(Number(r.commission_value)).replace(".", ",")}%` : money(sum);
+};
+
+export const daysUntil = (iso?: string | null) => {
+  if (!iso) return null;
+  const d = new Date(String(iso).slice(0, 10) + "T00:00:00");
+  const now = new Date();
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((d.getTime() - t.getTime()) / 86400000);
+};
+
+export const dueTone = (days: number | null) => {
+  if (days === null) return { cls: "bg-secondary text-muted-foreground", dot: "bg-neutral-400", label: "Не запланирован" };
+  const word = (n: number) => {
+    const m10 = n % 10, m100 = n % 100;
+    return m10 === 1 && m100 !== 11 ? "день" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "дня" : "дней";
+  };
+  if (days < 0) return { cls: "bg-primary/10 text-primary", dot: "bg-primary", label: `Просрочен на ${-days} ${word(-days)}` };
+  if (days === 0) return { cls: "bg-primary text-primary-foreground", dot: "bg-primary", label: "Сегодня" };
+  if (days === 1) return { cls: "bg-amber-100 text-amber-900", dot: "bg-amber-500", label: "Завтра" };
+  if (days <= 3) return { cls: "bg-amber-100 text-amber-900", dot: "bg-amber-500", label: `Через ${days} ${word(days)}` };
+  if (days <= 7) return { cls: "bg-sky-100 text-sky-900", dot: "bg-sky-500", label: `Через ${days} ${word(days)}` };
+  return { cls: "bg-emerald-100 text-emerald-800", dot: "bg-emerald-500", label: `Через ${days} ${word(days)}` };
+};

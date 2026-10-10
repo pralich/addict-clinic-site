@@ -3,7 +3,7 @@ import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
 import { TagList } from "./Tags";
 import {
-  CHANNELS, CLIENT_STATUS, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
+  CHANNELS, CLIENT_STATUS, PAYMENT_SCHEDULES, commissionText, daysUntil, dueTone, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
 } from "./config";
 
@@ -56,6 +56,7 @@ const repFields: Field[] = [
 ];
 
 const CONTACT = "Контактная информация";
+const PAY = "Комиссия и платежи";
 
 const sourceLabel = (r: any) => SOURCES[r.source] || r.source || "—";
 
@@ -126,6 +127,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "client_name", label: "Клиент" },
       { key: "stage", label: "Этап", render: (r) => <StatusBadge map={DEAL_STAGES} value={r.stage} /> },
       { key: "amount", label: "Сумма", render: (r) => money(r.amount), className: "text-right whitespace-nowrap" },
+      { key: "commission", label: "Комиссия", render: (r) => commissionText(r) || "—", className: "text-right whitespace-nowrap" },
       { key: "program", label: "Программа" },
       { key: "check_in_date", label: "Заезд", render: (r) => fmtDate(r.check_in_date), className: "whitespace-nowrap" },
       { key: "treatment_months", label: "Срок", render: (r) => (r.treatment_months ? `${Number(r.treatment_months)} мес.` : "—"), className: "whitespace-nowrap" },
@@ -145,12 +147,27 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "expected_close", label: "Плановая дата закрытия", type: "date" },
       { name: "notes", label: "Заметки", type: "textarea" },
+      { name: "commission_type", label: "Комиссия", type: "commission", section: PAY },
+      { name: "next_payment_date", label: "Ближайший платёж — дата", type: "date", section: PAY },
+      { name: "next_payment_amount", label: "Ближайший платёж — сумма, ₽", type: "number", section: PAY },
+      { name: "payment_schedule", label: "Периодичность платежей", type: "select", options: toOptions(PAYMENT_SCHEDULES), section: PAY },
       ...repFields,
     ],
     details: [
       { key: "amount", label: "Сумма", render: (r) => money(r.amount) },
       { key: "program", label: "Программа" },
       { key: "check_in_date", label: "Дата заезда", render: (r) => fmtDate(r.check_in_date) },
+      { key: "commission", label: "Комиссия", render: (r) => commissionText(r) },
+      { key: "next_payment_date", label: "Ближайший платёж", render: (r) => {
+        if (!r.next_payment_date) return null;
+        const t = dueTone(daysUntil(r.next_payment_date));
+        return (
+          <span className="flex flex-wrap items-center gap-1.5">
+            {fmtDate(r.next_payment_date)}{r.next_payment_amount ? ` · ${money(r.next_payment_amount)}` : ""}
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${t.cls}`}>{t.label}</span>
+          </span>
+        );
+      } },
       { key: "check_out_date", label: "Дата выезда", render: (r) => (r.check_out_date ? fmtDate(r.check_out_date) : null) },
       { key: "treatment_months", label: "Длительность", render: (r) => treatment(r) },
       { key: "expected_close", label: "План закрытия", render: (r) => fmtDate(r.expected_close) },

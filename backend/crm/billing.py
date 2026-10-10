@@ -167,7 +167,28 @@ def _save_invoice(cur, t, eid, body, user):
     cur.execute(f"UPDATE {t('crm_invoices')} SET number = %s WHERE id = %s RETURNING *", (number, new_id))
     item = cur.fetchone()
     _log(cur, t, data, user, f"Выставлен счёт № {number} на {_money(amount)}")
+    if body.get('advance_next_payment') and data.get('deal_id'):
+        _advance_next_payment(cur, t, data['deal_id'], user)
     return 200, {'item': item}
+
+
+STEP = {'weekly': "INTERVAL '7 days'", 'biweekly': "INTERVAL '14 days'", 'monthly': "INTERVAL '1 month'"}
+
+
+def _advance_next_payment(cur, t, deal_id, user):
+    cur.execute(f"SELECT payment_schedule, next_payment_date FROM {t('crm_deals')} WHERE id = %s", (deal_id,))
+    d = cur.fetchone()
+    if not d or not d['next_payment_date']:
+        return
+    step = STEP.get(d['payment_schedule'])
+    if step:
+        cur.execute(f"UPDATE {t('crm_deals')} SET next_payment_date = (next_payment_date + {step})::date, updated_at = NOW() WHERE id = %s RETURNING next_payment_date", (deal_id,))
+        nd = cur.fetchone()['next_payment_date']
+        text = f"Ближайший платёж перенесён на {nd.strftime('%d.%m.%Y')}"
+    else:
+        cur.execute(f"UPDATE {t('crm_deals')} SET next_payment_date = NULL, updated_at = NOW() WHERE id = %s", (deal_id,))
+        text = 'Ближайший платёж выставлен — следующий не запланирован'
+    cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('deals', %s, %s, 'system', %s)", (deal_id, user['id'], text))
 
 
 def _save_payment(cur, t, body, user):

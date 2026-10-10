@@ -4,7 +4,8 @@ import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
-import { DEAL_STAGES, REP_RELATIONS, fmtDate } from "./config";
+import { DEAL_STAGES, REP_RELATIONS, commissionAmount, commissionText, daysUntil, fmtDate, money } from "./config";
+import { DueBadge, InvoiceButton } from "./billing/NextPayment";
 
 type Row = Record<string, any>;
 type Data = { date: string; items: Row[]; upcoming: Row[]; no_dates: number };
@@ -69,6 +70,44 @@ const Contacts = ({ r }: { r: Row }) => {
   );
 };
 
+const rowTone = (r: Row) => {
+  const n = daysUntil(r.next_payment_date);
+  if (n === null) return "";
+  if (n < 0) return "shadow-[inset_3px_0_0_hsl(var(--primary))] bg-primary/[0.03]";
+  if (n <= 3) return "shadow-[inset_3px_0_0_#f59e0b] bg-amber-50/50";
+  return "";
+};
+
+const Payment = ({ r }: { r: Row }) => {
+  const deal = { ...r, id: r.deal_id };
+  if (!r.next_payment_date)
+    return (
+      <div className="flex flex-col items-start gap-1.5">
+        <span className="text-xs text-muted-foreground">Не запланирован</span>
+        {Number(r.debt) > 0 && <span className="text-xs text-primary">Долг {money(r.debt)}</span>}
+      </div>
+    );
+  return (
+    <div className="flex min-w-[150px] flex-col items-start gap-1.5">
+      <span className="font-medium tabular-nums">{r.next_payment_amount ? money(r.next_payment_amount) : "—"}</span>
+      <span className="text-xs text-muted-foreground">до {fmtDate(r.next_payment_date)}</span>
+      <DueBadge date={r.next_payment_date} />
+      <InvoiceButton deal={deal} dealId={r.deal_id} compact />
+    </div>
+  );
+};
+
+const Commission = ({ r }: { r: Row }) => {
+  const txt = commissionText(r);
+  return (
+    <div className="flex flex-col">
+      <span className="tabular-nums">{money(r.amount)}</span>
+      {txt ? <span className="text-xs text-muted-foreground">комиссия {txt}</span> : <span className="text-xs text-muted-foreground">без комиссии</span>}
+      {r.partner_name && <span className="max-w-[160px] truncate text-xs text-muted-foreground">{r.partner_name}</span>}
+    </div>
+  );
+};
+
 const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void }) => {
   const [date, setDate] = useState(todayIso());
   const [search, setSearch] = useState("");
@@ -79,7 +118,8 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
   const items = useMemo(() => {
     const s = search.trim().toLowerCase();
     const list = data?.items ?? [];
-    return s ? list.filter((r) => [r.full_name, r.title, r.program, r.phone, r.rep_name, r.manager_name].some((v) => v && String(v).toLowerCase().includes(s))) : list;
+    const sorted = [...list].sort((a, b) => (daysUntil(a.next_payment_date) ?? 9999) - (daysUntil(b.next_payment_date) ?? 9999));
+    return s ? sorted.filter((r) => [r.full_name, r.title, r.program, r.phone, r.rep_name, r.manager_name].some((v) => v && String(v).toLowerCase().includes(s))) : sorted;
   }, [data, search]);
 
   const stats = useMemo(() => {
@@ -89,6 +129,8 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
       total: list.length,
       arrived: list.filter((r) => toDay(r.check_in_date).getTime() === d).length,
       leaving: list.filter((r) => toDay(r.check_out_date).getTime() - d <= 3 * DAY).length,
+      payWeek: list.filter((r) => { const n = daysUntil(r.next_payment_date); return n !== null && n <= 7; }),
+      commission: list.reduce((a, r) => a + commissionAmount(r), 0),
     };
   }, [data, day]);
 
@@ -105,11 +147,13 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         <Stat icon="BedDouble" label="На лечении" value={stats.total} cls="text-violet-700" />
         <Stat icon="LogIn" label="Заезд в этот день" value={stats.arrived} />
         <Stat icon="LogOut" label="Выезд в ближайшие 3 дня" value={stats.leaving} cls={stats.leaving ? "text-amber-700" : ""} />
         <Stat icon="CalendarClock" label="Заезды в ближайшие 14 дней" value={data?.upcoming.length ?? 0} />
+        <Stat icon="Wallet" label="Платежи в ближайшие 7 дней" value={money(stats.payWeek.reduce((a, r) => a + Number(r.next_payment_amount || 0), 0))} cls={stats.payWeek.some((r) => (daysUntil(r.next_payment_date) ?? 1) < 0) ? "text-primary" : stats.payWeek.length ? "text-amber-700" : ""} />
+        <Stat icon="Percent" label="Комиссия по текущим" value={money(stats.commission)} />
       </div>
 
       {!!data?.no_dates && (
@@ -142,13 +186,15 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
                     <th className="px-4 py-2.5 font-medium">Клиент</th>
                     <th className="px-4 py-2.5 font-medium">Программа</th>
                     <th className="px-4 py-2.5 font-medium">Период лечения</th>
+                    <th className="px-4 py-2.5 font-medium">Сумма и комиссия</th>
+                    <th className="px-4 py-2.5 font-medium">Ближайший платёж</th>
                     <th className="px-4 py-2.5 font-medium">Контакты</th>
                     <th className="px-4 py-2.5 font-medium">Ответственный</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((r) => (
-                    <tr key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className="cursor-pointer border-b align-top last:border-0 hover:bg-secondary/50">
+                    <tr key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className={`cursor-pointer border-b align-top last:border-0 hover:bg-secondary/50 ${rowTone(r)}`}>
                       <td className="px-4 py-3">
                         {r.client_id ? (
                           <button onClick={(e) => { e.stopPropagation(); onOpen("clients", r.client_id); }} className="text-left font-medium hover:text-primary">{r.full_name}</button>
@@ -160,6 +206,8 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
                         <div className="mt-1"><StatusBadge map={DEAL_STAGES} value={r.stage} /></div>
                       </td>
                       <td className="px-4 py-3"><Progress r={r} day={day} /></td>
+                      <td className="px-4 py-3"><Commission r={r} /></td>
+                      <td className="px-4 py-3"><Payment r={r} /></td>
                       <td className="px-4 py-3"><Contacts r={r} /></td>
                       <td className="px-4 py-3 text-muted-foreground">{r.manager_name || "—"}</td>
                     </tr>
@@ -169,7 +217,7 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
             </div>
             <div className="flex flex-col divide-y lg:hidden">
               {items.map((r) => (
-                <div key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className="flex cursor-pointer flex-col gap-3 p-4 active:bg-secondary/50">
+                <div key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className={`flex cursor-pointer flex-col gap-3 p-4 active:bg-secondary/50 ${rowTone(r)}`}>
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="truncate font-medium">{r.full_name || "Клиент не указан"}</p>
@@ -178,6 +226,10 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
                     <StatusBadge map={DEAL_STAGES} value={r.stage} />
                   </div>
                   <Progress r={r} day={day} />
+                  <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/50 p-3">
+                    <Commission r={r} />
+                    <Payment r={r} />
+                  </div>
                   <Contacts r={r} />
                 </div>
               ))}

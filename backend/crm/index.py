@@ -47,7 +47,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date', 'commission_type', 'commission_value', 'payment_schedule', 'next_payment_date', 'next_payment_amount'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -307,12 +307,18 @@ def handle_in_treatment(cur, params):
     day = params.get('date') or date.today().isoformat()
     q(cur, f"""SELECT d.id AS deal_id, d.title, d.stage, d.program, d.amount, d.check_in_date, {CHECKOUT_SQL} AS check_out_date,
             d.treatment_months, d.rep_name, d.rep_relation, d.rep_phone, d.rep_email, d.rep_messenger,
+            d.commission_type, d.commission_value, d.payment_schedule, d.next_payment_date, d.next_payment_amount, d.partner_id,
+            pp.name AS partner_name,
+            COALESCE((SELECT SUM(i.amount - COALESCE((SELECT SUM(pm.amount) FROM {t('crm_payments')} pm WHERE pm.invoice_id = i.id AND pm.archived_at IS NULL), 0))
+                FROM {t('crm_invoices')} i WHERE i.deal_id = d.id AND i.archived_at IS NULL AND i.status <> 'canceled'), 0) AS debt,
+            COALESCE((SELECT SUM(pm.amount) FROM {t('crm_payments')} pm WHERE pm.deal_id = d.id AND pm.archived_at IS NULL), 0) AS paid,
             c.id AS client_id, c.full_name, c.phone, c.email, c.messenger, c.is_anonymous, c.status AS client_status,
             c.rep_name AS client_rep_name, c.rep_relation AS client_rep_relation, c.rep_phone AS client_rep_phone,
             mu.name AS manager_name
         FROM {t('crm_deals')} d
         LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
         LEFT JOIN {t('crm_users')} mu ON mu.id = d.manager_id
+        LEFT JOIN {t('crm_partners')} pp ON pp.id = d.partner_id
         WHERE d.archived_at IS NULL AND d.stage <> 'lost' AND d.check_in_date IS NOT NULL
           AND d.check_in_date <= %s::date
           AND {CHECKOUT_SQL} >= %s::date
@@ -372,6 +378,12 @@ def prepare(cfg, body, partial):
                 v = int(v)
             if f in ('amount', 'commission_percent'):
                 v = float(v or 0)
+            if f in ('commission_value', 'next_payment_amount'):
+                v = round(float(v), 2) if v not in (None, '') else None
+            if f == 'commission_type' and v not in ('percent', 'fixed'):
+                v = None
+            if f == 'payment_schedule' and v not in ('once', 'weekly', 'biweekly', 'monthly'):
+                v = None
             if f == 'treatment_months':
                 v = round(float(v), 1) if v not in (None, '') else None
             if f == 'is_anonymous':
