@@ -10,6 +10,7 @@ import ArticleCard from "@/components/articles/ArticleCard";
 import { CATEGORIES, fetchArticle, readingTime } from "@/lib/articles";
 import { PHONE_HREF } from "@/components/clinic/contacts";
 import { SITE_URL, useSeo } from "@/lib/seo";
+import { CLINIC_ID, clinicNode, isoDate, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
 const splitContent = (content: string): [string, string] => {
   const lines = content.split("\n");
@@ -42,36 +43,62 @@ const ArticlePage = () => {
   const jsonLd = useMemo(() => {
     if (!a) return undefined;
     const url = `${SITE_URL}/articles/${a.slug}`;
-    return [
-      {
-        "@context": "https://schema.org",
-        "@type": "MedicalWebPage",
-        headline: a.title,
+    const text = (a.content || "").replace(/[#*_>`[\]()!-]/g, " ");
+    const words = text.split(/\s+/).filter(Boolean).length;
+    const image = a.cover_url ? { "@type": "ImageObject", url: a.cover_url, width: 1360, height: 768 } : { "@id": `${SITE_URL}/#logo` };
+    const author = a.author
+      ? { "@type": "Person", name: a.author, worksFor: { "@id": CLINIC_ID } }
+      : { "@id": CLINIC_ID };
+    return graph(
+      clinicNode,
+      logoNode,
+      websiteNode,
+      webPage({
+        type: ["MedicalWebPage", "WebPage"],
+        path: `/articles/${a.slug}`,
         name: a.meta_title || a.title,
-        description: a.meta_description || a.excerpt,
-        image: a.cover_url ? [a.cover_url] : undefined,
-        url,
-        mainEntityOfPage: url,
-        inLanguage: "ru-RU",
-        datePublished: a.published_at,
-        dateModified: a.updated_at || a.published_at,
-        author: { "@type": "Person", name: a.author || "Врачи addict.clinic" },
-        reviewedBy: { "@type": "Organization", name: "addict.clinic" },
-        publisher: { "@type": "MedicalOrganization", name: "addict.clinic", logo: { "@type": "ImageObject", url: `${SITE_URL}/logo.png` } },
-        about: cat ? { "@type": "MedicalCondition", name: cat.label } : undefined,
-        lastReviewed: a.updated_at?.slice(0, 10),
-      },
+        description: a.meta_description || a.excerpt || undefined,
+        crumbs: [["Статьи", "/articles"], ...(cat ? [[cat.label, `/articles?category=${a.category}`] as [string, string]] : []), [a.title, `/articles/${a.slug}`]],
+        extra: {
+          primaryImageOfPage: image,
+          datePublished: isoDate(a.published_at),
+          dateModified: isoDate(a.updated_at || a.published_at),
+          lastReviewed: (a.updated_at || a.published_at)?.slice(0, 10),
+          reviewedBy: { "@id": CLINIC_ID },
+          medicalAudience: [{ "@type": "MedicalAudience", audienceType: "Patient" }, { "@type": "PeopleAudience", audienceType: "Родственники зависимых" }],
+          specialty: "Psychiatric",
+          about: cat ? { "@type": "MedicalCondition", name: cat.label } : undefined,
+          mainEntity: { "@id": `${url}#article` },
+        },
+      }),
       {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Статьи", item: `${SITE_URL}/articles` },
-          { "@type": "ListItem", position: 3, name: a.title, item: url },
-        ],
+        "@type": "Article",
+        "@id": `${url}#article`,
+        headline: a.title.slice(0, 110),
+        alternativeHeadline: a.meta_title && a.meta_title !== a.title ? a.meta_title : undefined,
+        description: a.meta_description || a.excerpt || undefined,
+        image,
+        thumbnailUrl: a.cover_url || undefined,
+        url,
+        mainEntityOfPage: { "@id": `${url}#webpage` },
+        isPartOf: { "@id": `${url}#webpage` },
+        inLanguage: "ru-RU",
+        datePublished: isoDate(a.published_at),
+        dateModified: isoDate(a.updated_at || a.published_at),
+        author,
+        publisher: { "@id": CLINIC_ID },
+        articleSection: cat?.label,
+        about: cat ? { "@type": "MedicalCondition", name: cat.label } : undefined,
+        keywords: [cat?.label, "лечение зависимости", "анонимно"].filter(Boolean).join(", "),
+        wordCount: words,
+        timeRequired: `PT${readingTime(a.content || "")}M`,
+        hasPart: toc.map((h) => ({ "@type": "WebPageElement", name: h, url: `${url}#${slugifyHeading(h)}` })),
+        isAccessibleForFree: true,
+        copyrightHolder: { "@id": CLINIC_ID },
+        copyrightYear: (a.published_at || "").slice(0, 4) || undefined,
       },
-    ];
-  }, [a, cat]);
+    );
+  }, [a, cat, toc]);
 
   useSeo({
     title: a ? a.meta_title || `${a.title} — addict.clinic` : isError ? "Статья не найдена — addict.clinic" : "Статьи — addict.clinic",

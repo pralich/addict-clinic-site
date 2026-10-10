@@ -2,7 +2,7 @@ import Icon from "@/components/ui/icon";
 import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
 
-const STEPS = [
+export const STEPS = [
   { icon: "Phone", title: "Звонок или заявка", text: "Звоните или оставляете анонимную заявку. Имя и паспорт не нужны.", time: "1 минута" },
   { icon: "Headset", title: "Консультация", text: "Врач уточняет состояние и предлагает формат: выезд, амбулаторно или стационар.", time: "10–15 минут" },
   { icon: "Ambulance", title: "Выезд или приём", text: "Бригада приезжает в течение часа или вас встречают в клинике.", time: "от 40 минут" },

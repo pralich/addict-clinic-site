@@ -1,9 +1,10 @@
 import LegalLayout from "@/components/legal/LegalLayout";
 import { ORG } from "@/lib/legal";
 import { useSeo } from "@/lib/seo";
+import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
 const PrivacyPolicy = () => {
-  useSeo({ title: "Политика обработки персональных данных — addict.clinic", description: `Политика ${ORG.shortName} в отношении обработки персональных данных пользователей сайта ${ORG.site} по 152-ФЗ.`, path: "/privacy" });
+  useSeo({ title: "Политика обработки персональных данных — addict.clinic", description: `Политика ${ORG.shortName} в отношении обработки персональных данных пользователей сайта ${ORG.site} по 152-ФЗ.`, path: "/privacy" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/privacy", name: "Политика обработки персональных данных", crumbs: [["Политика обработки персональных данных", "/privacy"]], extra: { about: { "@id": ORG_ID } } })) });
   return (
     <LegalLayout
       title="Политика обработки персональных данных"

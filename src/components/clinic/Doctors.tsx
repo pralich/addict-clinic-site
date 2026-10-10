@@ -2,7 +2,7 @@ import Icon from "@/components/ui/icon";
 import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
 
-const DOCTORS = [
+export const DOCTORS = [
   {
     photo: "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/291e2d7c-2f5c-46e8-9342-1c220aec41a1.jpg",
     name: "Андрей Волков",

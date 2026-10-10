@@ -24,7 +24,7 @@ export type EntityDef = {
 };
 
 const tagsField: Field = { name: "tags", label: "Теги", type: "tags" };
-const tagsCol: Column = { key: "tags", label: "Теги", render: (r) => <TagList ids={r.tags} max={3} /> || "—" };
+const tagsCol: Column = { key: "tags", label: "Теги", render: (r) => (r.tags?.length ? <TagList ids={r.tags} max={3} /> : "—") };
 
 const REP = "Контактное лицо";
 const repFields: Field[] = [
@@ -139,9 +139,9 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     filters: ["manager", "partner"],
     columns: [
       { key: "full_name", label: "ФИО / псевдоним", render: (r) => (
-      tagsCol,
         <span className="font-medium">{r.full_name}{r.is_anonymous && <span className="ml-2 rounded bg-secondary px-1.5 py-0.5 text-[10px] uppercase text-muted-foreground">аноним</span>}</span>
       ) },
+      tagsCol,
       { key: "phone", label: "Телефон" },
       { key: "status", label: "Статус", render: (r) => <StatusBadge map={CLIENT_STATUS} value={r.status} /> },
       { key: "deals_count", label: "Сделок", className: "text-center" },

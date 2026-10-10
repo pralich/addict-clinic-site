@@ -2,9 +2,10 @@ import LegalLayout from "@/components/legal/LegalLayout";
 import { ORG } from "@/lib/legal";
 import { openCookieSettings } from "@/lib/cookie-consent";
 import { useSeo } from "@/lib/seo";
+import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
 const Cookies = () => {
-  useSeo({ title: "Политика cookie — addict.clinic", description: "Какие cookie использует сайт addict.clinic и как управлять согласием на аналитику.", path: "/cookies" });
+  useSeo({ title: "Политика cookie — addict.clinic", description: "Какие cookie использует сайт addict.clinic и как управлять согласием на аналитику.", path: "/cookies" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/cookies", name: "Политика cookie", crumbs: [["Политика cookie", "/cookies"]], extra: { about: { "@id": ORG_ID } } })) });
   return (
     <LegalLayout
       title="Политика использования cookie"

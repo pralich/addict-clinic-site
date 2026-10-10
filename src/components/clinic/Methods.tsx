@@ -4,7 +4,7 @@ import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
 import Cross3D from "./Cross3D";
 
-const METHODS = [
+export const METHODS = [
   {
     icon: "Stethoscope",
     name: "Наркология",

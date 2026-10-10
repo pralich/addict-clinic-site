@@ -3,6 +3,7 @@ import LegalLayout from "@/components/legal/LegalLayout";
 import Icon from "@/components/ui/icon";
 import { ORG } from "@/lib/legal";
 import { useSeo } from "@/lib/seo";
+import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
 const ROWS: [string, string][] = [
   ["Полное наименование", ORG.fullName],
@@ -21,7 +22,7 @@ const ROWS: [string, string][] = [
 ];
 
 const Requisites = () => {
-  useSeo({ title: "Реквизиты — addict.clinic", description: `Реквизиты оператора сайта ${ORG.site}: ${ORG.fullName}, ИНН ${ORG.inn}, ОГРН ${ORG.ogrn}.`, path: "/requisites" });
+  useSeo({ title: "Реквизиты — addict.clinic", description: `Реквизиты оператора сайта ${ORG.site}: ${ORG.fullName}, ИНН ${ORG.inn}, ОГРН ${ORG.ogrn}.`, path: "/requisites" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "AboutPage", path: "/requisites", name: "Реквизиты", crumbs: [["Реквизиты", "/requisites"]], extra: { mainEntity: { "@id": ORG_ID }, about: { "@id": ORG_ID } } })) });
   const copyAll = () => {
     navigator.clipboard.writeText(ROWS.map(([k, v]) => `${k}: ${v}`).join("\n")).then(() => toast.success("Реквизиты скопированы"));
   };

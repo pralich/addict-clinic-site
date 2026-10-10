@@ -7,23 +7,33 @@ import { sendPublicLead } from "@/lib/crm-api";
 import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 import { LEGAL_LINKS, ORG } from "@/lib/legal";
 import { SITE_URL, useSeo } from "@/lib/seo";
+import { CLINIC_ID, clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
-const PREMIUM_LD = {
-  "@context": "https://schema.org",
-  "@type": "MedicalWebPage",
-  name: "addict.clinic PREMIUM — VIP-лечение зависимостей",
-  url: `${SITE_URL}/premium`,
-  inLanguage: "ru-RU",
-  about: { "@type": "MedicalTherapy", name: "Анонимное стационарное лечение зависимостей в условиях резиденции" },
-  isPartOf: { "@id": `${SITE_URL}/#website` },
-  breadcrumb: {
-    "@type": "BreadcrumbList",
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
-      { "@type": "ListItem", position: 2, name: "PREMIUM", item: `${SITE_URL}/premium` },
-    ],
+const PREMIUM_LD = graph(
+  clinicNode,
+  logoNode,
+  websiteNode,
+  webPage({
+    type: ["MedicalWebPage", "WebPage"],
+    path: "/premium",
+    name: "addict.clinic PREMIUM — VIP-лечение зависимостей",
+    description: "Анонимное стационарное лечение зависимостей в условиях резиденции: персональная команда врачей, отдельное размещение, полная конфиденциальность.",
+    crumbs: [["PREMIUM", "/premium"]],
+    extra: { mainEntity: { "@id": `${SITE_URL}/premium#service` } },
+  }),
+  {
+    "@type": ["Service", "MedicalTherapy"],
+    "@id": `${SITE_URL}/premium#service`,
+    name: "addict.clinic PREMIUM",
+    serviceType: "Анонимное стационарное лечение зависимостей в условиях резиденции",
+    description: "VIP-программа лечения зависимостей: персональная команда врачей, отдельное размещение, полная конфиденциальность.",
+    provider: { "@id": CLINIC_ID },
+    areaServed: [{ "@type": "City", name: "Москва" }, { "@type": "AdministrativeArea", name: "Московская область" }],
+    audience: { "@type": "PeopleAudience", audienceType: "Люди с зависимостями и их близкие" },
+    relevantSpecialty: "Psychiatric",
+    url: `${SITE_URL}/premium`,
   },
-};
+);
 
 const IMG_SUITE = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/424c1c3f-702f-42ed-b676-2530ceff3686.jpg";
 const IMG_DOCTOR = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/931c2f44-73a7-4db8-8948-042009851630.jpg";

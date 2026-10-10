@@ -6,7 +6,7 @@ import Icon from "@/components/ui/icon";
 import SectionHead from "./SectionHead";
 import Reveal from "./Reveal";
 
-const PROBLEMS = [
+export const PROBLEMS = [
   {
     icon: "Wine",
     name: "Алкоголизм",

@@ -15,21 +15,32 @@ import LatestArticles from "@/components/clinic/LatestArticles";
 import Contacts from "@/components/clinic/Contacts";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_HREF } from "@/components/clinic/contacts";
-import { FAQ } from "@/components/clinic/Faq";
 import { useSeo } from "@/lib/seo";
+import { CLINIC_ID, clinicNode, conditionNodes, faqNode, graph, howToNode, logoNode, orgNode, physicianNodes, websiteNode, webPage } from "@/lib/schema";
 
-const FAQ_LD = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
-};
+const HOME_LD = graph(
+  clinicNode,
+  orgNode,
+  logoNode,
+  websiteNode,
+  webPage({
+    type: ["MedicalWebPage", "WebPage"],
+    path: "/",
+    name: "Анонимное лечение зависимостей в Москве 24/7 — addict.clinic",
+    extra: { about: { "@id": CLINIC_ID }, mainEntity: { "@id": CLINIC_ID }, audience: { "@type": "PeopleAudience", audienceType: "Люди с зависимостями и их близкие" } },
+  }),
+  ...physicianNodes,
+  faqNode,
+  howToNode,
+  { "@type": "ItemList", name: "С чем помогаем", itemListElement: conditionNodes.map((c, i) => ({ "@type": "ListItem", position: i + 1, item: c })) },
+);
 
 const Index = () => {
   useSeo({
     title: "Анонимное лечение зависимостей в Москве 24/7 — addict.clinic",
     description: "Анонимное лечение алкоголизма, наркомании, лекарственной зависимости и игромании. Срочный выезд нарколога 24/7, без постановки на учёт. Бесплатная консультация: 8 800 555-24-07.",
     path: "/",
-    jsonLd: FAQ_LD,
+    jsonLd: HOME_LD,
   });
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">

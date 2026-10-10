@@ -8,11 +8,12 @@ import ArticleCard from "@/components/articles/ArticleCard";
 import ArticleCta from "@/components/articles/ArticleCta";
 import { CATEGORIES, fetchArticles } from "@/lib/articles";
 import { SITE_URL, useSeo } from "@/lib/seo";
+import { CLINIC_ID, clinicNode, isoDate, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
 const Articles = () => {
   const [params, setParams] = useSearchParams();
   const category = params.get("category") || "";
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => params.get("q") || "");
   const { data, isLoading } = useQuery({ queryKey: ["articles"], queryFn: () => fetchArticles() });
   const all = useMemo(() => data?.items ?? [], [data]);
   const items = useMemo(
@@ -21,26 +22,44 @@ const Articles = () => {
   );
 
   const catLabel = CATEGORIES[category]?.label;
+  const listed = useMemo(() => all.filter((a) => !category || a.category === category), [all, category]);
   const jsonLd = useMemo(
-    () => ({
-      "@context": "https://schema.org",
-      "@type": "CollectionPage",
-      name: "Статьи о зависимостях и их лечении",
-      url: `${SITE_URL}/articles`,
-      inLanguage: "ru-RU",
-      breadcrumb: {
-        "@type": "BreadcrumbList",
-        itemListElement: [
-          { "@type": "ListItem", position: 1, name: "Главная", item: `${SITE_URL}/` },
-          { "@type": "ListItem", position: 2, name: "Статьи", item: `${SITE_URL}/articles` },
-        ],
-      },
-      mainEntity: {
-        "@type": "ItemList",
-        itemListElement: all.map((a, i) => ({ "@type": "ListItem", position: i + 1, url: `${SITE_URL}/articles/${a.slug}`, name: a.title })),
-      },
-    }),
-    [all],
+    () =>
+      graph(
+        clinicNode,
+        logoNode,
+        websiteNode,
+        webPage({
+          type: "CollectionPage",
+          path: category ? `/articles?category=${category}` : "/articles",
+          name: catLabel ? `${catLabel}: статьи о лечении и помощи` : "Статьи о зависимостях и их лечении",
+          description: "Полезные материалы врачей addict.clinic о зависимостях, лечении и помощи близким.",
+          crumbs: [["Статьи", "/articles"], ...(catLabel ? [[catLabel, `/articles?category=${category}`] as [string, string]] : [])],
+          extra: {
+            about: catLabel ? { "@type": "MedicalCondition", name: catLabel } : undefined,
+            mainEntity: {
+              "@type": "ItemList",
+              numberOfItems: listed.length,
+              itemListElement: listed.map((a, i) => ({
+                "@type": "ListItem",
+                position: i + 1,
+                item: {
+                  "@type": "Article",
+                  "@id": `${SITE_URL}/articles/${a.slug}#article`,
+                  url: `${SITE_URL}/articles/${a.slug}`,
+                  headline: a.title,
+                  description: a.excerpt || undefined,
+                  image: a.cover_url || undefined,
+                  datePublished: isoDate(a.published_at),
+                  author: a.author ? { "@type": "Person", name: a.author } : { "@id": CLINIC_ID },
+                  publisher: { "@id": CLINIC_ID },
+                },
+              })),
+            },
+          },
+        }),
+      ),
+    [listed, category, catLabel],
   );
 
   useSeo({

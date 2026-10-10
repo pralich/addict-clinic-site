@@ -8,6 +8,7 @@ import ProductDialog from "@/components/shop/ProductDialog";
 import CartSheet from "@/components/shop/CartSheet";
 import { fetchOrder, fetchProducts, rub, SHOP_CATEGORIES, useCart, type Product, type ShopCategory } from "@/lib/shop";
 import { SITE_URL, useSeo } from "@/lib/seo";
+import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
 type Sort = "popular" | "cheap" | "expensive";
 
@@ -45,16 +46,46 @@ const Shop = () => {
     title: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic — мерч, подарочные сертификаты, литература",
     description: "Подарочные сертификаты на консультации психолога, книги и рабочие тетради для семей, мерч клиники. Анонимная упаковка, доставка по России.",
     path: category ? `/shop?category=${category}` : "/shop",
-    jsonLd: {
-      "@context": "https://schema.org",
-      "@type": "ItemList",
-      name: "Магазин addict.clinic",
-      url: `${SITE_URL}/shop`,
-      itemListElement: all.map((p, i) => ({
-        "@type": "ListItem", position: i + 1,
-        item: { "@type": "Product", name: p.title, image: p.image_url, description: p.subtitle, offers: { "@type": "Offer", price: p.price, priceCurrency: "RUB", availability: "https://schema.org/InStock" } },
-      })),
-    },
+    jsonLd: graph(
+      clinicNode,
+      logoNode,
+      websiteNode,
+      webPage({
+        type: "CollectionPage",
+        path: category ? `/shop?category=${category}` : "/shop",
+        name: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic",
+        crumbs: [["Магазин", "/shop"], ...(category ? [[SHOP_CATEGORIES[category].label, `/shop?category=${category}`] as [string, string]] : [])],
+        extra: {
+          mainEntity: {
+            "@type": "ItemList",
+            numberOfItems: all.length,
+            itemListElement: all.map((p, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              item: {
+                "@type": "Product",
+                "@id": `${SITE_URL}/shop#product-${p.id}`,
+                name: p.title,
+                image: p.image_url || undefined,
+                description: p.subtitle || undefined,
+                category: SHOP_CATEGORIES[p.category]?.label,
+                brand: { "@type": "Brand", name: "addict.clinic" },
+                offers: {
+                  "@type": "Offer",
+                  url: `${SITE_URL}/shop`,
+                  price: p.price,
+                  priceCurrency: "RUB",
+                  availability: "https://schema.org/InStock",
+                  itemCondition: "https://schema.org/NewCondition",
+                  seller: { "@id": ORG_ID },
+                },
+              },
+            })),
+          },
+        },
+      }),
+      orgNode,
+    ),
   });
 
   const setCategory = (c: string) => setParams(c ? { category: c } : {});
