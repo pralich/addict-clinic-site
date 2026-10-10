@@ -17,6 +17,7 @@ export type Task = {
   entity_title: string | null;
   result_text?: string | null;
   comments_count?: number;
+  members?: { id: number; name: string }[];
 };
 
 export const PRIORITIES: Record<Task["priority"], { label: string; cls: string; icon: string }> = {

@@ -5,7 +5,7 @@ import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import { useAuth } from "../AuthContext";
 import { useOptions } from "../useCrm";
-import { Combo, field, useBillingReload } from "../billing/shared";
+import { Combo, MultiCombo, field, useBillingReload } from "../billing/shared";
 import { ENTITY_LINKS, PRIORITIES, type Task } from "./shared";
 import { Comments, ResultBlock } from "./TaskDiscussion";
 
@@ -32,10 +32,12 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
   const [due, setDue] = useState(src.due_at ? toLocal(new Date(src.due_at)) : at(1));
   const [priority, setPriority] = useState(src.priority || "normal");
   const [assignee, setAssignee] = useState<number | null>(src.assignee_id ?? user?.id ?? null);
+  const [members, setMembers] = useState<number[]>((src.members || []).map((m) => m.id));
   const [entityType, setEntityType] = useState<string>(src.entity_type || "");
   const [entityId, setEntityId] = useState<number | null>(src.entity_id ?? null);
   const [busy, setBusy] = useState(false);
 
+  const people = (opts?.users || []).map((u) => ({ ...u, name: u.id === user?.id ? `${u.name} (я)` : u.name }));
   const link = ENTITY_LINKS.find((l) => l.value === entityType);
   const entityItems = link ? ((opts?.[link.opt] as { id: number; name: string }[]) || []) : [];
 
@@ -46,7 +48,7 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
     setBusy(true);
     try {
       const body = {
-        text, details, priority, assignee_id: assignee,
+        text, details, priority, assignee_id: assignee, member_ids: members.filter((m) => m !== assignee),
         due_at: due ? new Date(due).toISOString() : null,
         entity_type: entityType || null, entity_id: entityType ? entityId : null,
       };
@@ -82,7 +84,7 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="text-sm">
               <span className="mb-1 block font-medium">Исполнитель</span>
-              <Combo value={assignee} onChange={setAssignee} items={(opts?.users || []).map((u) => ({ ...u, name: u.id === user?.id ? `${u.name} (я)` : u.name }))} placeholder="Выберите сотрудника" />
+              <Combo value={assignee} onChange={(v) => { setAssignee(v); setMembers((m) => m.filter((x) => x !== v)); }} avatars items={people} placeholder="Выберите сотрудника" />
             </div>
             <div className="text-sm">
               <span className="mb-1 block font-medium">Приоритет</span>
@@ -92,6 +94,11 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
                 ))}
               </div>
             </div>
+          </div>
+
+          <div className="text-sm">
+            <span className="mb-1 flex items-baseline justify-between font-medium">Соисполнители<span className="text-xs font-normal text-muted-foreground">видят задачу и получают уведомления</span></span>
+            <MultiCombo value={members} onChange={setMembers} avatars items={people.filter((p) => p.id !== assignee)} placeholder="Добавить сотрудников" />
           </div>
 
           <div className="text-sm">

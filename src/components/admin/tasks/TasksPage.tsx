@@ -150,6 +150,12 @@ const TasksPage = ({ onOpen, openTask, onTaskOpened }: { onOpen: (resource: stri
                       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className={`inline-flex items-center gap-1 ${due.cls}`}><Icon name="Clock" size={12} />{due.label}</span>
                         <span className="inline-flex items-center gap-1"><Icon name="User" size={12} />{t.assignee_id === user?.id ? "Мне" : t.assignee_name || "—"}</span>
+                        {!!t.members?.length && (
+                          <span className="inline-flex items-center gap-1" title={t.members.map((m) => m.name).join(", ")}>
+                            <Icon name="Users" size={12} />
+                            {t.members.some((m) => m.id === user?.id) ? "я соисполнитель" : t.members.length === 1 ? `+ ${t.members[0].name}` : `+${t.members.length}`}
+                          </span>
+                        )}
                         {t.user_id !== t.assignee_id && t.author_name && <span className="inline-flex items-center gap-1"><Icon name="Send" size={12} />от {t.user_id === user?.id ? "меня" : t.author_name}</span>}
                         {Number(t.comments_count) > 0 && <span className="inline-flex items-center gap-1"><Icon name="MessageSquare" size={12} />{t.comments_count}</span>}
                         {t.result_text && <span className="inline-flex items-center gap-1 text-emerald-700"><Icon name="ClipboardCheck" size={12} />есть результат</span>}

@@ -100,43 +100,108 @@ export const useBillingReload = () => {
   return () => qc.invalidateQueries({ queryKey: ["crm"] });
 };
 
-export const Combo = ({ value, onChange, items, placeholder, empty = "Ничего не найдено", allowClear }: {
+const ITEM = "group/item mx-1 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm aria-selected:bg-secondary data-[selected=true]:bg-secondary";
+const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
+
+const Avatar = ({ name }: { name: string }) => (
+  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-secondary text-[10px] font-semibold text-muted-foreground group-data-[selected=true]/item:bg-card">{initials(name) || "?"}</span>
+);
+
+const ComboList = ({ items, isOn, onPick, empty, clear, avatars }: {
+  items: { id: number; name: string; hint?: string | null }[];
+  isOn: (id: number) => boolean;
+  onPick: (id: number) => void;
+  empty: string;
+  clear?: React.ReactNode;
+  avatars?: boolean;
+}) => (
+  <Command className="rounded-xl">
+    <CommandInput placeholder="Поиск…" className="h-10" />
+    <CommandList className="max-h-[280px] py-1">
+      <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">{empty}</CommandEmpty>
+      <CommandGroup className="p-0">
+        {clear}
+        {items.map((i) => {
+          const on = isOn(i.id);
+          return (
+            <CommandItem key={i.id} value={`${i.name} ${i.hint || ""} #${i.id}`} onSelect={() => onPick(i.id)} className={ITEM}>
+              {avatars && <Avatar name={i.name} />}
+              <span className={`flex-1 truncate ${on ? "font-medium" : ""}`}>{i.name}</span>
+              {i.hint && <span className="shrink-0 text-xs text-muted-foreground">{i.hint}</span>}
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full ${on ? "bg-primary text-primary-foreground" : ""}`}>
+                {on && <Icon name="Check" size={11} />}
+              </span>
+            </CommandItem>
+          );
+        })}
+      </CommandGroup>
+    </CommandList>
+  </Command>
+);
+
+export const Combo = ({ value, onChange, items, placeholder, empty = "Ничего не найдено", allowClear, avatars }: {
   value: number | null;
   onChange: (v: number | null) => void;
   items: { id: number; name: string; hint?: string | null }[];
   placeholder: string;
   empty?: string;
   allowClear?: boolean;
+  avatars?: boolean;
 }) => {
   const [open, setOpen] = useState(false);
   const cur = items.find((i) => i.id === value);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <button type="button" className={`${field} flex items-center justify-between gap-2 text-left`}>
-          <span className={`truncate ${cur ? "" : "text-muted-foreground"}`}>{cur?.name || placeholder}</span>
-          <Icon name="ChevronsUpDown" size={14} className="shrink-0 text-muted-foreground" />
+        <button type="button" className={`${field} flex items-center justify-between gap-2 text-left ${open ? "border-foreground/30" : ""}`}>
+          <span className="flex min-w-0 items-center gap-2">
+            {avatars && cur && <Avatar name={cur.name} />}
+            <span className={`truncate ${cur ? "" : "text-muted-foreground"}`}>{cur?.name || placeholder}</span>
+          </span>
+          <Icon name="ChevronDown" size={15} className={`shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Поиск…" />
-          <CommandList>
-            <CommandEmpty>{empty}</CommandEmpty>
-            <CommandGroup>
-              {allowClear && value && (
-                <CommandItem value="__clear" onSelect={() => { onChange(null); setOpen(false); }} className="text-muted-foreground">Не выбрано</CommandItem>
-              )}
-              {items.map((i) => (
-                <CommandItem key={i.id} value={`${i.name} ${i.hint || ""} #${i.id}`} onSelect={() => { onChange(i.id); setOpen(false); }}>
-                  <Icon name="Check" size={14} className={`mr-2 ${i.id === value ? "opacity-100" : "opacity-0"}`} />
-                  <span className="flex-1 truncate">{i.name}</span>
-                  {i.hint && <span className="ml-2 text-xs text-muted-foreground">{i.hint}</span>}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] overflow-hidden rounded-xl p-0 shadow-lg" align="start" sideOffset={6}>
+        <ComboList items={items} empty={empty} avatars={avatars} isOn={(id) => id === value}
+          onPick={(id) => { onChange(id); setOpen(false); }}
+          clear={allowClear && value ? (
+            <CommandItem value="__clear" onSelect={() => { onChange(null); setOpen(false); }} className={`${ITEM} text-muted-foreground`}>
+              <Icon name="X" size={14} />Не выбрано
+            </CommandItem>
+          ) : null} />
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+export const MultiCombo = ({ value, onChange, items, placeholder, empty = "Ничего не найдено", avatars }: {
+  value: number[];
+  onChange: (v: number[]) => void;
+  items: { id: number; name: string; hint?: string | null }[];
+  placeholder: string;
+  empty?: string;
+  avatars?: boolean;
+}) => {
+  const [open, setOpen] = useState(false);
+  const chosen = value.map((id) => items.find((i) => i.id === id)).filter(Boolean) as typeof items;
+  const toggle = (id: number) => onChange(value.includes(id) ? value.filter((v) => v !== id) : [...value, id]);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <div role="button" tabIndex={0} className={`${field} flex h-auto min-h-10 cursor-pointer flex-wrap items-center gap-1.5 py-1.5 text-left ${open ? "border-foreground/30" : ""}`}>
+          {chosen.length === 0 && <span className="flex-1 text-muted-foreground">{placeholder}</span>}
+          {chosen.map((c) => (
+            <span key={c.id} className="inline-flex items-center gap-1 rounded-full bg-secondary py-0.5 pl-1 pr-1.5 text-xs">
+              {avatars && <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-[9px] font-semibold">{initials(c.name)}</span>}
+              {c.name}
+              <button type="button" onClick={(e) => { e.stopPropagation(); toggle(c.id); }} className="text-muted-foreground hover:text-foreground" aria-label="Убрать"><Icon name="X" size={12} /></button>
+            </span>
+          ))}
+          <Icon name="Plus" size={15} className="ml-auto shrink-0 text-muted-foreground" />
+        </div>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] min-w-[220px] overflow-hidden rounded-xl p-0 shadow-lg" align="start" sideOffset={6}>
+        <ComboList items={items} empty={empty} avatars={avatars} isOn={(id) => value.includes(id)} onPick={toggle} />
       </PopoverContent>
     </Popover>
   );

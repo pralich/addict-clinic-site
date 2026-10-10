@@ -33,14 +33,14 @@ def list_tasks(cur, t, params, user):
     where, args = ["a.kind = 'task'"], []
     scope = params.get('scope') or 'mine'
     if scope == 'mine':
-        where.append('a.assignee_id = %s')
-        args.append(user['id'])
+        where.append(f'(a.assignee_id = %s OR EXISTS (SELECT 1 FROM {t("crm_task_members")} m WHERE m.task_id = a.id AND m.user_id = %s))')
+        args += [user['id'], user['id']]
     elif scope == 'created':
         where.append('a.user_id = %s AND (a.assignee_id IS NULL OR a.assignee_id <> %s)')
         args += [user['id'], user['id']]
     if str(params.get('assignee_id') or '').isdigit():
-        where.append('a.assignee_id = %s')
-        args.append(int(params['assignee_id']))
+        where.append(f'(a.assignee_id = %s OR EXISTS (SELECT 1 FROM {t("crm_task_members")} m WHERE m.task_id = a.id AND m.user_id = %s))')
+        args += [int(params['assignee_id'])] * 2
     status = params.get('status') or 'open'
     if status == 'open':
         where.append('a.done_at IS NULL')
@@ -59,6 +59,7 @@ def list_tasks(cur, t, params, user):
     cur.execute(f"""SELECT a.id, a.entity_type, a.entity_id, a.text, a.details, a.priority, a.due_at, a.done_at, a.created_at,
             a.user_id, u.name AS author_name, a.assignee_id, s.name AS assignee_name, a.result_text,
             (SELECT COUNT(*) FROM {t('crm_task_comments')} c WHERE c.task_id = a.id) AS comments_count,
+            (SELECT COALESCE(json_agg(json_build_object('id', mu.id, 'name', mu.name) ORDER BY mu.name), '[]'::json) FROM {t('crm_task_members')} m JOIN {t('crm_users')} mu ON mu.id = m.user_id WHERE m.task_id = a.id) AS members,
             {_title_sql(t)} AS entity_title
         FROM {t('crm_activities')} a
         LEFT JOIN {t('crm_users')} u ON u.id = a.user_id
@@ -69,10 +70,11 @@ def list_tasks(cur, t, params, user):
         if i['entity_type'] == NONE:
             i['entity_type'], i['entity_id'] = None, None
     cur.execute(f"""SELECT
-        COUNT(*) FILTER (WHERE assignee_id = %s AND done_at IS NULL) AS mine,
-        COUNT(*) FILTER (WHERE assignee_id = %s AND done_at IS NULL AND due_at < NOW()) AS overdue,
-        COUNT(*) FILTER (WHERE assignee_id = %s AND done_at IS NULL AND due_at::date = CURRENT_DATE) AS today
-        FROM {t('crm_activities')} WHERE kind = 'task'""", (user['id'],) * 3)
+        COUNT(*) AS mine,
+        COUNT(*) FILTER (WHERE due_at < NOW()) AS overdue,
+        COUNT(*) FILTER (WHERE due_at::date = CURRENT_DATE) AS today
+        FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL
+          AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s))""", (user['id'],) * 2)
     return {'items': items, 'counts': cur.fetchone()}
 
 
@@ -103,6 +105,15 @@ def _payload(body, user, partial=False):
     return data, None
 
 
+def _set_members(cur, t, task_id, body, assignee_id):
+    if 'member_ids' not in body:
+        return
+    ids = {int(x) for x in (body.get('member_ids') or []) if str(x).isdigit()} - {assignee_id}
+    cur.execute(f"DELETE FROM {t('crm_task_members')} WHERE task_id = %s AND NOT (user_id = ANY(%s))", (task_id, list(ids) or [0]))
+    for uid in ids:
+        cur.execute(f"INSERT INTO {t('crm_task_members')} (task_id, user_id) VALUES (%s, %s) ON CONFLICT DO NOTHING", (task_id, uid))
+
+
 def save_task(cur, t, eid, body, user):
     if eid:
         cur.execute(f"SELECT * FROM {t('crm_activities')} WHERE id = %s AND kind = 'task'", (eid,))
@@ -120,9 +131,12 @@ def save_task(cur, t, eid, body, user):
             args.append(v)
         if 'due_at' in data and data['due_at'] != old['due_at']:
             sets.append('due_notified_at = NULL')
-        if not sets:
+        if not sets and 'member_ids' not in body:
             return 400, {'error': 'Нет данных'}
-        cur.execute(f"UPDATE {t('crm_activities')} SET {', '.join(sets)}, updated_at = NOW() WHERE id = %s RETURNING id", args + [eid])
+        if not sets:
+            sets.append('updated_at = NOW()')
+        cur.execute(f"UPDATE {t('crm_activities')} SET {', '.join(sets)}, updated_at = NOW() WHERE id = %s RETURNING assignee_id", args + [eid])
+        _set_members(cur, t, eid, body, cur.fetchone()['assignee_id'])
         if body.get('done') and not old['done_at'] and old['user_id'] and old['user_id'] != user['id']:
             cur.execute(f"INSERT INTO {t('crm_task_comments')} (task_id, user_id, text) VALUES (%s, %s, %s)",
                         (eid, user['id'], '✓ Задача выполнена' + (f": {data['result_text']}" if data.get('result_text') else '')))
@@ -133,12 +147,16 @@ def save_task(cur, t, eid, body, user):
     cols = ', '.join(data)
     ph = ', '.join(['%s'] * len(data))
     cur.execute(f"INSERT INTO {t('crm_activities')} (kind, user_id, {cols}) VALUES ('task', %s, {ph}) RETURNING id", [user['id'], *data.values()])
-    return 200, {'ok': True, 'id': cur.fetchone()['id'], 'ping': True}
+    new_id = cur.fetchone()['id']
+    _set_members(cur, t, new_id, body, data['assignee_id'])
+    cur.execute(f"UPDATE {t('crm_task_members')} SET notified = TRUE WHERE task_id = %s AND user_id = %s", (new_id, user['id']))
+    return 200, {'ok': True, 'id': new_id, 'ping': True}
 
 
 def get_task(cur, t, eid):
     cur.execute(f"""SELECT a.id, a.entity_type, a.entity_id, a.text, a.details, a.priority, a.due_at, a.done_at, a.created_at, a.result_text,
-            a.user_id, u.name AS author_name, a.assignee_id, s.name AS assignee_name, {_title_sql(t)} AS entity_title
+            a.user_id, u.name AS author_name, a.assignee_id, s.name AS assignee_name, {_title_sql(t)} AS entity_title,
+            (SELECT COALESCE(json_agg(json_build_object('id', mu.id, 'name', mu.name) ORDER BY mu.name), '[]'::json) FROM {t('crm_task_members')} m JOIN {t('crm_users')} mu ON mu.id = m.user_id WHERE m.task_id = a.id) AS members
         FROM {t('crm_activities')} a
         LEFT JOIN {t('crm_users')} u ON u.id = a.user_id
         LEFT JOIN {t('crm_users')} s ON s.id = a.assignee_id
@@ -183,6 +201,7 @@ def delete_task(cur, t, eid, user):
     if row['user_id'] != user['id'] and user['role'] != 'admin':
         return 403, {'error': 'Удалить может только автор задачи или администратор'}
     cur.execute(f"DELETE FROM {t('crm_task_comments')} WHERE task_id = %s", (eid,))
+    cur.execute(f"DELETE FROM {t('crm_task_members')} WHERE task_id = %s", (eid,))
     cur.execute(f"DELETE FROM {t('crm_activities')} WHERE id = %s", (eid,))
     return 200, {'ok': True}
 

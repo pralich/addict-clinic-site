@@ -94,6 +94,11 @@ def _user_subs(cur, user_id):
     return cur.fetchall()
 
 
+def _members(cur, task_id):
+    cur.execute(f"SELECT user_id FROM {t('crm_task_members')} WHERE task_id = %s", (task_id,))
+    return [r['user_id'] for r in cur.fetchall()]
+
+
 def _fmt_due(d):
     if not d:
         return 'без срока'
@@ -122,6 +127,19 @@ def notify_tasks(cur):
             'url': f"/admin?page=tasks&task={a['id']}", 'tag': f"task-{a['id']}",
         })
 
+    cur.execute(f"""SELECT m.task_id, m.user_id, a.text, a.due_at, a.priority, u.name AS author FROM {t('crm_task_members')} m
+        JOIN {t('crm_activities')} a ON a.id = m.task_id LEFT JOIN {t('crm_users')} u ON u.id = a.user_id
+        WHERE NOT m.notified ORDER BY m.created_at LIMIT 30""")
+    for m in cur.fetchall():
+        cur.execute(f"UPDATE {t('crm_task_members')} SET notified = TRUE WHERE task_id = %s AND user_id = %s AND NOT notified RETURNING task_id", (m['task_id'], m['user_id']))
+        if not cur.fetchone():
+            continue
+        sent += push_lib.send(cur, t, _user_subs(cur, m['user_id']), {
+            'title': f"Вы соисполнитель · от {m['author'] or 'коллеги'}",
+            'body': f"{_short(m['text'])} · срок {_fmt_due(m['due_at'])}",
+            'url': f"/admin?page=tasks&task={m['task_id']}", 'tag': f"task-{m['task_id']}",
+        })
+
     cur.execute(f"""SELECT a.id, a.text, a.due_at, a.assignee_id FROM {t('crm_activities')} a
         WHERE a.kind = 'task' AND a.done_at IS NULL AND a.assignee_id IS NOT NULL AND a.due_at IS NOT NULL
           AND a.due_at <= NOW() AND a.due_notified_at IS NULL ORDER BY a.due_at LIMIT 30""")
@@ -130,11 +148,13 @@ def notify_tasks(cur):
         if not cur.fetchone():
             continue
         late = a['due_at'] < datetime.utcnow() - timedelta(hours=1)
-        sent += push_lib.send(cur, t, _user_subs(cur, a['assignee_id']), {
+        payload = {
             'title': 'Задача просрочена' if late else 'Наступил срок задачи',
             'body': f"{_short(a['text'])} · срок был {_fmt_due(a['due_at'])}" if late else _short(a['text']),
             'url': f"/admin?page=tasks&task={a['id']}", 'tag': f"task-due-{a['id']}",
-        })
+        }
+        for uid in {a['assignee_id'], *_members(cur, a['id'])}:
+            sent += push_lib.send(cur, t, _user_subs(cur, uid), payload)
 
     cur.execute(f"""SELECT c.id, c.task_id, c.text, c.user_id, u.name AS who, a.text AS task, a.user_id AS author_id, a.assignee_id
         FROM {t('crm_task_comments')} c JOIN {t('crm_activities')} a ON a.id = c.task_id
@@ -144,7 +164,7 @@ def notify_tasks(cur):
         cur.execute(f"UPDATE {t('crm_task_comments')} SET notified = TRUE WHERE id = %s AND NOT notified RETURNING id", (c['id'],))
         if not cur.fetchone():
             continue
-        for uid in {c['author_id'], c['assignee_id']} - {c['user_id'], None}:
+        for uid in {c['author_id'], c['assignee_id'], *_members(cur, c['task_id'])} - {c['user_id'], None}:
             sent += push_lib.send(cur, t, _user_subs(cur, uid), {
                 'title': f"{c['who'] or 'Коллега'} · {_short(c['task'], 50)}",
                 'body': _short(c['text'], 140),
