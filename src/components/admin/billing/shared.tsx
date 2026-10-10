@@ -43,6 +43,7 @@ export type Payment = {
   deal_title: string | null;
   amount: number;
   paid_at: string;
+  purpose?: "commission" | "treatment";
   method: string;
   note: string | null;
   created_by_name: string | null;

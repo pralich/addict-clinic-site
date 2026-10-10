@@ -20,6 +20,7 @@ const PaymentDialog = ({ invoice, preset, payment, onClose }: Props) => {
   const [paidAt, setPaidAt] = useState(payment?.paid_at?.slice(0, 10) || today());
   const [method, setMethod] = useState(payment?.method || "bank");
   const [note, setNote] = useState(payment?.note || "");
+  const [purpose, setPurpose] = useState<"commission" | "treatment">(payment?.purpose || "commission");
   const [payerType, setPayerType] = useState<PayerType>((src.payer_type as PayerType) || "client");
   const [payer, setPayer] = useState<Record<string, number | null>>({ client_id: src.client_id ?? null, partner_id: src.partner_id ?? null, counterparty_id: src.counterparty_id ?? null });
   const [dealId, setDealId] = useState<number | null>(src.deal_id ?? null);
@@ -38,10 +39,10 @@ const PaymentDialog = ({ invoice, preset, payment, onClose }: Props) => {
     setBusy(true);
     try {
       const body = edit
-        ? { amount: num(amount), paid_at: paidAt, method, note, invoice_id: invoiceId, ...(invoiceId ? {} : { payer_type: payerType, [meta.ref]: payer[meta.ref], deal_id: dealId }) }
+        ? { amount: num(amount), paid_at: paidAt, method, note, purpose, invoice_id: invoiceId, ...(invoiceId ? {} : { payer_type: payerType, [meta.ref]: payer[meta.ref], deal_id: dealId }) }
         : invoice
-          ? { invoice_id: invoice.id, amount: num(amount), paid_at: paidAt, method, note }
-          : { payer_type: payerType, [meta.ref]: payer[meta.ref], deal_id: dealId, amount: num(amount), paid_at: paidAt, method, note };
+          ? { invoice_id: invoice.id, amount: num(amount), paid_at: paidAt, method, note, purpose }
+          : { payer_type: payerType, [meta.ref]: payer[meta.ref], deal_id: dealId, amount: num(amount), paid_at: paidAt, method, note, purpose };
       await api({ resource: "billing", action: "payments", id: payment?.id }, edit ? "PUT" : "POST", body);
       toast.success(edit ? "Платёж обновлён" : "Оплата записана");
       reload();
@@ -100,6 +101,15 @@ const PaymentDialog = ({ invoice, preset, payment, onClose }: Props) => {
               <Combo value={dealId} onChange={setDealId} items={opts?.deals || []} placeholder="Сделка (необязательно)" allowClear />
             </>
           )}
+          <div>
+            <span className="mb-1 block text-sm font-medium">Назначение</span>
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-secondary p-1">
+              {([["commission", "Комиссия"], ["treatment", "Оплата лечения"]] as const).map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setPurpose(k)} className={`rounded-lg py-1.5 text-sm ${purpose === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
+              ))}
+            </div>
+            {purpose === "commission" && <p className="mt-1 text-xs text-muted-foreground">Учитывается в графике комиссии и сдвигает ближайший платёж</p>}
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
               <span className="mb-1 block font-medium">Сумма, ₽</span>

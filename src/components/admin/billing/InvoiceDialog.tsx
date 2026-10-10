@@ -76,7 +76,7 @@ const InvoiceDialog = ({ invoice, preset, onClose }: { invoice?: Invoice | null;
         <DialogHeader><DialogTitle className="font-heading">{invoice ? `Счёт № ${invoice.number}` : preset?.periodDate ? "Счёт на ближайший платёж" : "Новый счёт"}</DialogTitle></DialogHeader>
         {!invoice && preset?.periodDate && (
           <p className="-mt-2 flex items-start gap-2 rounded-lg bg-secondary px-3 py-2 text-xs text-muted-foreground">
-            <Icon name="Info" size={13} className="mt-0.5 shrink-0" />Счёт закроет платёж от {preset.periodDate.split("-").reverse().join(".")} — ближайшим станет следующий по графику от даты заезда.
+            <Icon name="Info" size={13} className="mt-0.5 shrink-0" />Счёт на платёж до {preset.periodDate.split("-").reverse().join(".")}. Ближайший платёж сдвинется, когда по нему поступит оплата.
           </p>
         )}
         <form onSubmit={save} className="flex flex-col gap-4">

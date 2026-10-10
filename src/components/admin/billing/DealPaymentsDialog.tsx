@@ -55,7 +55,7 @@ const DealPaymentsDialog = ({ dealId, title, preset, onClose }: Props) => {
                 <li key={p.id} className="flex items-center gap-2 px-3 py-2.5 text-sm">
                   <Icon name={PAY_METHODS[p.method]?.icon || "Wallet"} size={15} className="shrink-0 text-muted-foreground" />
                   <span className="min-w-0 flex-1">
-                    <span className="block">{fmtDate(p.paid_at)} · {PAY_METHODS[p.method]?.label}{p.invoice_number ? ` · счёт № ${p.invoice_number}` : ""}</span>
+                    <span className="block">{fmtDate(p.paid_at)} · {PAY_METHODS[p.method]?.label}{p.invoice_number ? ` · счёт № ${p.invoice_number}` : ""} · {p.purpose === "treatment" ? "лечение" : "комиссия"}</span>
                     <span className="block truncate text-xs text-muted-foreground">{p.payer_name}{p.note ? ` · ${p.note}` : ""}</span>
                   </span>
                   <span className="font-medium tabular-nums text-emerald-700">+{money(p.amount)}</span>

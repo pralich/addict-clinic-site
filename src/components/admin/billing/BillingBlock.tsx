@@ -94,7 +94,7 @@ const BillingBlock = ({ resource, item, onOpen }: Props) => {
               <li key={p.id} onClick={() => setEditPay(p)} className="group flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/50">
                 <Icon name={PAY_METHODS[p.method]?.icon || "Wallet"} size={14} className="shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1">
-                  <span className="block">{fmtDate(p.paid_at)}{p.invoice_number ? ` · счёт № ${p.invoice_number}` : " · без счёта"}</span>
+                  <span className="block">{fmtDate(p.paid_at)}{p.invoice_number ? ` · счёт № ${p.invoice_number}` : " · без счёта"}{p.purpose === "treatment" ? " · лечение" : " · комиссия"}</span>
                   {p.note && <span className="block truncate text-xs text-muted-foreground">{p.note}</span>}
                 </span>
                 <span className="font-medium tabular-nums text-emerald-700">+{money(p.amount)}</span>

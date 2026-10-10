@@ -53,7 +53,7 @@ const NextPayment = ({ deal, onEdit }: { deal: Deal; onEdit: () => void }) => {
       {!has ? (
         deal.check_in_date && deal.payments_total ? (
           <div className="flex items-center gap-3 rounded-xl border bg-emerald-50/60 p-4 text-sm text-emerald-900">
-            <Icon name="CircleCheck" size={18} />Все {deal.payments_total} {deal.payments_total === 1 ? "платёж выставлен" : "платежей выставлены"} по графику
+            <Icon name="CircleCheck" size={18} />Все {deal.payments_total} {deal.payments_total === 1 ? "платёж оплачен" : "платежей оплачены"} по графику · {money(deal.commission_paid)}
           </div>
         ) : (
           <button onClick={onEdit} className="flex w-full items-center gap-3 rounded-xl border border-dashed p-4 text-left text-sm text-muted-foreground transition-colors hover:border-foreground/30 hover:text-foreground">
@@ -69,7 +69,7 @@ const NextPayment = ({ deal, onEdit }: { deal: Deal; onEdit: () => void }) => {
               до {fmtDate(deal.next_payment_date)} <DueBadge date={deal.next_payment_date} />
             </p>
             <p className="mt-1 text-xs text-muted-foreground" title={PAY_SCHEDULE_HINT}>
-              Платёж {deal.payment_index} из {deal.payments_total} · {(PAYMENT_SCHEDULES[deal.payment_schedule] || "Ежемесячно").toLowerCase()} от заезда {fmtDate(deal.check_in_date)}
+              Платёж {deal.payment_index} из {deal.payments_total} · оплачено {deal.payments_paid} ({money(deal.commission_paid)}) · {(PAYMENT_SCHEDULES[deal.payment_schedule] || "Ежемесячно").toLowerCase()} от заезда {fmtDate(deal.check_in_date)}
             </p>
           </div>
           <div className="flex items-center gap-1.5">

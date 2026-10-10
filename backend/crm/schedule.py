@@ -47,33 +47,26 @@ def payment_dates(deal):
     return out
 
 
-def payment_plan(deal, invoiced, loose=0.0):
+def payment_plan(deal, paid_commission=0.0):
     dates = payment_dates(deal)
+    empty = {'next_payment_date': None, 'next_payment_amount': None, 'payment_index': None, 'payments_total': len(dates), 'payments_paid': 0, 'commission_paid': round(paid_commission, 2)}
     if not dates:
-        return {'next_payment_date': None, 'next_payment_amount': None, 'payment_index': None, 'payments_total': 0, 'payments_invoiced': 0}
+        return empty
     per = commission(deal) or None
-    done = {d for d in invoiced if d}
-    left = [(i, d) for i, d in enumerate(dates) if d not in done]
-    if per and loose > 0:
-        left = left[int(loose / per + 0.001):]
-    if not left:
-        return {'next_payment_date': None, 'next_payment_amount': None, 'payment_index': None, 'payments_total': len(dates), 'payments_invoiced': len(dates)}
-    i, d = left[0]
-    return {'next_payment_date': d, 'next_payment_amount': per, 'payment_index': i + 1, 'payments_total': len(dates), 'payments_invoiced': len(dates) - len(left)}
+    done = min(len(dates), int(paid_commission / per + 0.001)) if per else 0
+    rest = round(paid_commission - done * per, 2) if per else 0
+    empty['payments_paid'] = done
+    if done >= len(dates):
+        return empty
+    return {**empty, 'next_payment_date': dates[done], 'next_payment_amount': round(per - rest, 2) if per else None, 'payment_index': done + 1}
 
 
 def attach_plans(cur, t, deals, key='id'):
     ids = [d[key] for d in deals if d.get(key)]
-    periods, loose = {}, {}
+    paid = {}
     if ids:
-        cur.execute(f"SELECT deal_id, period_date, amount, payer_type FROM {t('crm_invoices')} WHERE deal_id = ANY(%s) AND archived_at IS NULL AND status <> 'canceled'", (ids,))
-        for r in cur.fetchall():
-            if r['period_date']:
-                periods.setdefault(r['deal_id'], set()).add(r['period_date'])
-            else:
-                loose.setdefault(r['deal_id'], []).append((r['payer_type'], float(r['amount'] or 0)))
+        cur.execute(f"SELECT deal_id, SUM(amount) AS s FROM {t('crm_payments')} WHERE deal_id = ANY(%s) AND archived_at IS NULL AND purpose = 'commission' GROUP BY deal_id", (ids,))
+        paid = {r['deal_id']: float(r['s'] or 0) for r in cur.fetchall()}
     for d in deals:
-        payer = 'partner' if d.get('partner_id') else 'client'
-        lz = sum(a for p, a in loose.get(d.get(key), []) if p == payer)
-        d.update(payment_plan(d, periods.get(d.get(key), set()), lz))
+        d.update(payment_plan(d, paid.get(d.get(key), 0.0)))
     return deals

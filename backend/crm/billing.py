@@ -196,9 +196,10 @@ def _save_payment(cur, t, body, user):
         deal_id = _id(body.get('deal_id'))
         inv = None
     data = {**payer, 'invoice_id': inv_id, 'deal_id': deal_id, 'amount': amount, 'paid_at': _date(body.get('paid_at'), date.today()),
-            'method': body.get('method') if body.get('method') in METHODS else 'bank', 'note': _s(body.get('note'), 2000), 'uid': user['id']}
-    cur.execute(f"""INSERT INTO {t('crm_payments')} (invoice_id, payer_type, client_id, partner_id, counterparty_id, deal_id, amount, paid_at, method, note, created_by)
-        VALUES (%(invoice_id)s, %(payer_type)s, %(client_id)s, %(partner_id)s, %(counterparty_id)s, %(deal_id)s, %(amount)s, %(paid_at)s, %(method)s, %(note)s, %(uid)s) RETURNING *""", data)
+            'method': body.get('method') if body.get('method') in METHODS else 'bank', 'note': _s(body.get('note'), 2000), 'uid': user['id'],
+            'purpose': 'treatment' if body.get('purpose') == 'treatment' else 'commission'}
+    cur.execute(f"""INSERT INTO {t('crm_payments')} (invoice_id, payer_type, client_id, partner_id, counterparty_id, deal_id, amount, paid_at, method, note, created_by, purpose)
+        VALUES (%(invoice_id)s, %(payer_type)s, %(client_id)s, %(partner_id)s, %(counterparty_id)s, %(deal_id)s, %(amount)s, %(paid_at)s, %(method)s, %(note)s, %(uid)s, %(purpose)s) RETURNING *""", data)
     item = cur.fetchone()
     _log(cur, t, data, user, f"Поступила оплата {_money(amount)}" + (f" по счёту № {inv['number']}" if inv else ''))
     return 200, {'item': item}
@@ -216,7 +217,8 @@ def _update_payment(cur, t, eid, body, user):
     if amount <= 0 or amount > 1e11:
         return 400, {'error': 'Сумма должна быть больше нуля'}
     data = {'amount': amount, 'paid_at': _date(body.get('paid_at'), old['paid_at']),
-            'method': body.get('method') if body.get('method') in METHODS else old['method'], 'note': _s(body.get('note'), 2000)}
+            'method': body.get('method') if body.get('method') in METHODS else old['method'], 'note': _s(body.get('note'), 2000),
+            'purpose': body.get('purpose') if body.get('purpose') in ('commission', 'treatment') else old['purpose']}
     if 'invoice_id' in body:
         inv_id = _id(body.get('invoice_id'))
         if inv_id:
