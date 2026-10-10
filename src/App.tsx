@@ -14,6 +14,8 @@ import Articles from "./pages/Articles";
 import ArticlePage from "./pages/ArticlePage";
 import Family from "./pages/Family";
 import Shop from "./pages/Shop";
+import Treatments from "./pages/Treatments";
+import TreatmentPage from "./pages/TreatmentPage";
 import PrivacyPolicy from "./pages/legal/PrivacyPolicy";
 import Consent from "./pages/legal/Consent";
 import Offer from "./pages/legal/Offer";
@@ -39,6 +41,8 @@ const App = () => (
           <Route path="/articles/:slug" element={<ArticlePage />} />
           <Route path="/family" element={<Family />} />
           <Route path="/shop" element={<Shop />} />
+          <Route path="/lechenie" element={<Treatments />} />
+          <Route path="/lechenie/:slug" element={<TreatmentPage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/consent" element={<Consent />} />
           <Route path="/offer" element={<Offer />} />

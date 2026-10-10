@@ -1,3 +1,4 @@
+import { TREATMENTS } from "@/lib/treatments";
 import Icon from "@/components/ui/icon";
 import {
   Tooltip,
@@ -12,7 +13,7 @@ import { openCookieSettings } from "@/lib/cookie-consent";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background">
-    <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 md:grid-cols-[1.2fr_1fr_1fr] md:px-16">
+    <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 md:grid-cols-[1.2fr_1fr_1fr_1fr] md:px-16">
       <div>
         <Logo />
         <p className="mt-4 max-w-[320px] text-[0.92em] leading-relaxed text-muted-foreground">
@@ -20,7 +21,13 @@ const Footer = () => (
           учёт, круглосуточно.
         </p>
       </div>
-      <nav className="grid grid-cols-2 gap-2 text-[0.95em]">
+      <nav className="flex flex-col gap-2 text-[0.95em]">
+        <a href="/lechenie" className="w-fit font-medium hover:text-primary">Лечение</a>
+        {TREATMENTS.map((t) => (
+          <a key={t.slug} href={t.path} className="w-fit text-muted-foreground hover:text-foreground story-link">{t.menu}</a>
+        ))}
+      </nav>
+      <nav className="grid grid-cols-2 content-start gap-2 text-[0.95em]">
         {NAV.map((n) => (
           <a
             key={n.href}
