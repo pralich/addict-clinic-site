@@ -22,6 +22,7 @@ import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
+import { pingCrmNotify } from "@/lib/crm-push";
 import { useSeo } from "@/lib/seo";
 
 type NavItem = { id: string; label: string; icon: string; admin?: boolean };
@@ -74,10 +75,11 @@ const Shell = () => {
     return m ? { resource: m[1], id: Number(m[2]) } : null;
   });
   const [menu, setMenu] = useState(false);
+  const [openTask, setOpenTask] = useState<number | null>(() => Number(params.get("task")) || null);
   const qc = useQueryClient();
 
   useEffect(() => {
-    if (params.has("page") || params.has("source") || params.has("open")) setParams({}, { replace: true });
+    if (params.has("page") || params.has("source") || params.has("open") || params.has("task")) setParams({}, { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -95,6 +97,7 @@ const Shell = () => {
         if (p && NAV.some((n) => n.id === p)) setPage(p);
         const m = /^(leads|deals|clients|partners):(\d+)$/.exec(u.searchParams.get("open") || "");
         if (m) setDrawer({ resource: m[1], id: Number(m[2]) });
+        if (Number(u.searchParams.get("task"))) setOpenTask(Number(u.searchParams.get("task")));
         qc.invalidateQueries({ queryKey: ["crm"] });
       }
     };
@@ -104,7 +107,7 @@ const Shell = () => {
 
   const { data: counters } = useQuery<{ leads: number; questions: number; tasks: number }>({
     queryKey: ["crm", "counters"],
-    queryFn: () => api({ resource: "counters" }),
+    queryFn: () => { pingCrmNotify(); return api({ resource: "counters" }); },
     enabled: !!user,
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
@@ -126,6 +129,7 @@ const Shell = () => {
   if (!user) return <LoginScreen />;
 
   const open = (resource: string, id: number) => setDrawer({ resource, id });
+  const clearTask = () => setOpenTask(null);
   const go = (p: string) => { setPage(p); setMenu(false); };
 
 
@@ -205,7 +209,7 @@ const Shell = () => {
           {page === "api" && <ApiPage />}
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
-          {page === "tasks" && <TasksPage onOpen={open} />}
+          {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}
         </div>
       </main>
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}

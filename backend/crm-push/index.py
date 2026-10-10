@@ -1,5 +1,6 @@
 import json
 import os
+from datetime import datetime, timedelta
 
 import psycopg2
 import psycopg2.extras
@@ -84,11 +85,76 @@ def notify(cur):
                 'title': f'Оплачен заказ на {amount} ₽', 'body': f"{o['user_name'] or 'Покупатель'}: {_short(items, 100)}" + (' · нужна доставка' if o['delivery_address'] else ''),
                 'url': '/admin?page=orders', 'tag': f"order-{o['id']}",
             })
+    sent += notify_tasks(cur)
+    return sent
+
+
+def _user_subs(cur, user_id):
+    cur.execute(f'SELECT id, endpoint, p256dh, auth FROM {t("crm_push_subs")} WHERE user_id = %s AND is_active AND notify_tasks', (user_id,))
+    return cur.fetchall()
+
+
+def _fmt_due(d):
+    if not d:
+        return 'без срока'
+    return (d + timedelta(hours=3)).strftime('%d.%m %H:%M')
+
+
+def notify_tasks(cur):
+    """Уведомления по задачам: новая задача исполнителю, наступил срок, новый комментарий"""
+    sent = 0
+    cur.execute(f"""UPDATE {t('crm_activities')} SET assign_notified_to = assignee_id
+        WHERE kind = 'task' AND assignee_id IS NOT NULL AND assign_notified_to IS DISTINCT FROM assignee_id
+          AND (done_at IS NOT NULL OR assignee_id = user_id OR created_at < NOW() - INTERVAL '2 days' AND updated_at IS NULL)
+        RETURNING id""")
+    cur.execute(f"""SELECT a.id, a.text, a.due_at, a.priority, a.assignee_id, u.name AS author FROM {t('crm_activities')} a
+        LEFT JOIN {t('crm_users')} u ON u.id = a.user_id
+        WHERE a.kind = 'task' AND a.done_at IS NULL AND a.assignee_id IS NOT NULL
+          AND a.assign_notified_to IS DISTINCT FROM a.assignee_id ORDER BY a.id LIMIT 30""")
+    for a in cur.fetchall():
+        cur.execute(f"UPDATE {t('crm_activities')} SET assign_notified_to = %s WHERE id = %s AND assign_notified_to IS DISTINCT FROM %s RETURNING id",
+                    (a['assignee_id'], a['id'], a['assignee_id']))
+        if not cur.fetchone():
+            continue
+        sent += push_lib.send(cur, t, _user_subs(cur, a['assignee_id']), {
+            'title': ('Срочная задача' if a['priority'] == 'high' else 'Новая задача') + f" от {a['author'] or 'коллеги'}",
+            'body': f"{_short(a['text'])} · срок {_fmt_due(a['due_at'])}",
+            'url': f"/admin?page=tasks&task={a['id']}", 'tag': f"task-{a['id']}",
+        })
+
+    cur.execute(f"""SELECT a.id, a.text, a.due_at, a.assignee_id FROM {t('crm_activities')} a
+        WHERE a.kind = 'task' AND a.done_at IS NULL AND a.assignee_id IS NOT NULL AND a.due_at IS NOT NULL
+          AND a.due_at <= NOW() AND a.due_notified_at IS NULL ORDER BY a.due_at LIMIT 30""")
+    for a in cur.fetchall():
+        cur.execute(f"UPDATE {t('crm_activities')} SET due_notified_at = NOW() WHERE id = %s AND due_notified_at IS NULL RETURNING id", (a['id'],))
+        if not cur.fetchone():
+            continue
+        late = a['due_at'] < datetime.utcnow() - timedelta(hours=1)
+        sent += push_lib.send(cur, t, _user_subs(cur, a['assignee_id']), {
+            'title': 'Задача просрочена' if late else 'Наступил срок задачи',
+            'body': f"{_short(a['text'])} · срок был {_fmt_due(a['due_at'])}" if late else _short(a['text']),
+            'url': f"/admin?page=tasks&task={a['id']}", 'tag': f"task-due-{a['id']}",
+        })
+
+    cur.execute(f"""SELECT c.id, c.task_id, c.text, c.user_id, u.name AS who, a.text AS task, a.user_id AS author_id, a.assignee_id
+        FROM {t('crm_task_comments')} c JOIN {t('crm_activities')} a ON a.id = c.task_id
+        LEFT JOIN {t('crm_users')} u ON u.id = c.user_id
+        WHERE NOT c.notified ORDER BY c.id LIMIT 30""")
+    for c in cur.fetchall():
+        cur.execute(f"UPDATE {t('crm_task_comments')} SET notified = TRUE WHERE id = %s AND NOT notified RETURNING id", (c['id'],))
+        if not cur.fetchone():
+            continue
+        for uid in {c['author_id'], c['assignee_id']} - {c['user_id'], None}:
+            sent += push_lib.send(cur, t, _user_subs(cur, uid), {
+                'title': f"{c['who'] or 'Коллега'} · {_short(c['task'], 50)}",
+                'body': _short(c['text'], 140),
+                'url': f"/admin?page=tasks&task={c['task_id']}", 'tag': f"task-comment-{c['task_id']}",
+            })
     return sent
 
 
 def handler(event: dict, context) -> dict:
-    """Push-уведомления для менеджеров CRM: подписка устройств, настройки и рассылка о новых лидах и оплаченных заказах магазина"""
+    """Push-уведомления для менеджеров CRM: подписка устройств, настройки и рассылка о новых лидах, заказах магазина и задачах"""
     method = event.get('httpMethod', 'GET')
     if method == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
@@ -112,9 +178,9 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Требуется вход'})
 
         if action == 'status':
-            cur.execute(f'SELECT notify_leads, notify_orders, is_active FROM {t("crm_push_subs")} WHERE endpoint = %s AND user_id = %s', (params.get('endpoint') or '', user['id']))
+            cur.execute(f'SELECT notify_leads, notify_orders, notify_tasks, is_active FROM {t("crm_push_subs")} WHERE endpoint = %s AND user_id = %s', (params.get('endpoint') or '', user['id']))
             row = cur.fetchone()
-            return resp(200, {'subscribed': bool(row and row['is_active']), 'notify_leads': row['notify_leads'] if row else True, 'notify_orders': row['notify_orders'] if row else True})
+            return resp(200, {'subscribed': bool(row and row['is_active']), 'notify_leads': row['notify_leads'] if row else True, 'notify_orders': row['notify_orders'] if row else True, 'notify_tasks': row['notify_tasks'] if row else True})
         if action == 'subscribe' and method == 'POST':
             sub = body.get('subscription') or {}
             keys = sub.get('keys') or {}
@@ -125,15 +191,15 @@ def handler(event: dict, context) -> dict:
                         (user['id'], sub['endpoint'], keys['p256dh'], keys['auth']))
             return resp(200, {'ok': True})
         if action == 'settings' and method == 'POST':
-            cur.execute(f'UPDATE {t("crm_push_subs")} SET notify_leads = %s, notify_orders = %s WHERE endpoint = %s AND user_id = %s',
-                        (bool(body.get('notify_leads')), bool(body.get('notify_orders')), body.get('endpoint') or '', user['id']))
+            cur.execute(f'UPDATE {t("crm_push_subs")} SET notify_leads = %s, notify_orders = %s, notify_tasks = %s WHERE endpoint = %s AND user_id = %s',
+                        (bool(body.get('notify_leads')), bool(body.get('notify_orders')), body.get('notify_tasks', True) is not False, body.get('endpoint') or '', user['id']))
             return resp(200, {'ok': True})
         if action == 'unsubscribe' and method == 'POST':
             cur.execute(f'UPDATE {t("crm_push_subs")} SET is_active = FALSE WHERE endpoint = %s AND user_id = %s', (body.get('endpoint') or '', user['id']))
             return resp(200, {'ok': True})
         if action == 'test' and method == 'POST':
             cur.execute(f'SELECT id, endpoint, p256dh, auth FROM {t("crm_push_subs")} WHERE endpoint = %s AND user_id = %s AND is_active', (body.get('endpoint') or '', user['id']))
-            n = push_lib.send(cur, t, cur.fetchall(), {'title': 'Уведомления CRM включены', 'body': 'Сообщим о новых лидах и оплаченных заказах магазина сразу, как они появятся.', 'url': '/admin', 'tag': 'crm-test'})
+            n = push_lib.send(cur, t, cur.fetchall(), {'title': 'Уведомления CRM включены', 'body': 'Сообщим о новых лидах, заказах и ваших задачах сразу, как они появятся.', 'url': '/admin', 'tag': 'crm-test'})
             return resp(200, {'sent': n})
         return resp(404, {'error': 'Неизвестный запрос'})
     finally:

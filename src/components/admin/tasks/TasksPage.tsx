@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
@@ -18,7 +18,7 @@ const SCOPES = [
   { value: "all", label: "Все", icon: "Users" },
 ];
 
-const TasksPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void }) => {
+const TasksPage = ({ onOpen, openTask, onTaskOpened }: { onOpen: (resource: string, id: number) => void; openTask?: number | null; onTaskOpened?: () => void }) => {
   const { user } = useAuth();
   const { data: opts } = useOptions();
   const reload = useBillingReload();
@@ -32,6 +32,11 @@ const TasksPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
   const params = { resource: "tasks", scope, status, assignee_id: scope === "all" ? assignee || undefined : undefined, entity_type: link || undefined, search: search || undefined };
   const { data, isLoading } = useQuery<Resp>({ queryKey: ["crm", "tasks", params], queryFn: () => api(params) });
   const items = useMemo(() => data?.items ?? [], [data]);
+  const { data: deep } = useQuery<{ item: Task }>({ queryKey: ["crm", "tasks", "item", openTask], queryFn: () => api({ resource: "tasks", id: openTask! }), enabled: !!openTask });
+  useEffect(() => {
+    if (openTask && deep?.item) { setDialog(deep.item); onTaskOpened?.(); }
+  }, [openTask, deep, onTaskOpened]);
+  const current = dialog && dialog !== "new" ? items.find((t) => t.id === dialog.id) || dialog : dialog;
   const groups = useMemo(() => GROUPS.map((g) => ({ ...g, items: items.filter((t) => taskDue(t).group === g.key) })).filter((g) => g.items.length), [items]);
 
   const toggle = async (t: Task) => {
@@ -139,11 +144,15 @@ const TasksPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                         {t.priority !== "normal" && <Icon name={pr.icon} size={14} className={`mt-0.5 shrink-0 ${pr.cls}`} />}
                         <span className="break-words">{t.text}</span>
                       </p>
-                      {t.details && <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.details}</p>}
+                      {t.done_at && t.result_text ? (
+                        <p className="mt-0.5 line-clamp-2 text-xs text-emerald-800">Результат: {t.result_text}</p>
+                      ) : t.details ? <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{t.details}</p> : null}
                       <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                         <span className={`inline-flex items-center gap-1 ${due.cls}`}><Icon name="Clock" size={12} />{due.label}</span>
                         <span className="inline-flex items-center gap-1"><Icon name="User" size={12} />{t.assignee_id === user?.id ? "Мне" : t.assignee_name || "—"}</span>
                         {t.user_id !== t.assignee_id && t.author_name && <span className="inline-flex items-center gap-1"><Icon name="Send" size={12} />от {t.user_id === user?.id ? "меня" : t.author_name}</span>}
+                        {Number(t.comments_count) > 0 && <span className="inline-flex items-center gap-1"><Icon name="MessageSquare" size={12} />{t.comments_count}</span>}
+                        {t.result_text && <span className="inline-flex items-center gap-1 text-emerald-700"><Icon name="ClipboardCheck" size={12} />есть результат</span>}
                       </p>
                     </button>
                     <div className="flex shrink-0 items-center gap-1">
@@ -164,7 +173,7 @@ const TasksPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
         ))
       )}
 
-      {dialog && <TaskDialog task={dialog === "new" ? null : dialog} onClose={() => setDialog(null)} />}
+      {current && <TaskDialog key={current === "new" ? "new" : current.id} task={current === "new" ? null : current} onClose={() => setDialog(null)} />}
     </div>
   );
 };

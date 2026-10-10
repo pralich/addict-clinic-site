@@ -579,7 +579,10 @@ def handle_activity(cur, method, eid, body, user):
         q(cur, f'''INSERT INTO {t("crm_activities")} (entity_type, entity_id, user_id, kind, text, due_at, done_at, result, direction, duration_min, assignee_id)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id''',
           (et, int(ei), user['id'], kind, text, due, done, result, direction, duration, assignee))
-        return resp(200, {'ok': True, 'id': cur.fetchone()['id']})
+        new_id = cur.fetchone()['id']
+        if kind == 'task':
+            ping_crm_push()
+        return resp(200, {'ok': True, 'id': new_id})
     if not eid:
         return resp(400, {'error': 'Не указана запись'})
     q(cur, f'SELECT * FROM {t("crm_activities")} WHERE id = %s', (eid,))
@@ -599,6 +602,7 @@ def handle_activity(cur, method, eid, body, user):
             sets.append('text = %s')
             args.append(clean(body['text']))
         if 'due_at' in body and act['kind'] in ('task', 'meeting'):
+            sets.append('due_notified_at = NULL')
             sets.append('due_at = %s')
             args.append(parse_dt(body['due_at']))
         if not sets:
@@ -688,7 +692,7 @@ def handler(event: dict, context) -> dict:
             return resp(401, {'error': 'Требуется вход'})
 
         if resource == 'tasks':
-            return handle_tasks(cur, t, method, params, body, user, eid, resp)
+            return handle_tasks(cur, t, method, params, body, user, eid, resp, ping_crm_push)
         if resource == 'billing':
             return handle_billing(cur, t, method, params, body, user, eid, resp)
         if resource == 'finance':

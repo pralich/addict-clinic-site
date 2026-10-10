@@ -15,7 +15,7 @@ const HINT: Record<CrmPushState, string> = {
 
 const PushSettings = ({ variant = "sidebar" }: { variant?: "sidebar" | "icon" }) => {
   const [state, setState] = useState<CrmPushState | null>(null);
-  const [prefs, setPrefs] = useState<CrmPushPrefs>({ notify_leads: true, notify_orders: true });
+  const [prefs, setPrefs] = useState<CrmPushPrefs>({ notify_leads: true, notify_orders: true, notify_tasks: true });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -98,6 +98,7 @@ const PushSettings = ({ variant = "sidebar" }: { variant?: "sidebar" | "icon" })
             {[
               { k: "notify_leads" as const, icon: "Inbox", t: "Новые лиды", d: "Заявки с сайта" },
               { k: "notify_orders" as const, icon: "ShoppingBag", t: "Оплаченные заказы", d: "Покупки в магазине" },
+              { k: "notify_tasks" as const, icon: "ListTodo", t: "Мои задачи", d: "Новые задачи, сроки и комментарии" },
             ].map((r) => (
               <label key={r.k} className="flex cursor-pointer items-center gap-3 rounded-xl p-2.5 hover:bg-secondary">
                 <Icon name={r.icon} size={18} className="text-muted-foreground" />

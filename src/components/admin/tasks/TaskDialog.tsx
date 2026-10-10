@@ -7,6 +7,7 @@ import { useAuth } from "../AuthContext";
 import { useOptions } from "../useCrm";
 import { Combo, field, useBillingReload } from "../billing/shared";
 import { ENTITY_LINKS, PRIORITIES, type Task } from "./shared";
+import { Comments, ResultBlock } from "./TaskDiscussion";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const toLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
@@ -63,7 +64,11 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
-        <DialogHeader><DialogTitle className="font-heading">{task ? "Задача" : "Новая задача"}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle className="font-heading">{task ? "Задача" : "Новая задача"}</DialogTitle>
+          {task && <p className="text-xs text-muted-foreground">Поставил {task.user_id === user?.id ? "я" : task.author_name || "—"} · {new Date(task.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
+        </DialogHeader>
+        {task && <ResultBlock key={`${task.id}-${task.done_at}`} task={task} onDone={onClose} />}
         <form onSubmit={save} className="flex flex-col gap-4">
           <label className="text-sm">
             <span className="mb-1 block font-medium">Что нужно сделать</span>
@@ -116,9 +121,10 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
           </div>
 
           <button disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60">
-            {busy && <Icon name="Loader2" size={16} className="animate-spin" />}{task ? "Сохранить" : "Поставить задачу"}
+            {busy && <Icon name="Loader2" size={16} className="animate-spin" />}{task ? "Сохранить изменения" : "Поставить задачу"}
           </button>
         </form>
+        {task && <div className="border-t pt-4"><Comments taskId={task.id} /></div>}
       </DialogContent>
     </Dialog>
   );

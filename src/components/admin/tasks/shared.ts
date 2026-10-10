@@ -15,6 +15,8 @@ export type Task = {
   entity_type: "leads" | "deals" | "clients" | "partners" | null;
   entity_id: number | null;
   entity_title: string | null;
+  result_text?: string | null;
+  comments_count?: number;
 };
 
 export const PRIORITIES: Record<Task["priority"], { label: string; cls: string; icon: string }> = {
