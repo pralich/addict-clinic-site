@@ -7,7 +7,7 @@ import StatusBadge from "./StatusBadge";
 import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
-import ContactPerson from "./ContactPerson";
+import ContactPerson, { ContactInfo } from "./ContactPerson";
 import BillingBlock from "./billing/BillingBlock";
 import { TAG_GROUPS, TagBadge, TagPicker, useTagMap } from "./Tags";
 import { ENTITY_DEFS } from "./entities";
@@ -134,6 +134,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
               )}
             </dl>
 
+            {resource === "clients" && <ContactInfo data={item} onEdit={() => setEdit(true)} />}
+            {resource === "deals" && <ContactInfo data={item.client_id ? refs.client || {} : null} onOpenClient={item.client_id ? () => onOpen("clients", item.client_id) : undefined} />}
             {["leads", "deals", "clients"].includes(resource) && <ContactPerson item={item} onEdit={() => setEdit(true)} />}
 
             {resource === "leads" && <LeadAttribution lead={item} />}

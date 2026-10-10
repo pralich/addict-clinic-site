@@ -23,9 +23,9 @@ CORS = {
 ENTITIES = {
     'clients': {
         'table': 'crm_clients',
-        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
+        'fields': ['full_name', 'phone', 'email', 'birth_date', 'is_anonymous', 'source', 'status', 'partner_id', 'manager_id', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'messenger', 'address', 'contact_time', 'tags'],
         'required': ['full_name'],
-        'search': ['full_name', 'phone', 'email', 'rep_name', 'rep_phone', 'rep_email'],
+        'search': ['full_name', 'phone', 'email', 'messenger', 'rep_name', 'rep_phone', 'rep_email', 'rep_messenger'],
         'filter': 'status',
         'order': 'created_at DESC',
     },
@@ -39,7 +39,7 @@ ENTITIES = {
     },
     'leads': {
         'table': 'crm_leads',
-        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
+        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags'],
         'required': ['contact'],
         'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
@@ -47,7 +47,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags', 'check_in_date', 'treatment_months'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -300,6 +300,35 @@ def list_entity(cur, name, params):
     return resp(200, {'items': cur.fetchall()})
 
 
+CHECKOUT_SQL = "COALESCE(d.check_out_date, (d.check_in_date + make_interval(months => FLOOR(d.treatment_months)::int, days => ROUND((d.treatment_months - FLOOR(d.treatment_months)) * 30)::int))::date)"
+
+
+def handle_in_treatment(cur, params):
+    day = params.get('date') or date.today().isoformat()
+    q(cur, f"""SELECT d.id AS deal_id, d.title, d.stage, d.program, d.amount, d.check_in_date, {CHECKOUT_SQL} AS check_out_date,
+            d.treatment_months, d.rep_name, d.rep_relation, d.rep_phone, d.rep_email, d.rep_messenger,
+            c.id AS client_id, c.full_name, c.phone, c.email, c.messenger, c.is_anonymous, c.status AS client_status,
+            c.rep_name AS client_rep_name, c.rep_relation AS client_rep_relation, c.rep_phone AS client_rep_phone,
+            mu.name AS manager_name
+        FROM {t('crm_deals')} d
+        LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
+        LEFT JOIN {t('crm_users')} mu ON mu.id = d.manager_id
+        WHERE d.archived_at IS NULL AND d.stage <> 'lost' AND d.check_in_date IS NOT NULL
+          AND d.check_in_date <= %s::date
+          AND {CHECKOUT_SQL} >= %s::date
+        ORDER BY {CHECKOUT_SQL} ASC, d.check_in_date ASC""", (day, day))
+    items = cur.fetchall()
+    q(cur, f"""SELECT d.id AS deal_id, d.title, d.check_in_date, c.full_name, c.id AS client_id
+        FROM {t('crm_deals')} d LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
+        WHERE d.archived_at IS NULL AND d.stage <> 'lost' AND d.check_in_date > %s::date AND d.check_in_date <= %s::date + 14
+        ORDER BY d.check_in_date""", (day, day))
+    upcoming = cur.fetchall()
+    q(cur, f"""SELECT COUNT(*) AS n FROM {t('crm_deals')} d
+        WHERE d.archived_at IS NULL AND d.stage IN ('treatment','won') AND d.check_in_date IS NULL""")
+    no_dates = cur.fetchone()['n']
+    return resp(200, {'date': day, 'items': items, 'upcoming': upcoming, 'no_dates': no_dates})
+
+
 def get_entity(cur, name, eid):
     cfg = ENTITIES[name]
     if name == 'partners':
@@ -311,7 +340,7 @@ def get_entity(cur, name, eid):
         return resp(404, {'error': 'Не найдено'})
     refs = {}
     if item.get('client_id') and name != 'clients':
-        q(cur, f"SELECT id, full_name AS name, phone, email, status, is_anonymous FROM {t('crm_clients')} WHERE id = %s", (item['client_id'],))
+        q(cur, f"SELECT id, full_name AS name, phone, email, messenger, status, is_anonymous FROM {t('crm_clients')} WHERE id = %s", (item['client_id'],))
         refs['client'] = cur.fetchone()
     if item.get('partner_id') and name != 'partners':
         q(cur, f"SELECT id, name, type, contact_person, phone, email FROM {t('crm_partners')} WHERE id = %s", (item['partner_id'],))
@@ -416,14 +445,14 @@ def convert_lead(cur, eid, body, user):
     if not client_id:
         contact = lead['contact'] or ''
         is_email = '@' in contact
-        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id, rep_name, rep_relation, rep_phone, rep_email, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id'], lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('tags') or []))
+        q(cur, f"INSERT INTO {t('crm_clients')} (full_name, phone, email, is_anonymous, source, partner_id, manager_id, rep_name, rep_relation, rep_phone, rep_email, rep_messenger, rep_note, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (lead['name'] or 'Анонимный клиент', None if is_email else contact, contact if is_email else None, not lead['name'], lead['source'], lead['partner_id'], lead['manager_id'] or user['id'], lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('rep_messenger'), lead.get('rep_note'), lead.get('tags') or []))
         client_id = cur.fetchone()['id']
         log_activity(cur, 'clients', client_id, user['id'], f'Создан из лида #{eid}')
     deal_id = None
     if body.get('create_deal', True):
-        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount, rep_name, rep_relation, rep_phone, rep_email, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
-          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0), lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('tags') or []))
+        q(cur, f"INSERT INTO {t('crm_deals')} (title, client_id, partner_id, manager_id, lead_id, program, amount, rep_name, rep_relation, rep_phone, rep_email, rep_messenger, rep_note, tags) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+          (clean(body.get('title')) or f"{lead['topic'] or 'Обращение'} — {lead['name'] or 'аноним'}", client_id, lead['partner_id'], lead['manager_id'] or user['id'], eid, lead['topic'], float(body.get('amount') or 0), lead.get('rep_name'), lead.get('rep_relation'), lead.get('rep_phone'), lead.get('rep_email'), lead.get('rep_messenger'), lead.get('rep_note'), lead.get('tags') or []))
         deal_id = cur.fetchone()['id']
         log_activity(cur, 'deals', deal_id, user['id'], f'Создана из лида #{eid}')
     q(cur, f"UPDATE {t('crm_leads')} SET status = 'converted', client_id = %s, updated_at = NOW() WHERE id = %s", (client_id, eid))
@@ -646,6 +675,8 @@ def handler(event: dict, context) -> dict:
             return resp(200, cur.fetchone())
         if resource == 'dashboard':
             return handle_dashboard(cur)
+        if resource == 'in_treatment':
+            return handle_in_treatment(cur, params)
         if resource == 'options':
             return handle_options(cur)
         if resource == 'shop_orders':

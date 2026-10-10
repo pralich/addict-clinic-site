@@ -47,6 +47,12 @@
       "method": "GET",
       "path": "/?resource=billing&action=invoices",
       "expectedStatus": 401
+    },
+    {
+      "name": "In treatment requires auth",
+      "method": "GET",
+      "path": "/?resource=in_treatment",
+      "expectedStatus": 401
     }
   ]
 }

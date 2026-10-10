@@ -37,7 +37,7 @@ const treatment = (r: any) => {
   if (!r.treatment_months) return null;
   const n = Number(r.treatment_months);
   let txt = `${String(n).replace(".", ",")} ${monthsWord(n)}`;
-  if (r.check_in_date) {
+  if (r.check_in_date && !r.check_out_date) {
     const d = new Date(r.check_in_date);
     const end = new Date(d.getFullYear(), d.getMonth() + Math.floor(n), d.getDate() + Math.round((n % 1) * 30));
     txt += ` · до ${end.toLocaleDateString("ru-RU")}`;
@@ -51,7 +51,11 @@ const repFields: Field[] = [
   { name: "rep_relation", label: "Кем является", type: "select", options: toOptions(REP_RELATIONS), section: REP },
   { name: "rep_phone", label: "Телефон", type: "tel", section: REP, placeholder: "+7" },
   { name: "rep_email", label: "Эл. почта", type: "email", section: REP },
+  { name: "rep_messenger", label: "Мессенджер", section: REP, placeholder: "Telegram, WhatsApp, MAX…" },
+  { name: "rep_note", label: "Комментарий о контакте", type: "textarea", section: REP, placeholder: "Когда удобно звонить, что можно обсуждать" },
 ];
+
+const CONTACT = "Контактная информация";
 
 const sourceLabel = (r: any) => SOURCES[r.source] || r.source || "—";
 
@@ -136,6 +140,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "amount", label: "Сумма, ₽", type: "number" },
       { name: "check_in_date", label: "Дата заезда", type: "date" },
       { name: "treatment_months", label: "Продолжительность лечения, мес.", type: "number", placeholder: "Например, 3" },
+      { name: "check_out_date", label: "Дата выезда", type: "date" },
       { name: "manager_id", label: "Ответственный", type: "ref", ref: "users" },
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "expected_close", label: "Плановая дата закрытия", type: "date" },
@@ -146,6 +151,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "amount", label: "Сумма", render: (r) => money(r.amount) },
       { key: "program", label: "Программа" },
       { key: "check_in_date", label: "Дата заезда", render: (r) => fmtDate(r.check_in_date) },
+      { key: "check_out_date", label: "Дата выезда", render: (r) => (r.check_out_date ? fmtDate(r.check_out_date) : null) },
       { key: "treatment_months", label: "Длительность", render: (r) => treatment(r) },
       { key: "expected_close", label: "План закрытия", render: (r) => fmtDate(r.expected_close) },
       { key: "closed_at", label: "Закрыта", render: (r) => fmtDate(r.closed_at) },
@@ -177,19 +183,20 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       tagsField,
       { name: "full_name", label: "ФИО или псевдоним", required: true },
       { name: "is_anonymous", label: "Анонимный клиент", type: "switch" },
-      { name: "phone", label: "Телефон", type: "tel" },
-      { name: "email", label: "Email", type: "email" },
       { name: "birth_date", label: "Дата рождения", type: "date" },
       { name: "status", label: "Статус", type: "select", options: toOptions(CLIENT_STATUS), required: true },
       { name: "source", label: "Источник", type: "select", options: toOptions(SOURCES), required: true },
       { name: "manager_id", label: "Ответственный", type: "ref", ref: "users" },
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "notes", label: "Заметки", type: "textarea" },
+      { name: "phone", label: "Телефон", type: "tel", section: CONTACT, placeholder: "+7" },
+      { name: "email", label: "Email", type: "email", section: CONTACT },
+      { name: "messenger", label: "Мессенджер", section: CONTACT, placeholder: "Telegram, WhatsApp, MAX…" },
+      { name: "contact_time", label: "Удобное время связи", section: CONTACT, placeholder: "Например, после 18:00" },
+      { name: "address", label: "Адрес", section: CONTACT, full: true },
       ...repFields,
     ],
     details: [
-      { key: "phone", label: "Телефон" },
-      { key: "email", label: "Email" },
       { key: "birth_date", label: "Дата рождения", render: (r) => fmtDate(r.birth_date) },
       { key: "source", label: "Источник", render: sourceLabel },
       { key: "is_anonymous", label: "Анонимно", render: (r) => (r.is_anonymous ? "Да" : "Нет") },
