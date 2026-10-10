@@ -41,6 +41,12 @@
       "method": "GET",
       "path": "/?resource=finance&action=cashflow",
       "expectedStatus": 401
+    },
+    {
+      "name": "Billing requires auth",
+      "method": "GET",
+      "path": "/?resource=billing&action=invoices",
+      "expectedStatus": 401
     }
   ]
 }

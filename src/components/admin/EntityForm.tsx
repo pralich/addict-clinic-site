@@ -104,6 +104,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
               control = (
                 <Input
                   type={f.type || "text"}
+                  step={f.type === "number" ? "any" : undefined}
                   value={v ?? ""}
                   required={f.required}
                   placeholder={f.placeholder}

@@ -9,6 +9,7 @@ import psycopg2
 import psycopg2.extras
 
 from finance import handle_finance
+from billing import handle_billing
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -46,7 +47,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'tags', 'check_in_date', 'treatment_months'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -247,7 +248,11 @@ def handle_options(cur):
     clients = cur.fetchall()
     q(cur, f'SELECT id, grp, name, color, sort, is_active FROM {t("crm_tags")} ORDER BY grp, sort, name')
     tags = cur.fetchall()
-    return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags})
+    q(cur, f'SELECT id, name, inn FROM {t("crm_counterparties")} WHERE archived_at IS NULL ORDER BY name LIMIT 1000')
+    counterparties = cur.fetchall()
+    q(cur, f"SELECT id, title AS name, client_id, partner_id FROM {t('crm_deals')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 1000")
+    deals = cur.fetchall()
+    return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags, 'counterparties': counterparties, 'deals': deals})
 
 
 def list_entity(cur, name, params):
@@ -338,6 +343,8 @@ def prepare(cfg, body, partial):
                 v = int(v)
             if f in ('amount', 'commission_percent'):
                 v = float(v or 0)
+            if f == 'treatment_months':
+                v = round(float(v), 1) if v not in (None, '') else None
             if f == 'is_anonymous':
                 v = bool(v)
             if f == 'tags':
@@ -628,6 +635,8 @@ def handler(event: dict, context) -> dict:
         if not user:
             return resp(401, {'error': 'Требуется вход'})
 
+        if resource == 'billing':
+            return handle_billing(cur, t, method, params, body, user, eid, resp)
         if resource == 'finance':
             return handle_finance(cur, t, method, params, body, user, eid, resp)
         if resource == 'counters':

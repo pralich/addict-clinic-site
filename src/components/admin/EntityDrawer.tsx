@@ -8,6 +8,7 @@ import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
 import ContactPerson from "./ContactPerson";
+import BillingBlock from "./billing/BillingBlock";
 import { TAG_GROUPS, TagBadge, TagPicker, useTagMap } from "./Tags";
 import { ENTITY_DEFS } from "./entities";
 import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
@@ -136,6 +137,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
             {["leads", "deals", "clients"].includes(resource) && <ContactPerson item={item} onEdit={() => setEdit(true)} />}
 
             {resource === "leads" && <LeadAttribution lead={item} />}
+
+            {(resource === "deals" || resource === "clients" || resource === "partners") && <BillingBlock resource={resource} item={item} onOpen={onOpen} />}
 
             {data?.related?.deals && (
               <Related title="Сделки" items={data.related.deals} onClick={(r) => onOpen("deals", r.id)}

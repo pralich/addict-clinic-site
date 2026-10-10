@@ -4,7 +4,14 @@ import { toast } from "sonner";
 
 export type Option = { id: number; name: string };
 export type Tag = { id: number; grp: string; name: string; color: string; sort: number; is_active: boolean };
-export type Options = { users: Option[]; partners: Option[]; clients: Option[]; tags: Tag[] };
+export type Options = {
+  users: Option[];
+  partners: Option[];
+  clients: Option[];
+  tags: Tag[];
+  counterparties: (Option & { inn?: string | null })[];
+  deals: (Option & { client_id: number | null; partner_id: number | null })[];
+};
 
 export const useOptions = () =>
   useQuery<Options>({ queryKey: ["crm", "options"], queryFn: () => api({ resource: "options" }), staleTime: 30000 });

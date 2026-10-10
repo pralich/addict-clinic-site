@@ -26,6 +26,25 @@ export type EntityDef = {
 const tagsField: Field = { name: "tags", label: "Теги", type: "tags" };
 const tagsCol: Column = { key: "tags", label: "Теги", render: (r) => (r.tags?.length ? <TagList ids={r.tags} max={3} /> : "—") };
 
+const monthsWord = (n: number) => {
+  const i = Math.floor(n);
+  if (i !== n) return "мес.";
+  const m10 = i % 10, m100 = i % 100;
+  return m10 === 1 && m100 !== 11 ? "месяц" : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? "месяца" : "месяцев";
+};
+
+const treatment = (r: any) => {
+  if (!r.treatment_months) return null;
+  const n = Number(r.treatment_months);
+  let txt = `${String(n).replace(".", ",")} ${monthsWord(n)}`;
+  if (r.check_in_date) {
+    const d = new Date(r.check_in_date);
+    const end = new Date(d.getFullYear(), d.getMonth() + Math.floor(n), d.getDate() + Math.round((n % 1) * 30));
+    txt += ` · до ${end.toLocaleDateString("ru-RU")}`;
+  }
+  return txt;
+};
+
 const REP = "Контактное лицо";
 const repFields: Field[] = [
   { name: "rep_name", label: "Имя представителя", section: REP, placeholder: "Как обращаться" },
@@ -104,8 +123,9 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { key: "stage", label: "Этап", render: (r) => <StatusBadge map={DEAL_STAGES} value={r.stage} /> },
       { key: "amount", label: "Сумма", render: (r) => money(r.amount), className: "text-right whitespace-nowrap" },
       { key: "program", label: "Программа" },
+      { key: "check_in_date", label: "Заезд", render: (r) => fmtDate(r.check_in_date), className: "whitespace-nowrap" },
+      { key: "treatment_months", label: "Срок", render: (r) => (r.treatment_months ? `${Number(r.treatment_months)} мес.` : "—"), className: "whitespace-nowrap" },
       { key: "manager_name", label: "Ответственный" },
-      { key: "expected_close", label: "План закрытия", render: (r) => fmtDate(r.expected_close) },
     ],
     fields: [
       tagsField,
@@ -114,6 +134,8 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "stage", label: "Этап", type: "select", options: toOptions(DEAL_STAGES), required: true },
       { name: "program", label: "Программа лечения", placeholder: "Детокс, стационар 21 день…" },
       { name: "amount", label: "Сумма, ₽", type: "number" },
+      { name: "check_in_date", label: "Дата заезда", type: "date" },
+      { name: "treatment_months", label: "Продолжительность лечения, мес.", type: "number", placeholder: "Например, 3" },
       { name: "manager_id", label: "Ответственный", type: "ref", ref: "users" },
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "expected_close", label: "Плановая дата закрытия", type: "date" },
@@ -123,6 +145,8 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     details: [
       { key: "amount", label: "Сумма", render: (r) => money(r.amount) },
       { key: "program", label: "Программа" },
+      { key: "check_in_date", label: "Дата заезда", render: (r) => fmtDate(r.check_in_date) },
+      { key: "treatment_months", label: "Длительность", render: (r) => treatment(r) },
       { key: "expected_close", label: "План закрытия", render: (r) => fmtDate(r.expected_close) },
       { key: "closed_at", label: "Закрыта", render: (r) => fmtDate(r.closed_at) },
       { key: "notes", label: "Заметки" },
