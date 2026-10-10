@@ -36,6 +36,9 @@ export type Payment = {
   invoice_number: string | null;
   payer_type: PayerType;
   payer_name: string | null;
+  client_id?: number | null;
+  partner_id?: number | null;
+  counterparty_id?: number | null;
   deal_id: number | null;
   deal_title: string | null;
   amount: number;

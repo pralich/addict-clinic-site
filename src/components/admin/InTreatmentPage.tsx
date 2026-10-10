@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
 import { DEAL_STAGES, REP_RELATIONS, commissionAmount, commissionText, daysUntil, fmtDate, money } from "./config";
-import { DueBadge, InvoiceButton } from "./billing/NextPayment";
+import { DueBadge, InvoiceButton, nextPaymentPreset } from "./billing/NextPayment";
+import DealPaymentsDialog from "./billing/DealPaymentsDialog";
 
 type Row = Record<string, any>;
 type Data = { date: string; items: Row[]; upcoming: Row[]; no_dates: number };
@@ -78,6 +79,18 @@ const rowTone = (r: Row) => {
   return "";
 };
 
+const PaymentsButton = ({ r }: { r: Row }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button onClick={(e) => { e.stopPropagation(); setOpen(true); }} className="inline-flex items-center gap-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+        <Icon name="Wallet" size={12} />Получено {money(r.paid)}
+      </button>
+      {open && <DealPaymentsDialog dealId={r.deal_id} title={`${r.full_name || ""} · ${r.title}`} preset={{ ...nextPaymentPreset({ ...r, id: r.deal_id }, r.deal_id), amount: undefined }} onClose={() => setOpen(false)} />}
+    </>
+  );
+};
+
 const Payment = ({ r }: { r: Row }) => {
   const deal = { ...r, id: r.deal_id };
   if (!r.next_payment_date)
@@ -85,6 +98,7 @@ const Payment = ({ r }: { r: Row }) => {
       <div className="flex flex-col items-start gap-1.5">
         <span className="text-xs text-muted-foreground">{r.payments_total ? "Все платежи выставлены" : "Нет графика"}</span>
         {Number(r.debt) > 0 && <span className="text-xs text-primary">Долг {money(r.debt)}</span>}
+        <PaymentsButton r={r} />
       </div>
     );
   return (
@@ -93,6 +107,7 @@ const Payment = ({ r }: { r: Row }) => {
       <span className="text-xs text-muted-foreground">до {fmtDate(r.next_payment_date)} · {r.payment_index} из {r.payments_total}</span>
       <DueBadge date={r.next_payment_date} />
       <InvoiceButton deal={deal} dealId={r.deal_id} compact />
+      <PaymentsButton r={r} />
     </div>
   );
 };

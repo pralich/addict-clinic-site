@@ -17,6 +17,7 @@ const BillingBlock = ({ resource, item, onOpen }: Props) => {
   const pay = useQuery<{ items: Payment[] }>({ queryKey: ["crm", "billing", "payments", filter], queryFn: () => api({ resource: "billing", action: "payments", ...filter }) });
   const [dialog, setDialog] = useState<"invoice" | "payment" | null>(null);
   const [view, setView] = useState<number | null>(null);
+  const [editPay, setEditPay] = useState<Payment | null>(null);
   const [tab, setTab] = useState<"invoices" | "payments">("invoices");
 
   const preset: InvoicePreset =
@@ -90,13 +91,14 @@ const BillingBlock = ({ resource, item, onOpen }: Props) => {
         ) : (
           <ul className="divide-y">
             {payments.map((p) => (
-              <li key={p.id} className="flex items-center gap-2 px-3 py-2 text-sm">
+              <li key={p.id} onClick={() => setEditPay(p)} className="group flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-secondary/50">
                 <Icon name={PAY_METHODS[p.method]?.icon || "Wallet"} size={14} className="shrink-0 text-muted-foreground" />
                 <span className="min-w-0 flex-1">
                   <span className="block">{fmtDate(p.paid_at)}{p.invoice_number ? ` · счёт № ${p.invoice_number}` : " · без счёта"}</span>
                   {p.note && <span className="block truncate text-xs text-muted-foreground">{p.note}</span>}
                 </span>
                 <span className="font-medium tabular-nums text-emerald-700">+{money(p.amount)}</span>
+                <Icon name="Pencil" size={13} className="shrink-0 text-muted-foreground opacity-40 group-hover:opacity-100" />
               </li>
             ))}
           </ul>
@@ -105,6 +107,7 @@ const BillingBlock = ({ resource, item, onOpen }: Props) => {
 
       {dialog === "invoice" && <InvoiceDialog preset={{ ...preset, amount: resource === "deals" ? notInvoiced || preset.amount : undefined }} onClose={() => setDialog(null)} />}
       {dialog === "payment" && <PaymentDialog preset={preset} onClose={() => setDialog(null)} />}
+      {editPay && <PaymentDialog payment={editPay} onClose={() => setEditPay(null)} />}
       {view && <InvoiceView id={view} onClose={() => setView(null)} onOpen={(r, id) => { setView(null); onOpen(r, id); }} />}
     </div>
   );

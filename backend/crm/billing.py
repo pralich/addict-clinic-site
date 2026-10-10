@@ -204,6 +204,52 @@ def _save_payment(cur, t, body, user):
     return 200, {'item': item}
 
 
+def _update_payment(cur, t, eid, body, user):
+    cur.execute(f"SELECT * FROM {t('crm_payments')} WHERE id = %s AND archived_at IS NULL", (eid,))
+    old = cur.fetchone()
+    if not old:
+        return 404, {'error': 'Платёж не найден'}
+    try:
+        amount = round(float(body.get('amount')), 2)
+    except (TypeError, ValueError):
+        return 400, {'error': 'Укажите сумму'}
+    if amount <= 0 or amount > 1e11:
+        return 400, {'error': 'Сумма должна быть больше нуля'}
+    data = {'amount': amount, 'paid_at': _date(body.get('paid_at'), old['paid_at']),
+            'method': body.get('method') if body.get('method') in METHODS else old['method'], 'note': _s(body.get('note'), 2000)}
+    if 'invoice_id' in body:
+        inv_id = _id(body.get('invoice_id'))
+        if inv_id:
+            cur.execute(f"SELECT * FROM {t('crm_invoices')} WHERE id = %s AND archived_at IS NULL", (inv_id,))
+            inv = cur.fetchone()
+            if not inv:
+                return 404, {'error': 'Счёт не найден'}
+            if inv['status'] == 'canceled':
+                return 400, {'error': 'Счёт отменён'}
+            data.update({k: inv[k] for k in ('payer_type', 'client_id', 'partner_id', 'counterparty_id', 'deal_id')})
+        data['invoice_id'] = inv_id
+    if not data.get('invoice_id', old['invoice_id']):
+        if body.get('payer_type'):
+            payer, err = _payer(body)
+            if err:
+                return 400, {'error': err}
+            data.update(payer)
+        if 'deal_id' in body:
+            data['deal_id'] = _id(body.get('deal_id'))
+    sets = ', '.join(f'{k} = %({k})s' for k in data)
+    cur.execute(f"UPDATE {t('crm_payments')} SET {sets} WHERE id = %(id)s RETURNING *", {**data, 'id': eid})
+    item = cur.fetchone()
+    changes = []
+    if float(old['amount']) != amount:
+        changes.append(f"сумма {_money(old['amount'])} → {_money(amount)}")
+    if old['paid_at'] != item['paid_at']:
+        changes.append(f"дата {old['paid_at'].strftime('%d.%m.%Y')} → {item['paid_at'].strftime('%d.%m.%Y')}")
+    if old['invoice_id'] != item['invoice_id']:
+        changes.append('привязка к счёту')
+    _log(cur, t, item, user, 'Изменена оплата' + (f": {', '.join(changes)}" if changes else ''))
+    return 200, {'item': item}
+
+
 def _summary(cur, t, params):
     where, args = _filters(params, 'i', 'issue_date')
     cur.execute(f"""SELECT i.id, i.amount, i.status, i.due_date,
@@ -295,6 +341,8 @@ def handle_billing(cur, t, method, params, body, user, eid, resp):
             return resp(200, {'items': _list_payments(cur, t, params)})
         if method == 'POST':
             return resp(*_save_payment(cur, t, body, user))
+        if method == 'PUT' and eid:
+            return resp(*_update_payment(cur, t, eid, body, user))
         if method == 'DELETE' and eid:
             cur.execute(f"UPDATE {t('crm_payments')} SET archived_at = NOW() WHERE id = %s RETURNING *", (eid,))
             p = cur.fetchone()

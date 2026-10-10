@@ -64,6 +64,7 @@ const InvoiceView = ({ id, onClose, onOpen }: { id: number; onClose: () => void;
   const { data, isLoading } = useQuery<Resp>({ queryKey: ["crm", "billing", "invoice", id], queryFn: () => api({ resource: "billing", action: "invoices", id }) });
   const [edit, setEdit] = useState(false);
   const [pay, setPay] = useState(false);
+  const [editPay, setEditPay] = useState<Payment | null>(null);
   const inv = data?.item;
 
   const setStatus = async (status: "canceled" | "issued") => {
@@ -153,6 +154,7 @@ const InvoiceView = ({ id, onClose, onOpen }: { id: number; onClose: () => void;
                       <Icon name={PAY_METHODS[p.method]?.icon || "Wallet"} size={15} className="text-muted-foreground" />
                       <span className="flex-1">{fmtDate(p.paid_at)} · {PAY_METHODS[p.method]?.label}{p.note ? ` · ${p.note}` : ""}</span>
                       <span className="font-medium tabular-nums text-emerald-700">+{money(p.amount)}</span>
+                      <button onClick={() => setEditPay(p)} className="text-muted-foreground hover:text-foreground" aria-label="Изменить"><Icon name="Pencil" size={14} /></button>
                       <button onClick={() => removePayment(p)} className="text-muted-foreground opacity-0 hover:text-primary group-hover:opacity-100" aria-label="Удалить"><Icon name="Trash2" size={14} /></button>
                     </li>
                   ))}
@@ -179,6 +181,7 @@ const InvoiceView = ({ id, onClose, onOpen }: { id: number; onClose: () => void;
         )}
         {edit && inv && <InvoiceDialog invoice={inv} onClose={() => setEdit(false)} />}
         {pay && inv && <PaymentDialog invoice={inv} onClose={() => setPay(false)} />}
+        {editPay && <PaymentDialog payment={editPay} onClose={() => setEditPay(null)} />}
       </DialogContent>
     </Dialog>
   );
