@@ -8,7 +8,7 @@ import psycopg2
 import psycopg2.extras
 
 SCHEMA = 't_p15395438_addict_clinic_site'
-PHONE = '8 800 555-24-07'
+PHONE = '8-800-222-11-25'
 
 CORS = {
     'Access-Control-Allow-Origin': '*',

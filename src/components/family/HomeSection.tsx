@@ -69,7 +69,7 @@ const HomeSection = ({ go }: { go: (s: string) => void }) => {
           <div>
             <p className="font-heading font-semibold">Ситуация срочная?</p>
             <p className="mt-1 text-sm text-white/80">Запой, передозировка, агрессия — звоните на линию 24/7. При угрозе жизни — 112.</p>
-            <a href="tel:+78005552407" className="mt-3 inline-flex h-9 items-center rounded-full bg-white px-4 text-sm font-medium text-foreground">8 800 555-24-07</a>
+            <a href="tel:+78002221125" className="mt-3 inline-flex h-9 items-center rounded-full bg-white px-4 text-sm font-medium text-foreground">8-800-222-11-25</a>
           </div>
         </div>
       </div>

@@ -1,5 +1,5 @@
-export const PHONE_DISPLAY = "8 800 555-24-07";
-export const PHONE_HREF = "tel:+78005552407";
+export const PHONE_DISPLAY = "8-800-222-11-25";
+export const PHONE_HREF = "tel:+78002221125";
 export const LOGO_URL = "/logo.png";
 
 export const NAV = [

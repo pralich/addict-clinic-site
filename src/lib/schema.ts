@@ -12,7 +12,7 @@ export const WEBSITE_ID = `${SITE_URL}/#website`;
 export const LOGO_ID = `${SITE_URL}/#logo`;
 
 const CTX = "https://schema.org";
-const PHONE = "+7-800-555-24-07";
+const PHONE = "+7-800-222-11-25";
 
 const address = {
   "@type": "PostalAddress",

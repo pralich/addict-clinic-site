@@ -19,7 +19,7 @@
     { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
   ],
   "shortcuts": [
-    { "name": "Срочная помощь 24/7", "short_name": "Позвонить", "url": "tel:+78005552407", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
+    { "name": "Срочная помощь 24/7", "short_name": "Позвонить", "url": "tel:+78002221125", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
     { "name": "Кабинет для близких", "short_name": "Кабинет", "url": "/family", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] },
     { "name": "Статьи", "short_name": "Статьи", "url": "/articles", "icons": [{ "src": "/pwa-192.png", "sizes": "192x192" }] }
   ]
