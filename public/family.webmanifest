@@ -1,0 +1,26 @@
+{
+  "id": "/family",
+  "name": "Кабинет для близких — addict.clinic",
+  "short_name": "Близкие",
+  "description": "Поддержка для родственников зависимых: ИИ-психолог, вопросы психологу, встречи и вебинары.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/family?source=pwa",
+  "scope": "/family",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3F3F1",
+  "theme_color": "#F3F3F1",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    { "src": "/family-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/family-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/family-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/family-apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ],
+  "shortcuts": [
+    { "name": "ИИ-психолог", "short_name": "ИИ-психолог", "url": "/family?s=ai", "icons": [{ "src": "/family-192.png", "sizes": "192x192" }] },
+    { "name": "Вопрос психологу", "short_name": "Вопрос", "url": "/family?s=questions", "icons": [{ "src": "/family-192.png", "sizes": "192x192" }] },
+    { "name": "Встречи и вебинары", "short_name": "Встречи", "url": "/family?s=events", "icons": [{ "src": "/family-192.png", "sizes": "192x192" }] }
+  ]
+}

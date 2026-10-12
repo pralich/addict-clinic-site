@@ -24,7 +24,10 @@
     <script>
       (function () {
         var admin = location.pathname === "/admin" || location.pathname.indexOf("/admin/") === 0;
-        var c = admin
+        var family = location.pathname === "/family" || location.pathname.indexOf("/family/") === 0;
+        var c = family
+          ? { manifest: "/family.webmanifest?v=1", icon: "/family-apple-touch-icon.png?v=1", title: "Близкие", bar: "default", theme: "#F3F3F1", png: "/family-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
+          : admin
           ? { manifest: "/admin.webmanifest?v=3", icon: "/admin-apple-touch-icon.png?v=3", title: "Clinic CRM", bar: "black-translucent", theme: "#1B1B1A", svg: "/admin-favicon.svg", png: "/admin-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
           : { manifest: "/site.webmanifest?v=3", icon: "/apple-touch-icon.png?v=2", title: "addict.clinic", bar: "default", theme: "#F3F3F1" };
         var head = document.head;

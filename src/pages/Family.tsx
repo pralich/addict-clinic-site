@@ -12,6 +12,7 @@ import AiSection from "@/components/family/AiSection";
 import BillingSection from "@/components/family/BillingSection";
 import TrialBanner from "@/components/family/TrialBanner";
 import PushCard from "@/components/family/PushCard";
+import FamilyInstall from "@/components/family/FamilyInstall";
 import { RELATIONS, fmtNum } from "@/lib/family-api";
 import { useSeo } from "@/lib/seo";
 
@@ -58,6 +59,7 @@ const Shell = () => {
           </button>
         ))}
       </nav>
+      <FamilyInstall />
       <PushCard compact />
       <div className="m-3 rounded-2xl bg-card p-4">
         <p className="text-xs text-muted-foreground">Срочная помощь 24/7</p>
@@ -82,10 +84,21 @@ const Shell = () => {
       <Sheet open={menu} onOpenChange={setMenu}>
         <SheetContent side="left" className="w-[280px] p-0">{nav}</SheetContent>
       </Sheet>
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b bg-background/90 px-4 py-3 backdrop-blur lg:hidden">
-        <button onClick={() => setMenu(true)} aria-label="Меню"><Icon name="Menu" size={22} /></button>
-        <span className="flex-1 font-heading font-semibold">{NAV.find((n) => n.id === section)?.label}</span>
-        <a href={PHONE_HREF} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-label="Позвонить"><Icon name="Phone" size={16} /></a>
+      <header className="sticky top-0 z-30 border-b bg-background/90 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
+        <div className="flex items-center gap-2 bg-ink px-4 py-2 text-ink-foreground">
+          <Link to="/" className="inline-flex min-w-0 flex-1 items-center gap-2 text-sm font-medium">
+            <Icon name="ChevronLeft" size={16} className="shrink-0 opacity-70" />
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground"><Icon name="Plus" size={14} /></span>
+            <span className="truncate">Лечение зависимостей</span>
+          </Link>
+          <a href={PHONE_HREF} className="shrink-0 text-xs font-medium opacity-80">{PHONE_DISPLAY}</a>
+        </div>
+        <div className="flex items-center gap-3 px-4 py-3">
+          <button onClick={() => setMenu(true)} aria-label="Меню"><Icon name="Menu" size={22} /></button>
+          <span className="flex-1 font-heading font-semibold">{NAV.find((n) => n.id === section)?.label}</span>
+          <FamilyInstall variant="icon" />
+          <a href={PHONE_HREF} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-label="Позвонить"><Icon name="Phone" size={16} /></a>
+        </div>
       </header>
       <main className="px-4 py-6 md:px-8 lg:ml-[260px] lg:py-8">
         <div className="mx-auto max-w-[1200px]">

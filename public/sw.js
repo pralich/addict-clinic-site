@@ -1,5 +1,5 @@
-const CACHE = "addict-clinic-v3";
-const SHELL = ["/", "/site.webmanifest", "/pwa-192.png", "/pwa-512.png", "/logo.png", "/favicon.svg"];
+const CACHE = "addict-clinic-v4";
+const SHELL = ["/", "/site.webmanifest", "/family.webmanifest", "/family-192.png", "/pwa-192.png", "/pwa-512.png", "/logo.png", "/favicon.svg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -58,7 +58,7 @@ self.addEventListener("push", (e) => {
   e.waitUntil(
     self.registration.showNotification(data.title || "addict.clinic", {
       body: data.body || "",
-      icon: "/pwa-192.png",
+      icon: (data.url || "/family").startsWith("/family") ? "/family-192.png" : "/pwa-192.png",
       badge: "/pwa-192.png",
       tag: data.tag,
       renotify: !!data.tag,
