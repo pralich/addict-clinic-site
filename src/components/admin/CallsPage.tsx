@@ -1,0 +1,163 @@
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import Icon from "@/components/ui/icon";
+import { Input } from "@/components/ui/input";
+import { api } from "@/lib/crm-api";
+
+type Call = {
+  id: number;
+  direction: "in" | "out";
+  status: string;
+  phone: string;
+  pbx_user: string | null;
+  ext: string | null;
+  group_name: string | null;
+  telnum: string | null;
+  started_at: string;
+  duration: number;
+  wait: number | null;
+  record_url: string | null;
+  lead_id: number | null;
+  client_id: number | null;
+  lead_created: boolean;
+  lead_name: string | null;
+  client_name: string | null;
+};
+
+type Resp = { items: Call[]; has_more: boolean; page: number; stats: { today: number; today_in: number; today_missed: number; week_leads: number } };
+
+const FILTERS = [
+  ["all", "Все"],
+  ["in", "Входящие"],
+  ["out", "Исходящие"],
+  ["missed", "Пропущенные"],
+  ["new_leads", "Новые лиды"],
+  ["with_record", "С записью"],
+] as const;
+
+const STATUS: Record<string, string> = {
+  success: "Состоялся",
+  missed: "Пропущен",
+  busy: "Занято",
+  notavailable: "Недоступен",
+  notallowed: "Запрещён",
+  notfound: "Не найден",
+  cancel: "Отменён",
+  noanswer: "Нет ответа",
+};
+
+const dur = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+const dt = (s: string) => new Date(s.endsWith("Z") ? s : `${s}Z`).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
+const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void }) => {
+  const [filter, setFilter] = useState<string>("all");
+  const [q, setQ] = useState("");
+  const [page, setPage] = useState(1);
+
+  const params = {
+    resource: "calls",
+    page,
+    q,
+    direction: filter === "in" || filter === "out" ? filter : undefined,
+    missed: filter === "missed" ? 1 : undefined,
+    new_leads: filter === "new_leads" ? 1 : undefined,
+    with_record: filter === "with_record" ? 1 : undefined,
+  };
+  const { data, isLoading } = useQuery<Resp>({
+    queryKey: ["crm", "calls", params],
+    queryFn: () => api(params),
+    refetchInterval: 30000,
+  });
+
+  const pick = (f: string) => { setFilter(f); setPage(1); };
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">Журнал звонков</h1>
+          <p className="text-sm text-muted-foreground">Входящие и исходящие звонки из Виртуальной АТС МегаФон</p>
+        </div>
+        <div className="relative w-full sm:w-64">
+          <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Поиск по номеру" className="pl-9" />
+        </div>
+      </div>
+
+      {data?.stats && (
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {[
+            { icon: "Phone", l: "Звонков за сутки", v: data.stats.today },
+            { icon: "PhoneIncoming", l: "Входящих за сутки", v: data.stats.today_in },
+            { icon: "PhoneMissed", l: "Пропущено за сутки", v: data.stats.today_missed },
+            { icon: "UserPlus", l: "Новых лидов за неделю", v: data.stats.week_leads },
+          ].map((s) => (
+            <div key={s.l} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+              <Icon name={s.icon} size={20} className="text-primary" />
+              <div><p className="text-xs text-muted-foreground">{s.l}</p><p className="font-heading text-xl font-semibold">{s.v}</p></div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-wrap gap-1 rounded-2xl bg-secondary p-1 sm:inline-flex sm:rounded-full">
+        {FILTERS.map(([k, l]) => (
+          <button key={k} onClick={() => pick(k)} className={`rounded-full px-3.5 py-1.5 text-sm ${filter === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
+        ))}
+      </div>
+
+      {isLoading ? (
+        <div className="mt-6 flex justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>
+      ) : !data?.items.length ? (
+        <p className="mt-16 text-center text-muted-foreground">Звонков пока нет</p>
+      ) : (
+        <div className="mt-4 divide-y rounded-xl border bg-card">
+          {data.items.map((c) => {
+            const missed = c.status === "missed";
+            const name = c.client_name || c.lead_name;
+            return (
+              <div key={c.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
+                <div className="flex min-w-0 flex-1 items-center gap-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${missed ? "bg-red-100 text-red-700" : c.direction === "in" ? "bg-emerald-100 text-emerald-700" : "bg-sky-100 text-sky-700"}`}>
+                    <Icon name={missed ? "PhoneMissed" : c.direction === "in" ? "PhoneIncoming" : "PhoneOutgoing"} size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <a href={`tel:${c.phone}`} className="font-medium hover:underline">{c.phone || "Скрытый номер"}</a>
+                      {name && <span className="truncate text-sm text-muted-foreground">· {name}</span>}
+                      {c.lead_created && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Новый лид</span>}
+                    </div>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {dt(c.started_at)} · {c.direction === "in" ? "Входящий" : "Исходящий"} · {STATUS[c.status] || c.status}
+                      {c.duration > 0 && ` · ${dur(c.duration)}`}
+                      {c.pbx_user && ` · ${c.pbx_user}`}
+                      {c.group_name && ` · ${c.group_name}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                  {c.record_url && <audio controls preload="none" src={c.record_url} className="h-9 w-full max-w-xs md:w-64" />}
+                  {c.client_id ? (
+                    <button onClick={() => onOpen("clients", c.client_id!)} className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70"><Icon name="User" size={14} />Клиент</button>
+                  ) : c.lead_id ? (
+                    <button onClick={() => onOpen("leads", c.lead_id!)} className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70"><Icon name="Inbox" size={14} />Лид</button>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {data && (page > 1 || data.has_more) && (
+        <div className="mt-4 flex justify-center gap-2">
+          <button disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Назад</button>
+          <span className="px-2 py-1.5 text-sm text-muted-foreground">Стр. {page}</span>
+          <button disabled={!data.has_more} onClick={() => setPage(page + 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Дальше</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default CallsPage;

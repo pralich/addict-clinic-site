@@ -12,6 +12,7 @@ from finance import handle_finance
 from billing import handle_billing
 from schedule import attach_plans
 from tasks import handle_tasks
+from calls import handle_calls
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -709,6 +710,8 @@ def handler(event: dict, context) -> dict:
             return handle_in_treatment(cur, params)
         if resource == 'options':
             return handle_options(cur)
+        if resource == 'calls':
+            return handle_calls(cur, t, params, resp)
         if resource == 'shop_orders':
             return handle_shop_orders(cur, params)
         if resource == 'tags':

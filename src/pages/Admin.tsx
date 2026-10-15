@@ -17,6 +17,7 @@ import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import SeoPage from "@/components/admin/SeoPage";
 import ApiPage from "@/components/admin/ApiPage";
+import CallsPage from "@/components/admin/CallsPage";
 import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
@@ -34,6 +35,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: "dashboard", label: "Сводка", icon: "LayoutDashboard" },
       { id: "tasks", label: "Задачи", icon: "ListTodo" },
       { id: "leads", label: "Лиды", icon: "Inbox" },
+      { id: "calls", label: "Звонки", icon: "PhoneCall" },
       { id: "deals", label: "Сделки", icon: "Handshake" },
       { id: "clients", label: "Клиенты", icon: "Users" },
       { id: "in-treatment", label: "Сейчас лечатся", icon: "BedDouble" },
@@ -207,6 +209,7 @@ const Shell = () => {
           {page === "orders" && <ShopOrdersPage />}
           {page === "seo" && <SeoPage />}
           {page === "api" && <ApiPage />}
+          {page === "calls" && <CallsPage onOpen={open} />}
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
           {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}

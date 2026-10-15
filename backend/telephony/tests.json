@@ -1,0 +1,6 @@
+{
+  "tests": [
+    {"name": "Health", "method": "GET", "path": "/", "expectedStatus": 200, "expectedBody": {"ok": true}, "bodyMatcher": "partial"},
+    {"name": "Wrong token", "method": "POST", "path": "/", "body": {"cmd": "history", "crm_token": "wrong", "callid": "x"}, "expectedStatus": 401}
+  ]
+}
