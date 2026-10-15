@@ -239,6 +239,21 @@ def handle_dashboard(cur):
     res['campaigns'] = cur.fetchall()
     q(cur, f'SELECT a.id, a.entity_type, a.entity_id, a.kind, a.text, a.created_at, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id WHERE a.entity_type <> \'none\' ORDER BY a.created_at DESC LIMIT 10')
     res['activity'] = cur.fetchall()
+    calls = {}
+    for key, days in (('day', 0), ('week', 6)):
+        q(cur, f'''SELECT
+            COUNT(*) FILTER (WHERE direction = 'in') AS incoming,
+            COUNT(*) FILTER (WHERE direction = 'out') AS outgoing,
+            COUNT(*) FILTER (WHERE status = 'missed') AS missed,
+            COUNT(*) FILTER (WHERE direction = 'in' AND status = 'missed') AS missed_in,
+            COUNT(DISTINCT lead_id) FILTER (WHERE lead_created) AS leads,
+            COUNT(DISTINCT lead_id) FILTER (WHERE lead_created AND direction = 'in') AS leads_in,
+            COUNT(DISTINCT lead_id) FILTER (WHERE lead_created AND direction = 'out') AS leads_out,
+            COUNT(DISTINCT lead_id) FILTER (WHERE lead_created AND status = 'missed') AS leads_missed
+            FROM {t("crm_calls")}
+            WHERE (started_at + INTERVAL '3 hours')::date >= (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')::date - {days}''')
+        calls[key] = cur.fetchone()
+    res['calls'] = calls
     return resp(200, res)
 
 

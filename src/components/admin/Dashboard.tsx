@@ -3,6 +3,7 @@ import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YA
 import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
+import DashboardCalls from "./DashboardCalls";
 import { CHANNELS, DEAL_STAGES, ENTITY_LABEL, LEAD_STATUS, fmtDate, money } from "./config";
 
 type Props = { onOpen: (resource: string, id: number) => void; onNavigate: (page: string) => void };
@@ -49,6 +50,8 @@ const Dashboard = ({ onOpen, onNavigate }: Props) => {
           </button>
         ))}
       </div>
+
+      <DashboardCalls calls={data.calls} onNavigate={onNavigate} />
 
       <div className="grid gap-3 lg:grid-cols-5">
         <div className="rounded-xl border bg-card p-5 lg:col-span-3">
