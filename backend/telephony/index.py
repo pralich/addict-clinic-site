@@ -230,7 +230,7 @@ def handle_sync(conn, cur, user, d):
     key = os.environ.get('MEGAPBX_API_KEY') or ''
     if not domain or not key:
         return resp(400, {'error': 'Не заполнены адрес АТС или ключ API — загрузка истории недоступна'})
-    period = d.get('period') if d.get('period') in ('today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month') else 'today'
+    period = d.get('period') if d.get('period') in ('today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month') else 'this_week'
     query = {'period': period, 'type': 'all', 'limit': 100}
     url = f'https://{domain}/crmapi/v1/history/json?{urlencode(query)}'
     started = time.time()
