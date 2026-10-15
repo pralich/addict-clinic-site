@@ -13,6 +13,7 @@ from billing import handle_billing
 from schedule import attach_plans
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
+from reqlogs import handle_request_logs
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -725,6 +726,8 @@ def handler(event: dict, context) -> dict:
             return handle_in_treatment(cur, params)
         if resource == 'options':
             return handle_options(cur)
+        if resource == 'request_logs':
+            return handle_request_logs(cur, t, params, user, eid, resp)
         if resource == 'make_call' and method == 'POST':
             return handle_make_call(cur, t, body, user, resp)
         if resource == 'live_calls':

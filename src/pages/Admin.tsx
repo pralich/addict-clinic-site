@@ -19,6 +19,7 @@ import SeoPage from "@/components/admin/SeoPage";
 import ApiPage from "@/components/admin/ApiPage";
 import CallsPage from "@/components/admin/CallsPage";
 import CallerPopup from "@/components/admin/CallerPopup";
+import RequestLogsPage from "@/components/admin/RequestLogsPage";
 import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
@@ -44,6 +45,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: "finance", label: "Финансы", icon: "Wallet", admin: true },
       { id: "users", label: "Пользователи", icon: "UserCog" },
       { id: "api", label: "API", icon: "Webhook" },
+      { id: "request-logs", label: "Журнал запросов", icon: "ScrollText", admin: true },
     ],
   },
   {
@@ -211,6 +213,7 @@ const Shell = () => {
           {page === "seo" && <SeoPage />}
           {page === "api" && <ApiPage />}
           {page === "calls" && <CallsPage onOpen={open} />}
+          {page === "request-logs" && user.role === "admin" && <RequestLogsPage />}
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
           {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}

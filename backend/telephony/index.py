@@ -12,6 +12,8 @@ import boto3
 import psycopg2
 import psycopg2.extras
 
+from reqlog import logged
+
 SCHEMA = 't_p15395438_addict_clinic_site'
 CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
 CORS = {
@@ -209,6 +211,15 @@ def handle_contact(cur, d):
     return resp(200, {'contact_name': name} if name else {})
 
 
+def _action(r):
+    b = r.get('body') if isinstance(r.get('body'), dict) else {}
+    q = r.get('query') or {}
+    cmd = b.get('cmd') or q.get('cmd') or 'ping'
+    typ = b.get('type') or q.get('type')
+    return f'{cmd}:{typ}' if typ else cmd
+
+
+@logged('telephony', lambda e, r: _action(r))
 def handler(event: dict, context) -> dict:
     """Приём событий Виртуальной АТС МегаФон (MegaPBX CRM API): история звонков, записи разговоров, автосоздание лидов"""
     if event.get('httpMethod') == 'OPTIONS':

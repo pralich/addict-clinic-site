@@ -1,8 +1,11 @@
 import json
 import os
 import re
+import time
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
+
+from reqlog import write_log
 
 
 def _norm(v):
@@ -26,22 +29,30 @@ def handle_make_call(cur, t, body, user, resp):
     key = os.environ.get('MEGAPBX_API_KEY') or ''
     if not domain or not key:
         return resp(400, {'error': 'Звонки через АТС не настроены: нет адреса АТС или ключа API'})
-    req = Request(f'https://{domain}/crmapi/v1/makecall', data=json.dumps({'phone': phone, 'user': login}).encode(),
-                  headers={'X-API-KEY': key, 'Content-Type': 'application/json'}, method='POST')
+    payload = {'phone': phone, 'user': login}
+    url = f'https://{domain}/crmapi/v1/makecall'
+    req = Request(url, data=json.dumps(payload).encode(), headers={'X-API-KEY': key, 'Content-Type': 'application/json'}, method='POST')
+    started = time.time()
+
+    def out_log(code, response, error=None):
+        write_log('telephony', 'out', 'POST', 'makecall', code, int((time.time() - started) * 1000),
+                  {'url': url, 'body': payload, 'crm_user': user.get('name')}, response, None, error, None, user['id'])
+
     try:
         raw = urlopen(req, timeout=8).read().decode('utf-8', 'replace')
     except HTTPError as e:
         detail = e.read().decode('utf-8', 'replace')[:300]
-        print(f'makecall failed {e.code}: {detail}')
+        out_log(e.code, detail, f'HTTP {e.code}')
         msg = 'АТС не приняла ключ API' if e.code in (401, 403) else 'Сотрудник с таким логином не найден в АТС' if e.code == 404 else f'АТС вернула ошибку {e.code}'
         return resp(502, {'error': msg})
     except Exception as e:
-        print(f'makecall error: {e}')
+        out_log(0, None, f'{type(e).__name__}: {e}')
         return resp(502, {'error': 'АТС не отвечает, попробуйте ещё раз'})
     try:
         data = json.loads(raw) if raw else {}
     except json.JSONDecodeError:
         data = {}
+    out_log(200, data or raw)
     return resp(200, {'ok': True, 'uuid': data.get('uuid')})
 
 

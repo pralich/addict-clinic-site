@@ -74,6 +74,12 @@
         "phone": "+79990000000"
       },
       "expectedStatus": 401
+    },
+    {
+      "name": "Request logs require auth",
+      "method": "GET",
+      "path": "/?resource=request_logs",
+      "expectedStatus": 401
     }
   ]
 }

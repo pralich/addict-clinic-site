@@ -9,6 +9,8 @@ from urllib.request import urlopen
 import psycopg2
 import psycopg2.extras
 
+from reqlog import logged
+
 SCHEMA = 't_p15395438_addict_clinic_site'
 CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
 
@@ -420,6 +422,10 @@ def ping_push():
         print(f'crm push ping failed: {e}')
 
 
+@logged(
+    lambda e: 'site' if (e.get('queryStringParameters') or {}).get('resource') == 'site_lead' else 'api',
+    lambda e, r: f"{e.get('httpMethod')} {(e.get('queryStringParameters') or {}).get('resource') or '/'}",
+)
 def handler(event: dict, context) -> dict:
     """API CRM addict.clinic: заявки с форм сайта с источником и рекламой, создание и получение клиентов, лидов и сделок по API-ключу"""
     method = event.get('httpMethod', 'GET')
