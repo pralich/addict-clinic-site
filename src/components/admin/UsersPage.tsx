@@ -13,6 +13,7 @@ const baseFields: Field[] = [
   { name: "name", label: "Имя", required: true },
   { name: "email", label: "Email", type: "email", required: true },
   { name: "phone", label: "Телефон", type: "tel" },
+  { name: "pbx_login", label: "Логин в АТС МегаФон (для звонков из CRM)" },
   { name: "role", label: "Роль", type: "select", options: toOptions(ROLES), required: true },
 ];
 const createFields: Field[] = [...baseFields, { name: "password", label: "Пароль (от 6 символов)", type: "password", required: true }];
@@ -63,7 +64,7 @@ const UsersPage = () => {
                       </div>
                       <div>
                         <p className="font-medium">{u.name}{u.id === user?.id && <span className="ml-1.5 text-xs text-muted-foreground">(вы)</span>}</p>
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
+                        <p className="text-xs text-muted-foreground">{u.email}{u.pbx_login && <span className="ml-1.5 inline-flex items-center gap-1"><Icon name="Phone" size={11} />{u.pbx_login}</span>}</p>
                       </div>
                     </div>
                   </TableCell>

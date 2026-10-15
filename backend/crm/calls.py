@@ -1,4 +1,48 @@
+import json
+import os
 import re
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+
+
+def _norm(v):
+    d = re.sub(r'\D', '', v or '')
+    if len(d) == 11 and d[0] in '78':
+        return '7' + d[1:]
+    if len(d) == 10:
+        return '7' + d
+    return d
+
+
+def handle_make_call(cur, t, body, user, resp):
+    phone = _norm(str(body.get('phone') or ''))
+    if len(phone) < 10:
+        return resp(400, {'error': 'Некорректный номер телефона'})
+    cur.execute(f"SELECT pbx_login FROM {t('crm_users')} WHERE id = %s", (user['id'],))
+    login = ((cur.fetchone() or {}).get('pbx_login') or '').strip()
+    if not login:
+        return resp(400, {'error': 'Не указан ваш логин в АТС. Попросите администратора заполнить его в разделе «Пользователи»'})
+    domain = (os.environ.get('MEGAPBX_DOMAIN') or '').strip().replace('https://', '').replace('http://', '').strip('/')
+    key = os.environ.get('MEGAPBX_API_KEY') or ''
+    if not domain or not key:
+        return resp(400, {'error': 'Звонки через АТС не настроены: нет адреса АТС или ключа API'})
+    req = Request(f'https://{domain}/crmapi/v1/makecall', data=json.dumps({'phone': phone, 'user': login}).encode(),
+                  headers={'X-API-KEY': key, 'Content-Type': 'application/json'}, method='POST')
+    try:
+        raw = urlopen(req, timeout=8).read().decode('utf-8', 'replace')
+    except HTTPError as e:
+        detail = e.read().decode('utf-8', 'replace')[:300]
+        print(f'makecall failed {e.code}: {detail}')
+        msg = 'АТС не приняла ключ API' if e.code in (401, 403) else 'Сотрудник с таким логином не найден в АТС' if e.code == 404 else f'АТС вернула ошибку {e.code}'
+        return resp(502, {'error': msg})
+    except Exception as e:
+        print(f'makecall error: {e}')
+        return resp(502, {'error': 'АТС не отвечает, попробуйте ещё раз'})
+    try:
+        data = json.loads(raw) if raw else {}
+    except json.JSONDecodeError:
+        data = {}
+    return resp(200, {'ok': True, 'uuid': data.get('uuid')})
 
 
 def handle_live_calls(cur, t, resp):

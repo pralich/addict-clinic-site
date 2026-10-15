@@ -65,6 +65,15 @@
       "method": "GET",
       "path": "/?resource=live_calls",
       "expectedStatus": 401
+    },
+    {
+      "name": "Make call requires auth",
+      "method": "POST",
+      "path": "/?resource=make_call",
+      "body": {
+        "phone": "+79990000000"
+      },
+      "expectedStatus": 401
     }
   ]
 }

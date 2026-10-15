@@ -12,7 +12,7 @@ from finance import handle_finance
 from billing import handle_billing
 from schedule import attach_plans
 from tasks import handle_tasks
-from calls import handle_calls, handle_live_calls
+from calls import handle_calls, handle_live_calls, handle_make_call
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -58,7 +58,7 @@ ENTITIES = {
     },
 }
 
-USER_FIELDS = 'id, name, email, phone, role, is_active, last_login_at, created_at'
+USER_FIELDS = 'id, name, email, phone, role, is_active, last_login_at, created_at, pbx_login'
 
 
 CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
@@ -496,12 +496,12 @@ def handle_users(cur, method, eid, body, user, params):
         q(cur, f'SELECT id FROM {t("crm_users")} WHERE email = %s', (email,))
         if cur.fetchone():
             return resp(400, {'error': 'Пользователь с таким email уже есть'})
-        q(cur, f'INSERT INTO {t("crm_users")} (name, email, phone, role, password_hash) VALUES (%s, %s, %s, %s, %s) RETURNING {USER_FIELDS}',
-          (name, email, clean(body.get('phone')), body.get('role') if body.get('role') in ('admin', 'manager', 'doctor') else 'manager', hash_password(password)))
+        q(cur, f'INSERT INTO {t("crm_users")} (name, email, phone, pbx_login, role, password_hash) VALUES (%s, %s, %s, %s, %s, %s) RETURNING {USER_FIELDS}',
+          (name, email, clean(body.get('phone')), clean(body.get('pbx_login')), body.get('role') if body.get('role') in ('admin', 'manager', 'doctor') else 'manager', hash_password(password)))
         return resp(200, {'item': cur.fetchone()})
     if method == 'PUT' and eid:
         data = {}
-        for f in ('name', 'phone', 'role', 'is_active'):
+        for f in ('name', 'phone', 'role', 'is_active', 'pbx_login'):
             if f in body:
                 data[f] = clean(body[f])
         if 'email' in body:
@@ -710,6 +710,8 @@ def handler(event: dict, context) -> dict:
             return handle_in_treatment(cur, params)
         if resource == 'options':
             return handle_options(cur)
+        if resource == 'make_call' and method == 'POST':
+            return handle_make_call(cur, t, body, user, resp)
         if resource == 'live_calls':
             return handle_live_calls(cur, t, resp)
         if resource == 'calls':

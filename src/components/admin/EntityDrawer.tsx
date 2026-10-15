@@ -8,6 +8,7 @@ import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
 import ContactPerson, { ContactInfo } from "./ContactPerson";
+import CallButton from "./CallButton";
 import BillingBlock from "./billing/BillingBlock";
 import NextPayment from "./billing/NextPayment";
 import { TAG_GROUPS, TagBadge, TagPicker, useTagMap } from "./Tags";
@@ -65,6 +66,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
             <DrawerTags value={item.tags || []} onChange={(tags) => mut.mutate({ params: { resource, id }, method: "PUT", body: { tags } })} />
 
             <div className="flex flex-wrap gap-2">
+              {resource === "clients" && <CallButton targets={[{ label: item.full_name || "Клиент", phone: item.phone }, { label: item.rep_name ? `${item.rep_name} (контактное лицо)` : "Контактное лицо", phone: item.rep_phone }]} />}
+              {resource === "leads" && <CallButton targets={[{ label: item.name || "Лид", phone: item.contact }, { label: item.rep_name ? `${item.rep_name} (контактное лицо)` : "Контактное лицо", phone: item.rep_phone }]} />}
               <Button size="sm" onClick={() => setEdit(true)}><Icon name="Pencil" size={14} className="mr-1.5" />Редактировать</Button>
               {resource === "leads" && item.status !== "converted" && (
                 <Button size="sm" variant="outline" onClick={convert}><Icon name="ArrowRightLeft" size={14} className="mr-1.5" />В клиента и сделку</Button>
