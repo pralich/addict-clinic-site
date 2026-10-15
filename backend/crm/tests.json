@@ -59,6 +59,12 @@
       "method": "GET",
       "path": "/?resource=tasks",
       "expectedStatus": 401
+    },
+    {
+      "name": "Live calls require auth",
+      "method": "GET",
+      "path": "/?resource=live_calls",
+      "expectedStatus": 401
     }
   ]
 }

@@ -165,6 +165,7 @@ def handle_history(cur, d):
          pretty_phone(d.get('telnum'))[:50] or None, started, duration, to_int(d.get('wait')) or None, link, record_url,
          lead['id'] if lead else None, client['id'] if client else None, lead_created, json.dumps(raw, ensure_ascii=False)))
     call_id = cur.fetchone()['id']
+    cur.execute(f"UPDATE {t('crm_live_calls')} SET state = 'ended', lead_id = %s, updated_at = NOW() WHERE callid = %s", (lead['id'] if lead else None, callid))
 
     mins = f'{duration // 60}:{duration % 60:02d}'
     dir_text = 'Входящий' if direction == 'in' else 'Исходящий'
@@ -176,6 +177,30 @@ def handle_history(cur, d):
     if target:
         log_activity(cur, target[0], target[1], text, 'call', direction, result, dur_min)
     return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, '_record': (call_id, link, callid) if (link and duration > 0) else None})
+
+
+def handle_event(cur, d):
+    callid = (d.get('callid') or '')[:150]
+    typ = (d.get('type') or '').upper()
+    if not callid or not typ:
+        return resp(200, {'ok': True})
+    if typ in ('COMPLETED', 'CANCELLED'):
+        cur.execute(f"UPDATE {t('crm_live_calls')} SET state = 'ended', updated_at = NOW() WHERE callid = %s", (callid,))
+        return resp(200, {'ok': True})
+    state = {'INCOMING': 'ringing', 'OUTGOING': 'ringing', 'ACCEPTED': 'talking'}.get(typ)
+    if not state:
+        return resp(200, {'ok': True})
+    phone = pretty_phone(d.get('phone'))
+    d10 = digits10(phone)
+    client, lead = find_contact(cur, d10)
+    direction = 'out' if typ == 'OUTGOING' or (d.get('direction') or '').lower() == 'out' else 'in'
+    cur.execute(f"""INSERT INTO {t('crm_live_calls')} (callid, direction, state, phone, phone_digits, pbx_user, diversion, lead_id, client_id)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (callid) DO UPDATE SET state = EXCLUDED.state, pbx_user = COALESCE(EXCLUDED.pbx_user, {t('crm_live_calls')}.pbx_user), updated_at = NOW()""",
+        (callid, direction, state, phone[:50], d10, (d.get('user') or '')[:150] or None, pretty_phone(d.get('diversion'))[:50] or None,
+         lead['id'] if lead else None, client['id'] if client else None))
+    cur.execute(f"DELETE FROM {t('crm_live_calls')} WHERE updated_at < NOW() - INTERVAL '1 day'")
+    return resp(200, {'ok': True})
 
 
 def handle_contact(cur, d):
@@ -216,6 +241,10 @@ def handler(event: dict, context) -> dict:
                     cur.execute(f"UPDATE {t('crm_calls')} SET record_url = %s WHERE id = %s", (url, rec[0]))
                     conn.commit()
             return resp(r['statusCode'], out)
+        if cmd == 'event':
+            r = handle_event(cur, d)
+            conn.commit()
+            return r
         if cmd == 'contact':
             return handle_contact(cur, d)
         return resp(200, {'ok': True})

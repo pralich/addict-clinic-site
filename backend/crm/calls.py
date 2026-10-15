@@ -1,6 +1,42 @@
 import re
 
 
+def handle_live_calls(cur, t, resp):
+    cur.execute(f"""SELECT lc.callid, lc.direction, lc.state, lc.phone, lc.phone_digits, lc.pbx_user, lc.diversion, lc.lead_id, lc.client_id, lc.started_at,
+            cl.full_name AS client_name, cl.status AS client_status, cl.notes AS client_notes,
+            l.name AS lead_name, l.status AS lead_status, l.topic AS lead_topic, l.created_at AS lead_created_at,
+            COALESCE(mc.name, ml.name) AS manager_name
+        FROM {t('crm_live_calls')} lc
+        LEFT JOIN {t('crm_clients')} cl ON cl.id = lc.client_id
+        LEFT JOIN {t('crm_leads')} l ON l.id = lc.lead_id
+        LEFT JOIN {t('crm_users')} mc ON mc.id = cl.manager_id
+        LEFT JOIN {t('crm_users')} ml ON ml.id = l.manager_id
+        WHERE lc.state IN ('ringing', 'talking') AND lc.updated_at > NOW() - INTERVAL '30 minutes'
+        ORDER BY lc.started_at DESC LIMIT 5""")
+    items = cur.fetchall()
+    for it in items:
+        d = it.pop('phone_digits') or ''
+        it['prev_calls'] = 0
+        it['last_call_at'] = None
+        it['deal'] = None
+        it['last_note'] = None
+        if len(d) >= 10:
+            cur.execute(f"SELECT COUNT(*) AS n, MAX(started_at) AS last FROM {t('crm_calls')} WHERE phone_digits = %s", (d,))
+            r = cur.fetchone()
+            it['prev_calls'], it['last_call_at'] = r['n'], r['last']
+        if it['client_id']:
+            cur.execute(f"""SELECT id, title, stage, amount FROM {t('crm_deals')} WHERE client_id = %s AND archived_at IS NULL
+                ORDER BY (stage IN ('won', 'lost')), updated_at DESC LIMIT 1""", (it['client_id'],))
+            it['deal'] = cur.fetchone()
+        et, ei = ('clients', it['client_id']) if it['client_id'] else ('leads', it['lead_id'])
+        if ei:
+            cur.execute(f"""SELECT a.text, a.kind, a.created_at, u.name AS user_name FROM {t('crm_activities')} a LEFT JOIN {t('crm_users')} u ON u.id = a.user_id
+                WHERE a.entity_type = %s AND a.entity_id = %s AND a.kind IN ('note', 'call', 'meeting') AND a.user_id IS NOT NULL
+                ORDER BY a.created_at DESC LIMIT 1""", (et, ei))
+            it['last_note'] = cur.fetchone()
+    return resp(200, {'items': items})
+
+
 def handle_calls(cur, t, params, resp):
     where = ['1=1']
     args = []

@@ -18,6 +18,7 @@ import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
 import SeoPage from "@/components/admin/SeoPage";
 import ApiPage from "@/components/admin/ApiPage";
 import CallsPage from "@/components/admin/CallsPage";
+import CallerPopup from "@/components/admin/CallerPopup";
 import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
@@ -215,6 +216,7 @@ const Shell = () => {
           {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}
         </div>
       </main>
+      <CallerPopup onOpen={open} />
       {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
     </div>
   );
