@@ -3,6 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import func2url from "../../../backend/func2url.json";
 import { getToken } from "@/lib/crm-api";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+
+const SYNC_PERIODS = { today: "Сегодня", yesterday: "Вчера", this_week: "Эту неделю", this_month: "Этот месяц" } as const;
+type SyncPeriod = keyof typeof SYNC_PERIODS;
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
@@ -76,17 +80,27 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
 
   const qc = useQueryClient();
   const [syncing, setSyncing] = useState(false);
-  const sync = async () => {
+  const [period, setPeriod] = useState<SyncPeriod>("today");
+  const sync = async (p: SyncPeriod = period) => {
+    setPeriod(p);
     setSyncing(true);
     try {
-      const res = await fetch(`${(func2url as Record<string, string>).telephony}?cmd=sync`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Auth-Token": getToken() || "" },
-        body: JSON.stringify({ period: "today" }),
-      });
-      const r = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(r.error || "Не удалось загрузить историю");
-      toast.success(r.added ? `Загружено новых звонков: ${r.added}${r.leads_created ? `, новых лидов: ${r.leads_created}` : ""}` : `Новых звонков нет (получено из АТС: ${r.received})`);
+      let added = 0, leads = 0, received = 0;
+      for (let i = 0; i < 6; i++) {
+        const res = await fetch(`${(func2url as Record<string, string>).telephony}?cmd=sync`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Auth-Token": getToken() || "" },
+          body: JSON.stringify({ period: p }),
+        });
+        const r = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(r.error || "Не удалось загрузить историю");
+        added += r.added || 0;
+        leads += r.leads_created || 0;
+        received = r.received || 0;
+        if (!r.partial) break;
+      }
+      const label = SYNC_PERIODS[p].toLowerCase();
+      toast.success(added ? `За ${label}: загружено новых звонков ${added}${leads ? `, новых лидов ${leads}` : ""}` : `За ${label} новых звонков нет (в АТС: ${received})`);
       qc.invalidateQueries({ queryKey: ["crm", "calls"] });
       qc.invalidateQueries({ queryKey: ["crm", "dashboard"] });
     } catch (e) {
@@ -104,9 +118,28 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
           <p className="text-sm text-muted-foreground">Входящие и исходящие звонки из Виртуальной АТС МегаФон</p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-        <button onClick={sync} disabled={syncing} className="flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
-          <Icon name="RefreshCw" size={15} className={syncing ? "animate-spin" : ""} />{syncing ? "Загружаю…" : "Обновить"}
-        </button>
+        <div className="flex h-10 overflow-hidden rounded-md bg-primary text-primary-foreground">
+          <button onClick={() => sync()} disabled={syncing} className="flex items-center gap-1.5 px-4 text-sm font-medium hover:bg-primary/90 disabled:opacity-60">
+            <Icon name="RefreshCw" size={15} className={syncing ? "animate-spin" : ""} />
+            {syncing ? "Загружаю…" : <>Обновить<span className="font-normal opacity-80">· {SYNC_PERIODS[period].toLowerCase()}</span></>}
+          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button disabled={syncing} aria-label="Выбрать период" className="flex items-center border-l border-primary-foreground/20 px-2.5 hover:bg-primary/90 disabled:opacity-60">
+                <Icon name="ChevronDown" size={15} />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Загрузить звонки из АТС за</DropdownMenuLabel>
+              {(Object.keys(SYNC_PERIODS) as SyncPeriod[]).map((k) => (
+                <DropdownMenuItem key={k} onClick={() => sync(k)} className="justify-between gap-6">
+                  {SYNC_PERIODS[k]}
+                  {k === period && <Icon name="Check" size={14} />}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
         <div className="relative w-full sm:w-64">
           <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Поиск по номеру" className="pl-9" />

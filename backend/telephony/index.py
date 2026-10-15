@@ -230,8 +230,8 @@ def handle_sync(conn, cur, user, d):
     key = os.environ.get('MEGAPBX_API_KEY') or ''
     if not domain or not key:
         return resp(400, {'error': 'Не заполнены адрес АТС или ключ API — загрузка истории недоступна'})
-    period = d.get('period') if d.get('period') in ('today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month') else 'this_week'
-    query = {'period': period, 'type': 'all', 'limit': 100}
+    period = d.get('period') if d.get('period') in ('today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month') else 'today'
+    query = {'period': period, 'type': 'all', 'limit': 100 if period in ('today', 'yesterday') else 500}
     url = f'https://{domain}/crmapi/v1/history/json?{urlencode(query)}'
     started = time.time()
 
@@ -257,7 +257,11 @@ def handle_sync(conn, cur, user, d):
     out_log(200, {'count': len(rows), 'sample': rows[:3]})
 
     added, leads, skipped = 0, 0, 0
+    partial = False
     for r in rows:
+        if time.time() - started > 3.5:
+            partial = True
+            break
         if not isinstance(r, dict):
             continue
         item = {
@@ -290,7 +294,7 @@ def handle_sync(conn, cur, user, d):
     if leads:
         ping_push()
 
-    return resp(200, {'ok': True, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads})
+    return resp(200, {'ok': True, 'period': period, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads, 'partial': partial})
 
 
 def handle_contact(cur, d):
