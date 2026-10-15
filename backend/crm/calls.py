@@ -116,7 +116,7 @@ def handle_calls(cur, t, params, resp):
     per = 50
     w = ' AND '.join(where)
     cur.execute(f"""SELECT c.id, c.direction, c.status, c.phone, c.pbx_user, c.ext, c.group_name, c.telnum, c.started_at, c.duration, c.wait,
-            c.record_url, c.lead_id, c.client_id, c.lead_created, l.name AS lead_name, cl.full_name AS client_name
+            COALESCE(c.record_url, c.record_source_url) AS record_url, c.lead_id, c.client_id, c.lead_created, l.name AS lead_name, cl.full_name AS client_name
         FROM {t('crm_calls')} c
         LEFT JOIN {t('crm_leads')} l ON l.id = c.lead_id
         LEFT JOIN {t('crm_clients')} cl ON cl.id = c.client_id

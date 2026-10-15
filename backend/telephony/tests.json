@@ -32,6 +32,13 @@
         "callid": "x"
       },
       "expectedStatus": 401
+    },
+    {
+      "name": "Sync requires CRM login",
+      "method": "POST",
+      "path": "/?cmd=sync",
+      "body": {},
+      "expectedStatus": 401
     }
   ]
 }

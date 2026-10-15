@@ -4,6 +4,9 @@ import re
 import base64
 import secrets
 import hmac
+import time
+from urllib.error import HTTPError
+from urllib.parse import urlencode
 from datetime import datetime
 from urllib.parse import parse_qs
 from urllib.request import Request, urlopen
@@ -12,14 +15,14 @@ import boto3
 import psycopg2
 import psycopg2.extras
 
-from reqlog import logged
+from reqlog import logged, write_log
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
 CORS = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Crm-Token',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Crm-Token, X-Auth-Token',
     'Access-Control-Max-Age': '86400',
 }
 MISSED = {'missed', 'noanswer', 'busy', 'notavailable', 'notallowed', 'notfound', 'cancel', 'cancelled'}
@@ -205,6 +208,91 @@ def handle_event(cur, d):
     return resp(200, {'ok': True})
 
 
+def crm_user(cur, headers):
+    token = headers.get('x-auth-token') or ''
+    if not token:
+        return None
+    cur.execute(f"""SELECT u.id, u.name, u.role FROM {t('crm_sessions')} s JOIN {t('crm_users')} u ON u.id = s.user_id
+        WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active""", (token,))
+    return cur.fetchone()
+
+
+def pick(r, *keys):
+    for k in keys:
+        v = r.get(k)
+        if v not in (None, ''):
+            return str(v)
+    return ''
+
+
+def handle_sync(conn, cur, user, d):
+    domain = (os.environ.get('MEGAPBX_DOMAIN') or '').strip().replace('https://', '').replace('http://', '').strip('/')
+    key = os.environ.get('MEGAPBX_API_KEY') or ''
+    if not domain or not key:
+        return resp(400, {'error': 'Не заполнены адрес АТС или ключ API — загрузка истории недоступна'})
+    period = d.get('period') if d.get('period') in ('today', 'yesterday', 'this_week', 'last_week', 'this_month', 'last_month') else 'today'
+    query = {'period': period, 'type': 'all', 'limit': 100}
+    url = f'https://{domain}/crmapi/v1/history/json?{urlencode(query)}'
+    started = time.time()
+
+    def out_log(code, response, error=None):
+        write_log('telephony', 'out', 'GET', 'history/json', code, int((time.time() - started) * 1000),
+                  {'url': url, 'query': query, 'crm_user': user['name']}, response, None, error, None, user['id'])
+
+    try:
+        raw = urlopen(Request(url, headers={'X-API-KEY': key, 'Accept': 'application/json'}), timeout=10).read().decode('utf-8', 'replace')
+    except HTTPError as e:
+        detail = e.read().decode('utf-8', 'replace')[:500]
+        out_log(e.code, detail, f'HTTP {e.code}')
+        return resp(502, {'error': 'АТС не приняла ключ API' if e.code in (401, 403) else f'АТС вернула ошибку {e.code}'})
+    except Exception as e:
+        out_log(0, None, f'{type(e).__name__}: {e}')
+        return resp(502, {'error': 'АТС не отвечает, попробуйте ещё раз'})
+    try:
+        data = json.loads(raw) if raw.strip() else []
+    except json.JSONDecodeError:
+        out_log(200, raw, 'Ответ АТС не JSON')
+        return resp(502, {'error': 'АТС вернула ответ в неожиданном формате'})
+    rows = data if isinstance(data, list) else (data.get('data') or data.get('items') or data.get('history') or []) if isinstance(data, dict) else []
+    out_log(200, {'count': len(rows), 'sample': rows[:3]})
+
+    added, leads, skipped = 0, 0, 0
+    for r in rows:
+        if not isinstance(r, dict):
+            continue
+        item = {
+            'callid': pick(r, 'uid', 'callid', 'id'),
+            'type': pick(r, 'type'),
+            'status': pick(r, 'status'),
+            'phone': pick(r, 'client', 'phone'),
+            'user': pick(r, 'account', 'user'),
+            'diversion': pick(r, 'via', 'diversion'),
+            'telnum': pick(r, 'telnum'),
+            'start': pick(r, 'start'),
+            'duration': pick(r, 'duration'),
+            'wait': pick(r, 'wait'),
+            'link': pick(r, 'record', 'link'),
+            'ext': pick(r, 'ext'),
+            'groupRealName': pick(r, 'groupRealName', 'group'),
+            'source': 'history_json',
+        }
+        if not item['callid']:
+            skipped += 1
+            continue
+        out = json.loads(handle_history(cur, item)['body'])
+        conn.commit()
+        if out.get('duplicate') or out.get('error'):
+            skipped += 1
+            continue
+        added += 1
+        if out.get('lead_created'):
+            leads += 1
+    if leads:
+        ping_push()
+
+    return resp(200, {'ok': True, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads})
+
+
 def handle_contact(cur, d):
     client, lead = find_contact(cur, digits10(d.get('phone')))
     name = (client and client['full_name']) or (lead and lead['name']) or ''
@@ -229,8 +317,20 @@ def handler(event: dict, context) -> dict:
     if event.get('httpMethod') == 'GET' and not d.get('cmd'):
         return resp(200, {'ok': True, 'service': 'megapbx'})
 
-    expected = os.environ.get('MEGAPBX_CRM_TOKEN') or ''
     headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}
+    if (d.get('cmd') or '').lower() == 'sync':
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            user = crm_user(cur, headers)
+            if not user:
+                return resp(401, {'error': 'Требуется вход в CRM'})
+            return handle_sync(conn, cur, user, d)
+        finally:
+            cur.close()
+            conn.close()
+
+    expected = os.environ.get('MEGAPBX_CRM_TOKEN') or ''
     token = d.get('crm_token') or headers.get('x-crm-token') or ''
     if not expected or not hmac.compare_digest(token, expected):
         return resp(401, {'error': 'Неверный crm_token'})

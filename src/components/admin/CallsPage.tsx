@@ -1,5 +1,8 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import func2url from "../../../backend/func2url.json";
+import { getToken } from "@/lib/crm-api";
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
@@ -71,6 +74,28 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
 
   const pick = (f: string) => { setFilter(f); setPage(1); };
 
+  const qc = useQueryClient();
+  const [syncing, setSyncing] = useState(false);
+  const sync = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch(`${(func2url as Record<string, string>).telephony}?cmd=sync`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Auth-Token": getToken() || "" },
+        body: JSON.stringify({ period: "today" }),
+      });
+      const r = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(r.error || "Не удалось загрузить историю");
+      toast.success(r.added ? `Загружено новых звонков: ${r.added}${r.leads_created ? `, новых лидов: ${r.leads_created}` : ""}` : `Новых звонков нет (получено из АТС: ${r.received})`);
+      qc.invalidateQueries({ queryKey: ["crm", "calls"] });
+      qc.invalidateQueries({ queryKey: ["crm", "dashboard"] });
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -78,9 +103,14 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Журнал звонков</h1>
           <p className="text-sm text-muted-foreground">Входящие и исходящие звонки из Виртуальной АТС МегаФон</p>
         </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+        <button onClick={sync} disabled={syncing} className="flex h-10 items-center gap-1.5 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+          <Icon name="RefreshCw" size={15} className={syncing ? "animate-spin" : ""} />{syncing ? "Загружаю…" : "Обновить"}
+        </button>
         <div className="relative w-full sm:w-64">
           <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => { setQ(e.target.value); setPage(1); }} placeholder="Поиск по номеру" className="pl-9" />
+        </div>
         </div>
       </div>
 
