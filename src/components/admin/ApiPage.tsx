@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import func2url from "../../../backend/func2url.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,7 +9,7 @@ import { api } from "@/lib/crm-api";
 import { useAuth } from "./AuthContext";
 import { fmtDate } from "./config";
 
-const API_URL = (func2url as Record<string, string>)["crm-api"];
+const API_URL = "https://api.addict.clinic/";
 
 type ApiKey = { id: number; name: string; key_prefix: string; is_active: boolean; requests_count: number; last_used_at: string | null; created_at: string; revoked_at: string | null; author: string | null };
 
