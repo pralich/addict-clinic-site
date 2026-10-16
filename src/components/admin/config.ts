@@ -56,6 +56,7 @@ export const ROLES: Record<string, string> = {
   admin: "Администратор",
   manager: "Менеджер",
   doctor: "Врач",
+  leads_only: "Только лиды (скрытые контакты)",
 };
 
 export const ACTIVITY_KINDS: Record<string, { label: string; icon: string }> = {

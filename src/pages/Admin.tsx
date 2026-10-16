@@ -30,6 +30,8 @@ import { useSeo } from "@/lib/seo";
 
 type NavItem = { id: string; label: string; icon: string; admin?: boolean };
 
+const LEADS_ONLY_PAGES = ["leads", "tasks"];
+
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "CRM",
@@ -74,6 +76,8 @@ const Shell = () => {
   const [params, setParams] = useSearchParams();
   const initial = params.get("page");
   const [page, setPage] = useState(initial && NAV.some((n) => n.id === initial) ? initial : "dashboard");
+  const limited = user?.role === "leads_only";
+  const allowed = (id: string) => !limited || LEADS_ONLY_PAGES.includes(id);
 
   const [drawer, setDrawer] = useState<{ resource: string; id: number } | null>(() => {
     const m = /^(leads|deals|clients|partners):(\d+)$/.exec(params.get("open") || "");
@@ -101,7 +105,7 @@ const Shell = () => {
         const p = u.searchParams.get("page");
         if (p && NAV.some((n) => n.id === p)) setPage(p);
         const m = /^(leads|deals|clients|partners):(\d+)$/.exec(u.searchParams.get("open") || "");
-        if (m) setDrawer({ resource: m[1], id: Number(m[2]) });
+        if (m && (!limited || m[1] === "leads")) setDrawer({ resource: m[1], id: Number(m[2]) });
         if (Number(u.searchParams.get("task"))) setOpenTask(Number(u.searchParams.get("task")));
         qc.invalidateQueries({ queryKey: ["crm"] });
       }
@@ -128,12 +132,20 @@ const Shell = () => {
     else nav.clearAppBadge?.().catch(() => null);
   }, [counters, badgeTotal]);
 
+  useEffect(() => {
+    if (limited && !LEADS_ONLY_PAGES.includes(page)) setPage("leads");
+    if (limited && drawer && drawer.resource !== "leads") setDrawer(null);
+  }, [limited, page, drawer]);
+
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>;
   }
   if (!user) return <LoginScreen />;
 
-  const open = (resource: string, id: number) => setDrawer({ resource, id });
+  const open = (resource: string, id: number) => {
+    if (limited && resource !== "leads") return toast.error("У вас доступ только к лидам");
+    setDrawer({ resource, id });
+  };
   const clearTask = () => setOpenTask(null);
   const go = (p: string) => { setPage(p); setMenu(false); };
 
@@ -148,10 +160,10 @@ const Shell = () => {
         </div>
       </div>
       <nav className="flex flex-1 flex-col gap-5 overflow-y-auto px-3 pb-4">
-        {NAV_GROUPS.map((g) => (
+        {NAV_GROUPS.filter((g) => g.items.some((n) => allowed(n.id))).map((g) => (
           <div key={g.title} className="flex flex-col gap-0.5">
             <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-night-muted/70">{g.title}</p>
-            {g.items.filter((n) => !n.admin || user.role === "admin").map((n) => (
+            {g.items.filter((n) => (!n.admin || user.role === "admin") && allowed(n.id)).map((n) => (
               <button key={n.id} onClick={() => go(n.id)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
                 <Icon name={n.icon} size={17} />
@@ -204,6 +216,7 @@ const Shell = () => {
       </header>
       <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px]">
         <div className="mx-auto max-w-[1400px]">
+          {allowed(page) && <>
           {page === "dashboard" && <Dashboard onOpen={open} onNavigate={go} />}
           {["leads", "deals", "clients", "partners"].includes(page) && <EntityPage key={page} resource={page} onOpen={open} />}
           {page === "users" && <UsersPage />}
@@ -217,10 +230,11 @@ const Shell = () => {
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
           {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}
+          </>}
         </div>
       </main>
       <CallerPopup onOpen={open} />
-      {drawer && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
+      {drawer && (!limited || drawer.resource === "leads") && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
     </div>
   );
 };

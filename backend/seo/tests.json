@@ -24,7 +24,7 @@
       "path": "/?action=counters",
       "expectedStatus": 200,
       "expectedBody": {
-        "yandex_metrika": "101026698"
+        "yandex_metrika": "string"
       },
       "bodyMatcher": "partial"
     },

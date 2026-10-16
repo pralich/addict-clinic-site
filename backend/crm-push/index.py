@@ -1,3 +1,4 @@
+import re
 import json
 import os
 from datetime import datetime, timedelta
@@ -34,13 +35,36 @@ def crm_user(cur, headers):
 
 
 def _subs(cur, flag):
-    cur.execute(f'SELECT s.id, s.endpoint, s.p256dh, s.auth FROM {t("crm_push_subs")} s JOIN {t("crm_users")} u ON u.id = s.user_id WHERE s.is_active AND u.is_active AND s.{flag}')
+    cur.execute(f'SELECT s.id, s.endpoint, s.p256dh, s.auth, u.role FROM {t("crm_push_subs")} s JOIN {t("crm_users")} u ON u.id = s.user_id WHERE s.is_active AND u.is_active AND s.{flag}')
     return cur.fetchall()
 
 
 def _claim(cur, kind, ref_id):
     cur.execute(f'INSERT INTO {t("crm_push_log")} (kind, ref_id) VALUES (%s, %s) ON CONFLICT DO NOTHING RETURNING id', (kind, ref_id))
     return cur.fetchone()
+
+
+EMAIL_RE = re.compile(r'([\w.+-]+)@([\w-]+(?:\.[\w-]+)+)')
+PHONE_RE = re.compile(r'\+?\d[\d\s()\-]{5,}\d')
+
+
+def _mask_phone(v):
+    total = sum(c.isdigit() for c in v)
+    if total < 7:
+        return v
+    head, out, i = (4 if total >= 11 else 1), [], 0
+    for c in v:
+        if c.isdigit():
+            i += 1
+            out.append(c if i <= head or i > total - 2 else '*')
+        else:
+            out.append(c)
+    return ''.join(out)
+
+
+def mask_text(v):
+    v = EMAIL_RE.sub(lambda m: (m.group(1)[:2] if len(m.group(1)) > 3 else m.group(1)[:1]) + '***@' + m.group(2), v or '')
+    return PHONE_RE.sub(lambda m: _mask_phone(m.group(0)), v)
 
 
 def _short(s, n=90):
@@ -63,10 +87,12 @@ def notify(cur):
                 continue
             who = l['name'] or 'Без имени'
             body = ' · '.join(x for x in [l['contact'], l['topic'], _short(l['message'], 60)] if x)
-            sent += push_lib.send(cur, t, subs, {
-                'title': f'Новый лид: {who}', 'body': body or 'Заявка с сайта',
-                'url': f"/admin?page=leads&open=leads:{l['id']}", 'tag': f"lead-{l['id']}",
-            })
+            full = [s for s in subs if s['role'] != 'leads_only']
+            limited = [s for s in subs if s['role'] == 'leads_only']
+            meta = {'url': f"/admin?page=leads&open=leads:{l['id']}", 'tag': f"lead-{l['id']}"}
+            sent += push_lib.send(cur, t, full, {'title': f'Новый лид: {who}', 'body': body or 'Заявка с сайта', **meta})
+            if limited:
+                sent += push_lib.send(cur, t, limited, {'title': f"Новый лид: {mask_text(who)}", 'body': mask_text(l['topic'] or '') or 'Заявка с сайта', **meta})
 
     cur.execute(f"""SELECT o.id, o.order_number, o.user_name, o.amount, o.delivery_address FROM {t('orders')} o
         WHERE o.source = 'shop' AND o.status = 'paid' AND COALESCE(o.paid_at, o.created_at) > NOW() - INTERVAL '1 day'
@@ -74,7 +100,7 @@ def notify(cur):
         ORDER BY o.id LIMIT 20""")
     orders = cur.fetchall()
     if orders:
-        subs = _subs(cur, 'notify_orders')
+        subs = [s for s in _subs(cur, 'notify_orders') if s['role'] != 'leads_only']
         for o in orders:
             if not _claim(cur, 'order', o['id']):
                 continue

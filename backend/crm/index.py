@@ -14,6 +14,7 @@ from schedule import attach_plans
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
+from access import ROLES, LEADS_ONLY_RESOURCES, LEAD_CONTACT_FIELDS, LEAD_TEXT_FIELDS, LEADS_ONLY_SEARCH, is_leads_only, mask_text, mask_contact
 
 SCHEMA = 't_p15395438_addict_clinic_site'
 
@@ -61,6 +62,22 @@ ENTITIES = {
 
 USER_FIELDS = 'id, name, email, phone, role, is_active, last_login_at, created_at, pbx_login'
 
+MASK = {'on': False}
+CONTACT_KEYS = set(LEAD_CONTACT_FIELDS) | {'phone', 'email', 'messenger', 'diversion', 'client_phone', 'client_email', 'client_rep_phone'}
+SKIP_KEYS = {'page_url', 'landing_url', 'referrer', 'click_id', 'ym_client_id', 'record_url', 'record_source_url', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'color', 'grp', 'role', 'status', 'stage', 'kind', 'result', 'direction', 'channel', 'source', 'form', 'device', 'callid', 'state'}
+
+
+def deep_mask(o, key=None):
+    if isinstance(o, dict):
+        return {k: deep_mask(v, k) for k, v in o.items()}
+    if isinstance(o, list):
+        return [deep_mask(v, key) for v in o]
+    if isinstance(o, str):
+        if key in SKIP_KEYS:
+            return o
+        return mask_contact(o) if key in CONTACT_KEYS else mask_text(o)
+    return o
+
 
 CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
 
@@ -93,7 +110,7 @@ def resp(status, data):
     return {
         'statusCode': status,
         'headers': {**CORS, 'Content-Type': 'application/json'},
-        'body': json.dumps(data, default=_ser, ensure_ascii=False),
+        'body': json.dumps(deep_mask(data) if MASK['on'] else data, default=_ser, ensure_ascii=False),
     }
 
 
@@ -258,7 +275,7 @@ def handle_dashboard(cur):
     return resp(200, res)
 
 
-def handle_options(cur):
+def handle_options(cur, user=None):
     q(cur, f'SELECT id, name FROM {t("crm_users")} WHERE is_active ORDER BY name')
     users = cur.fetchall()
     q(cur, f'SELECT id, name FROM {t("crm_partners")} WHERE archived_at IS NULL ORDER BY name')
@@ -273,18 +290,21 @@ def handle_options(cur):
     deals = cur.fetchall()
     q(cur, f"SELECT id, COALESCE(name, contact, 'Лид #' || id) AS name FROM {t('crm_leads')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 500")
     leads = cur.fetchall()
+    if is_leads_only(user):
+        clients, counterparties, deals = [], [], []
     return resp(200, {'users': users, 'partners': partners, 'clients': clients, 'tags': tags, 'counterparties': counterparties, 'deals': deals, 'leads': leads})
 
 
-def list_entity(cur, name, params):
+def list_entity(cur, name, params, user=None):
     cfg = ENTITIES[name]
     tbl = cfg['table']
     where = ['e.archived_at IS NOT NULL' if params.get('archived') == '1' else 'e.archived_at IS NULL']
     args = []
     if params.get('search'):
         like = f"%{params['search']}%"
-        where.append('(' + ' OR '.join(f'e.{f} ILIKE %s' for f in cfg['search']) + ')')
-        args += [like] * len(cfg['search'])
+        fields = LEADS_ONLY_SEARCH if is_leads_only(user) else cfg['search']
+        where.append('(' + ' OR '.join(f'e.{f} ILIKE %s' for f in fields) + ')')
+        args += [like] * len(fields)
     if params.get('status'):
         where.append(f"e.{cfg['filter']} = %s")
         args.append(params['status'])
@@ -431,6 +451,16 @@ LEAD_STATUS = {'new': 'Новый', 'in_work': 'В работе', 'qualified': '
 
 def save_entity(cur, name, eid, body, user):
     cfg = ENTITIES[name]
+    if is_leads_only(user) and eid is not None and name == 'leads':
+        q(cur, f"SELECT * FROM {t('crm_leads')} WHERE id = %s", (eid,))
+        prev = cur.fetchone() or {}
+        body = dict(body)
+        for f in LEAD_CONTACT_FIELDS:
+            if prev.get(f) and f in body:
+                body.pop(f)
+        for f in LEAD_TEXT_FIELDS:
+            if prev.get(f) and f in body and body[f] == mask_text(prev[f]):
+                body.pop(f)
     data, missing = prepare(cfg, body, partial=eid is not None)
     if data is None:
         return resp(400, {'error': f'Заполните поле: {missing}'})
@@ -513,13 +543,15 @@ def handle_users(cur, method, eid, body, user, params):
         if cur.fetchone():
             return resp(400, {'error': 'Пользователь с таким email уже есть'})
         q(cur, f'INSERT INTO {t("crm_users")} (name, email, phone, pbx_login, role, password_hash) VALUES (%s, %s, %s, %s, %s, %s) RETURNING {USER_FIELDS}',
-          (name, email, clean(body.get('phone')), clean(body.get('pbx_login')), body.get('role') if body.get('role') in ('admin', 'manager', 'doctor') else 'manager', hash_password(password)))
+          (name, email, clean(body.get('phone')), clean(body.get('pbx_login')), body.get('role') if body.get('role') in ROLES else 'manager', hash_password(password)))
         return resp(200, {'item': cur.fetchone()})
     if method == 'PUT' and eid:
         data = {}
         for f in ('name', 'phone', 'role', 'is_active', 'pbx_login'):
             if f in body:
                 data[f] = clean(body[f])
+        if 'role' in data and data['role'] not in ROLES:
+            return resp(400, {'error': 'Неизвестная роль'})
         if 'email' in body:
             data['email'] = (clean(body['email']) or '').lower()
         if body.get('password'):
@@ -574,6 +606,8 @@ def parse_dt(v):
 def handle_activity(cur, method, eid, body, user):
     if method == 'POST':
         et, ei, text = body.get('entity_type'), body.get('entity_id'), clean(body.get('text'))
+        if is_leads_only(user) and et != 'leads':
+            return resp(403, {'error': 'Нет доступа'})
         kind = body.get('kind') if body.get('kind') in ('note', 'call', 'meeting', 'task') else 'note'
         if et not in ENTITIES or not ei or not text:
             return resp(400, {'error': 'Неверные данные'})
@@ -606,6 +640,8 @@ def handle_activity(cur, method, eid, body, user):
     act = cur.fetchone()
     if not act or act['kind'] == 'system':
         return resp(404, {'error': 'Не найдено'})
+    if is_leads_only(user) and act['entity_type'] != 'leads':
+        return resp(403, {'error': 'Нет доступа'})
     if method == 'PUT':
         sets, args = [], []
         if 'done' in body:
@@ -615,7 +651,7 @@ def handle_activity(cur, method, eid, body, user):
             args.append(body['result'])
             if act['kind'] == 'meeting':
                 sets.append('done_at = COALESCE(done_at, NOW())')
-        if 'text' in body and clean(body['text']):
+        if 'text' in body and clean(body['text']) and not (is_leads_only(user) and body['text'] == mask_text(act['text'])):
             sets.append('text = %s')
             args.append(clean(body['text']))
         if 'due_at' in body and act['kind'] in ('task', 'meeting'):
@@ -708,6 +744,22 @@ def handler(event: dict, context) -> dict:
         if not user:
             return resp(401, {'error': 'Требуется вход'})
 
+        if is_leads_only(user):
+            if resource not in LEADS_ONLY_RESOURCES + ('make_call',):
+                return resp(403, {'error': 'Нет доступа к этому разделу'})
+            if resource == 'leads' and action == 'convert':
+                return resp(403, {'error': 'Нет прав на перевод лида в клиента'})
+            if resource == 'make_call' and not body.get('lead_id'):
+                return resp(403, {'error': 'Звонить можно только из карточки лида'})
+            MASK['on'] = True
+
+        if resource == 'make_call' and method == 'POST' and body.get('lead_id'):
+            q(cur, f"SELECT contact, rep_phone FROM {t('crm_leads')} WHERE id = %s", (int(body['lead_id']),))
+            lead = cur.fetchone()
+            if not lead:
+                return resp(404, {'error': 'Лид не найден'})
+            body = {**body, 'phone': lead['rep_phone'] if body.get('field') == 'rep_phone' else lead['contact']}
+
         if resource == 'tasks':
             return handle_tasks(cur, t, method, params, body, user, eid, resp, ping_crm_push)
         if resource == 'billing':
@@ -725,7 +777,7 @@ def handler(event: dict, context) -> dict:
         if resource == 'in_treatment':
             return handle_in_treatment(cur, params)
         if resource == 'options':
-            return handle_options(cur)
+            return handle_options(cur, user)
         if resource == 'request_logs':
             return handle_request_logs(cur, t, params, user, eid, resp)
         if resource == 'make_call' and method == 'POST':
@@ -748,7 +800,7 @@ def handler(event: dict, context) -> dict:
             if resource == 'leads' and action == 'convert' and eid:
                 return convert_lead(cur, eid, body, user)
             if method == 'GET':
-                return get_entity(cur, resource, eid) if eid else list_entity(cur, resource, params)
+                return get_entity(cur, resource, eid) if eid else list_entity(cur, resource, params, user)
             if method == 'POST':
                 if action == 'restore' and eid:
                     return archive_entity(cur, resource, eid, user, restore=True)
@@ -759,5 +811,6 @@ def handler(event: dict, context) -> dict:
                 return archive_entity(cur, resource, eid, user)
         return resp(404, {'error': 'Неизвестный запрос'})
     finally:
+        MASK['on'] = False
         cur.close()
         conn.close()

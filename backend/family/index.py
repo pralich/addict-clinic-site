@@ -83,7 +83,7 @@ def staff_user(cur, headers):
     token = token_of(headers)
     if not token:
         return None
-    cur.execute(f'SELECT u.id, u.name, u.role FROM {t("crm_sessions")} s JOIN {t("crm_users")} u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active', (token,))
+    cur.execute(f'SELECT u.id, u.name, u.role FROM {t("crm_sessions")} s JOIN {t("crm_users")} u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active AND u.role <> %s', (token, 'leads_only'))
     return cur.fetchone()
 
 

@@ -4,20 +4,21 @@ import Icon from "@/components/ui/icon";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { api } from "@/lib/crm-api";
 
-type Target = { label: string; phone: string };
+type Target = { label: string; phone: string; field?: string };
 
 const digits = (v: string) => v.replace(/\D/g, "");
-export const isPhone = (v?: string | null) => !!v && digits(v).length >= 10 && !/@/.test(v);
+export const isPhone = (v?: string | null) => !!v && digits(v.replace(/\*/g, "0")).length >= 10 && !/@/.test(v);
 
-const CallButton = ({ targets }: { targets: Target[] }) => {
+const CallButton = ({ targets, leadId }: { targets: Target[]; leadId?: number }) => {
   const [busy, setBusy] = useState(false);
-  const list = targets.filter((t, i, a) => isPhone(t.phone) && a.findIndex((x) => digits(x.phone) === digits(t.phone)) === i);
+  const list = targets.filter((t, i, a) => isPhone(t.phone) && a.findIndex((x) => x.phone === t.phone) === i);
   if (!list.length) return null;
 
   const call = async (phone: string) => {
     setBusy(true);
+    const target = list.find((t) => t.phone === phone);
     try {
-      await api({ resource: "make_call" }, "POST", { phone });
+      await api({ resource: "make_call" }, "POST", leadId ? { lead_id: leadId, field: target?.field || "contact" } : { phone });
       toast.success("Звоним вам на телефон — возьмите трубку, и АТС соединит с абонентом", { duration: 6000 });
     } catch (e) {
       toast.error((e as Error).message || "Не удалось позвонить");

@@ -15,6 +15,7 @@ import { TAG_GROUPS, TagBadge, TagPicker, useTagMap } from "./Tags";
 import { ENTITY_DEFS } from "./entities";
 import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
+import { useAuth } from "./AuthContext";
 
 type Props = {
   resource: string;
@@ -28,6 +29,8 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   const { data, isLoading } = useItem(resource, id);
   const mut = useCrmMutation();
   const [edit, setEdit] = useState(false);
+  const { user } = useAuth();
+  const limited = user?.role === "leads_only";
   const item = data?.item;
   const refs = data?.refs ?? {};
 
@@ -67,9 +70,9 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
 
             <div className="flex flex-wrap gap-2">
               {resource === "clients" && <CallButton targets={[{ label: item.full_name || "Клиент", phone: item.phone }, { label: item.rep_name ? `${item.rep_name} (контактное лицо)` : "Контактное лицо", phone: item.rep_phone }]} />}
-              {resource === "leads" && <CallButton targets={[{ label: item.name || "Лид", phone: item.contact }, { label: item.rep_name ? `${item.rep_name} (контактное лицо)` : "Контактное лицо", phone: item.rep_phone }]} />}
+              {resource === "leads" && <CallButton leadId={item.id} targets={[{ label: item.name || "Лид", phone: item.contact, field: "contact" }, { label: item.rep_name ? `${item.rep_name} (контактное лицо)` : "Контактное лицо", phone: item.rep_phone, field: "rep_phone" }]} />}
               <Button size="sm" onClick={() => setEdit(true)}><Icon name="Pencil" size={14} className="mr-1.5" />Редактировать</Button>
-              {resource === "leads" && item.status !== "converted" && (
+              {resource === "leads" && item.status !== "converted" && !limited && (
                 <Button size="sm" variant="outline" onClick={convert}><Icon name="ArrowRightLeft" size={14} className="mr-1.5" />В клиента и сделку</Button>
               )}
               <Button size="sm" variant="outline" onClick={archive}>
@@ -106,7 +109,12 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
                   <dd className="whitespace-pre-wrap break-words">{(d.render ? d.render(item) : item[d.key]) || "—"}</dd>
                 </div>
               ))}
-              {item.client_id && resource !== "clients" && (
+              {limited && resource === "leads" && (
+              <p className="flex items-center gap-2 rounded-lg bg-secondary/60 px-3 py-2 text-xs text-muted-foreground">
+                <Icon name="EyeOff" size={14} />Контакты скрыты. Звонок через кнопку «Позвонить» работает — номер подставит система.
+              </p>
+            )}
+            {item.client_id && resource !== "clients" && !limited && (
                 <>
                   <dt className="text-muted-foreground">Клиент</dt>
                   <dd>
@@ -168,7 +176,9 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
           </div>
           </div>
         )}
-        <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`} fields={def.fields} initial={item} onSubmit={save} />
+        <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`}
+          fields={limited ? def.fields.filter((f) => !["contact", "rep_phone", "rep_email", "rep_messenger", "client_id"].includes(f.name)) : def.fields}
+          initial={item} onSubmit={save} />
       </SheetContent>
     </Sheet>
   );

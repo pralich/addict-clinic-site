@@ -48,7 +48,7 @@ def get_user(cur, headers):
     token = headers.get('X-Auth-Token') or headers.get('x-auth-token')
     if not token:
         return None
-    cur.execute(f'SELECT u.id, u.role FROM {SCHEMA}.crm_sessions s JOIN {SCHEMA}.crm_users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active', (token,))
+    cur.execute(f'SELECT u.id, u.role FROM {SCHEMA}.crm_sessions s JOIN {SCHEMA}.crm_users u ON u.id = s.user_id WHERE s.token = %s AND s.expires_at > NOW() AND u.is_active AND u.role <> %s', (token, 'leads_only'))
     return cur.fetchone()
 
 

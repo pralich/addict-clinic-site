@@ -41,6 +41,8 @@ def list_tasks(cur, t, params, user):
     if str(params.get('assignee_id') or '').isdigit():
         where.append(f'(a.assignee_id = %s OR EXISTS (SELECT 1 FROM {t("crm_task_members")} m WHERE m.task_id = a.id AND m.user_id = %s))')
         args += [int(params['assignee_id'])] * 2
+    if user.get('role') == 'leads_only':
+        where.append("a.entity_type IN ('leads', 'none')")
     status = params.get('status') or 'open'
     if status == 'open':
         where.append('a.done_at IS NULL')
@@ -218,6 +220,18 @@ def handle_tasks(cur, t, method, params, body, user, eid, resp, ping=None):
         if data.pop('ping', None) and ping:
             ping()
         return resp(code, data)
+    if user.get('role') == 'leads_only':
+        if eid:
+            tid = eid
+            if action == 'comments' and method == 'DELETE':
+                cur.execute(f"SELECT task_id FROM {t('crm_task_comments')} WHERE id = %s", (eid,))
+                tid = (cur.fetchone() or {}).get('task_id')
+            cur.execute(f"SELECT entity_type FROM {t('crm_activities')} WHERE id = %s", (tid,))
+            row = cur.fetchone()
+            if row and row['entity_type'] not in ('leads', NONE):
+                return resp(403, {'error': 'Нет доступа'})
+        if method in ('POST', 'PUT') and body.get('entity_type') not in (None, '', 'leads', NONE):
+            return resp(403, {'error': 'Задачи можно ставить только по лидам'})
     if method == 'GET':
         return resp(*get_task(cur, t, eid)) if eid else resp(200, list_tasks(cur, t, params, user))
     if method in ('POST', 'PUT'):
