@@ -89,11 +89,11 @@ def find_contact(cur, d10):
         return None, None
     pat = f'%{d10}'
     cur.execute(f"""SELECT id, full_name FROM {t('crm_clients')}
-        WHERE archived_at IS NULL AND (regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') LIKE %s OR regexp_replace(COALESCE(rep_phone, ''), '\\D', '', 'g') LIKE %s)
+        WHERE archived_at IS NULL AND trashed_at IS NULL AND (regexp_replace(COALESCE(phone, ''), '\\D', '', 'g') LIKE %s OR regexp_replace(COALESCE(rep_phone, ''), '\\D', '', 'g') LIKE %s)
         ORDER BY id LIMIT 1""", (pat, pat))
     client = cur.fetchone()
     cur.execute(f"""SELECT id, name, client_id FROM {t('crm_leads')}
-        WHERE archived_at IS NULL AND (regexp_replace(contact, '\\D', '', 'g') LIKE %s OR regexp_replace(COALESCE(rep_phone, ''), '\\D', '', 'g') LIKE %s)
+        WHERE archived_at IS NULL AND trashed_at IS NULL AND (regexp_replace(contact, '\\D', '', 'g') LIKE %s OR regexp_replace(COALESCE(rep_phone, ''), '\\D', '', 'g') LIKE %s)
         ORDER BY id DESC LIMIT 1""", (pat, pat))
     lead = cur.fetchone()
     return client, lead

@@ -46,6 +46,14 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
       { onSuccess: () => { toast.success(item?.archived_at ? "Восстановлено" : "Перемещено в архив"); onClose(); } },
     );
 
+  const canTrash = (resource === "leads" || resource === "clients") && !limited;
+  const trash = () =>
+    confirm("Переместить в корзину? Восстановить можно в течение 30 дней.") &&
+    mut.mutate(
+      { params: { resource, action: "trash" }, method: "POST", body: { ids: [id] } },
+      { onSuccess: () => { toast.success("Перемещено в корзину"); onClose(); } },
+    );
+
   const convert = () =>
     mut.mutate(
       { params: { resource: "leads", id, action: "convert" }, method: "POST", body: { create_deal: true } },
@@ -63,7 +71,9 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
             <SheetHeader className="pr-8 text-left">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">{def.title} · #{item.id}</p>
               <SheetTitle className="font-heading text-2xl">{item[def.titleKey] || "Аноним"}</SheetTitle>
-              {item.archived_at && <p className="text-sm text-primary">В архиве с {fmtDate(item.archived_at)}</p>}
+              {item.trashed_at ? (
+                <p className="text-sm text-destructive">В корзине с {fmtDate(item.trashed_at)}</p>
+              ) : item.archived_at && <p className="text-sm text-primary">В архиве с {fmtDate(item.archived_at)}</p>}
             </SheetHeader>
 
             <DrawerTags value={item.tags || []} onChange={(tags) => mut.mutate({ params: { resource, id }, method: "PUT", body: { tags } })} />
@@ -79,6 +89,11 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
                 <Icon name={item.archived_at ? "ArchiveRestore" : "Archive"} size={14} className="mr-1.5" />
                 {item.archived_at ? "Восстановить" : "В архив"}
               </Button>
+              {canTrash && !item.trashed_at && (
+                <Button size="sm" variant="outline" onClick={trash} className="text-destructive hover:text-destructive">
+                  <Icon name="Trash2" size={14} className="mr-1.5" />В корзину
+                </Button>
+              )}
             </div>
 
             <div>

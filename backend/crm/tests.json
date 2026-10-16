@@ -80,6 +80,23 @@
       "method": "GET",
       "path": "/?resource=request_logs",
       "expectedStatus": 401
+    },
+    {
+      "name": "Trash requires auth",
+      "method": "GET",
+      "path": "/?resource=leads&action=trashed",
+      "expectedStatus": 401
+    },
+    {
+      "name": "Bulk trash requires auth",
+      "method": "POST",
+      "path": "/?resource=clients&action=trash",
+      "body": {
+        "ids": [
+          1
+        ]
+      },
+      "expectedStatus": 401
     }
   ]
 }

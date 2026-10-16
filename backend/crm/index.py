@@ -14,6 +14,7 @@ from schedule import attach_plans
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
+from trash import handle_trash, purge_expired, TABLES as TRASH_TABLES
 from access import ROLES, LEADS_ONLY_RESOURCES, LEAD_CONTACT_FIELDS, LEAD_TEXT_FIELDS, LEADS_ONLY_SEARCH, is_leads_only, mask_text, mask_contact
 
 SCHEMA = 't_p15395438_addict_clinic_site'
@@ -223,9 +224,10 @@ def handle_public_lead(cur, body, event=None):
 
 def handle_dashboard(cur):
     res = {}
-    q(cur, f'SELECT COUNT(*) FILTER (WHERE status = %s) AS new, COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL %s) AS week, COUNT(*) AS total FROM {t("crm_leads")} WHERE archived_at IS NULL', ('new', '7 days'))
+    purge_expired(cur, t)
+    q(cur, f'SELECT COUNT(*) FILTER (WHERE status = %s) AS new, COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL %s) AS week, COUNT(*) AS total FROM {t("crm_leads")} WHERE archived_at IS NULL AND trashed_at IS NULL', ('new', '7 days'))
     res['leads'] = cur.fetchone()
-    q(cur, f'SELECT COUNT(*) AS total FROM {t("crm_clients")} WHERE archived_at IS NULL')
+    q(cur, f'SELECT COUNT(*) AS total FROM {t("crm_clients")} WHERE archived_at IS NULL AND trashed_at IS NULL')
     res['clients'] = cur.fetchone()
     q(cur, f'SELECT COUNT(*) AS total FROM {t("crm_partners")} WHERE archived_at IS NULL AND status = %s', ('active',))
     res['partners'] = cur.fetchone()
@@ -239,20 +241,20 @@ def handle_dashboard(cur):
     res['deals'] = cur.fetchone()
     q(cur, f'SELECT stage, COUNT(*) AS count, COALESCE(SUM(amount),0) AS amount FROM {t("crm_deals")} WHERE archived_at IS NULL GROUP BY stage')
     res['funnel'] = cur.fetchall()
-    q(cur, f'''SELECT to_char(d, 'DD.MM') AS day, (SELECT COUNT(*) FROM {t("crm_leads")} l WHERE l.created_at::date = d::date) AS leads
+    q(cur, f'''SELECT to_char(d, 'DD.MM') AS day, (SELECT COUNT(*) FROM {t("crm_leads")} l WHERE l.created_at::date = d::date AND l.trashed_at IS NULL) AS leads
         FROM generate_series(NOW()::date - 13, NOW()::date, INTERVAL '1 day') d ORDER BY d''')
     res['leadsByDay'] = cur.fetchall()
-    q(cur, f'SELECT id, name, contact, topic, status, created_at FROM {t("crm_leads")} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 6')
+    q(cur, f'SELECT id, name, contact, topic, status, created_at FROM {t("crm_leads")} WHERE archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC LIMIT 6')
     res['recentLeads'] = cur.fetchall()
     q(cur, f'''SELECT COALESCE(l.channel, 'unknown') AS channel, COUNT(*) AS leads,
         COUNT(DISTINCT d.id) FILTER (WHERE d.stage = 'won') AS won,
         COALESCE(SUM(d.amount) FILTER (WHERE d.stage = 'won'), 0) AS revenue
         FROM {t("crm_leads")} l LEFT JOIN {t("crm_deals")} d ON d.lead_id = l.id AND d.archived_at IS NULL
-        WHERE l.archived_at IS NULL AND l.created_at > NOW() - INTERVAL '30 days'
+        WHERE l.archived_at IS NULL AND l.trashed_at IS NULL AND l.created_at > NOW() - INTERVAL '30 days'
         GROUP BY 1 ORDER BY 2 DESC''')
     res['channels'] = cur.fetchall()
     q(cur, f'''SELECT utm_source, utm_campaign, COUNT(*) AS leads FROM {t("crm_leads")}
-        WHERE archived_at IS NULL AND utm_campaign IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
+        WHERE archived_at IS NULL AND trashed_at IS NULL AND utm_campaign IS NOT NULL AND created_at > NOW() - INTERVAL '30 days'
         GROUP BY 1, 2 ORDER BY 3 DESC LIMIT 8''')
     res['campaigns'] = cur.fetchall()
     q(cur, f'SELECT a.id, a.entity_type, a.entity_id, a.kind, a.text, a.created_at, u.name AS user_name FROM {t("crm_activities")} a LEFT JOIN {t("crm_users")} u ON u.id = a.user_id WHERE a.entity_type <> \'none\' ORDER BY a.created_at DESC LIMIT 10')
@@ -280,7 +282,7 @@ def handle_options(cur, user=None):
     users = cur.fetchall()
     q(cur, f'SELECT id, name FROM {t("crm_partners")} WHERE archived_at IS NULL ORDER BY name')
     partners = cur.fetchall()
-    q(cur, f'SELECT id, full_name AS name FROM {t("crm_clients")} WHERE archived_at IS NULL ORDER BY full_name LIMIT 1000')
+    q(cur, f'SELECT id, full_name AS name FROM {t("crm_clients")} WHERE archived_at IS NULL AND trashed_at IS NULL ORDER BY full_name LIMIT 1000')
     clients = cur.fetchall()
     q(cur, f'SELECT id, grp, name, color, sort, is_active FROM {t("crm_tags")} ORDER BY grp, sort, name')
     tags = cur.fetchall()
@@ -288,7 +290,7 @@ def handle_options(cur, user=None):
     counterparties = cur.fetchall()
     q(cur, f"SELECT id, title AS name, client_id, partner_id FROM {t('crm_deals')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 1000")
     deals = cur.fetchall()
-    q(cur, f"SELECT id, COALESCE(name, contact, 'Лид #' || id) AS name FROM {t('crm_leads')} WHERE archived_at IS NULL ORDER BY created_at DESC LIMIT 500")
+    q(cur, f"SELECT id, COALESCE(name, contact, 'Лид #' || id) AS name FROM {t('crm_leads')} WHERE archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC LIMIT 500")
     leads = cur.fetchall()
     if is_leads_only(user):
         clients, counterparties, deals = [], [], []
@@ -299,6 +301,8 @@ def list_entity(cur, name, params, user=None):
     cfg = ENTITIES[name]
     tbl = cfg['table']
     where = ['e.archived_at IS NOT NULL' if params.get('archived') == '1' else 'e.archived_at IS NULL']
+    if name in TRASH_TABLES:
+        where.append('e.trashed_at IS NULL')
     args = []
     if params.get('search'):
         like = f"%{params['search']}%"
@@ -408,10 +412,10 @@ def get_entity(cur, name, eid):
         col = 'client_id' if name == 'clients' else 'partner_id'
         q(cur, f"SELECT id, title, stage, amount, created_at FROM {t('crm_deals')} WHERE {col} = %s AND archived_at IS NULL ORDER BY created_at DESC", (eid,))
         related['deals'] = cur.fetchall()
-        q(cur, f"SELECT id, name, contact, status, created_at FROM {t('crm_leads')} WHERE {col} = %s AND archived_at IS NULL ORDER BY created_at DESC", (eid,))
+        q(cur, f"SELECT id, name, contact, status, created_at FROM {t('crm_leads')} WHERE {col} = %s AND archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC", (eid,))
         related['leads'] = cur.fetchall()
     if name == 'partners':
-        q(cur, f"SELECT id, full_name, status, created_at FROM {t('crm_clients')} WHERE partner_id = %s AND archived_at IS NULL ORDER BY created_at DESC", (eid,))
+        q(cur, f"SELECT id, full_name, status, created_at FROM {t('crm_clients')} WHERE partner_id = %s AND archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC", (eid,))
         related['clients'] = cur.fetchall()
     return resp(200, {'item': item, 'activities': activities, 'related': related, 'refs': refs})
 
@@ -500,6 +504,11 @@ def save_entity(cur, name, eid, body, user):
 
 def archive_entity(cur, name, eid, user, restore=False):
     cfg = ENTITIES[name]
+    if name in TRASH_TABLES:
+        q(cur, f"SELECT trashed_at FROM {t(cfg['table'])} WHERE id = %s", (eid,))
+        row = cur.fetchone()
+        if row and row['trashed_at']:
+            return resp(400, {'error': 'Запись в корзине — восстановите её из корзины'})
     q(cur, f"UPDATE {t(cfg['table'])} SET archived_at = {'NULL' if restore else 'NOW()'}, updated_at = NOW() WHERE id = %s", (eid,))
     log_activity(cur, name, eid, user['id'], 'Восстановлено из архива' if restore else 'Перемещено в архив')
     return resp(200, {'ok': True})
@@ -767,8 +776,9 @@ def handler(event: dict, context) -> dict:
         if resource == 'finance':
             return handle_finance(cur, t, method, params, body, user, eid, resp)
         if resource == 'counters':
+            purge_expired(cur, t)
             q(cur, f"""SELECT
-                (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL) AS leads,
+                (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL AND trashed_at IS NULL) AS leads,
                 (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions,
                 (SELECT COUNT(*) FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s)) AND (due_at IS NULL OR due_at < CURRENT_DATE + 1)) AS tasks""", (user['id'], user['id']))
             return resp(200, cur.fetchone())
@@ -797,6 +807,8 @@ def handler(event: dict, context) -> dict:
         if resource == 'activities':
             return handle_activity(cur, method, eid, body, user)
         if resource in ENTITIES:
+            if resource in TRASH_TABLES and (action in ('trash', 'untrash', 'destroy') or (action == 'trashed' and method == 'GET')):
+                return handle_trash(cur, t, resource, action, method, body, user, resp, log_activity)
             if resource == 'leads' and action == 'convert' and eid:
                 return convert_lead(cur, eid, body, user)
             if method == 'GET':

@@ -1,6 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import TrashDialog from "./TrashDialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TAG_DOT, TAG_GROUPS, TagList } from "./Tags";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -28,7 +30,10 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const [archived, setArchived] = useState(false);
   const [view, setView] = useState<"table" | "board">(resource === "deals" ? "board" : "table");
   const [creating, setCreating] = useState(false);
+  const [sel, setSel] = useState<number[]>([]);
+  const [trashOpen, setTrashOpen] = useState(false);
   const mut = useCrmMutation();
+  const canTrash = (resource === "leads" || resource === "clients") && user?.role !== "leads_only";
 
   const params = {
     search: search.trim() || undefined,
@@ -41,6 +46,18 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const { data, isLoading } = useList(resource, params);
   const items = useMemo(() => data?.items ?? [], [data]);
   const canBoard = resource === "deals" || resource === "leads";
+  const selectable = canTrash && (!canBoard || view === "table");
+  useEffect(() => setSel((s) => s.filter((id) => items.some((i) => i.id === id))), [items]);
+  const allChecked = items.length > 0 && items.every((i) => sel.includes(i.id));
+
+  const trashSelected = () => {
+    if (!sel.length) return;
+    if (!confirm(`Переместить в корзину ${sel.length} шт.? Их можно будет восстановить в течение 30 дней.`)) return;
+    mut.mutate(
+      { params: { resource, action: "trash" }, method: "POST", body: { ids: sel } },
+      { onSuccess: (r: any) => { toast.success(`В корзине: ${r.count}`); setSel([]); } },
+    );
+  };
   const createInitial = useMemo(
     () => ({ ...DEFAULTS[resource], manager_id: def.filters?.includes("manager") && user ? String(user.id) : undefined }),
     [resource, def, user],
@@ -83,6 +100,9 @@ const EntityPage = ({ resource, onOpen }: Props) => {
               ))}
             </div>
           )}
+          {canTrash && (
+            <Button variant="outline" size="sm" onClick={() => setTrashOpen(true)} className="rounded-full"><Icon name="Trash2" size={14} className="mr-1.5" />Корзина</Button>
+          )}
           <Button variant="outline" size="sm" onClick={exportCsv} className="rounded-full"><Icon name="Download" size={14} className="mr-1.5" />CSV</Button>
           <Button size="sm" onClick={() => setCreating(true)} className="rounded-full"><Icon name="Plus" size={14} className="mr-1.5" />Добавить</Button>
         </div>
@@ -108,6 +128,14 @@ const EntityPage = ({ resource, onOpen }: Props) => {
           <Icon name="Archive" size={14} className="mr-1.5" />Архив
         </Button>
       </div>
+
+      {selectable && sel.length > 0 && (
+        <div className="sticky top-16 z-20 flex flex-wrap items-center gap-2 rounded-xl border bg-card px-4 py-2.5 shadow-sm lg:top-2">
+          <span className="mr-auto text-sm font-medium">Выбрано: {sel.length}</span>
+          <Button size="sm" variant="ghost" onClick={() => setSel([])}>Снять выбор</Button>
+          <Button size="sm" variant="destructive" disabled={mut.isPending} onClick={trashSelected}><Icon name="Trash2" size={14} className="mr-1.5" />Удалить</Button>
+        </div>
+      )}
 
       {canBoard && view === "board" ? (
         <div className="-mx-4 overflow-x-auto px-4 pb-2 md:-mx-8 md:px-8">
@@ -163,12 +191,22 @@ const EntityPage = ({ resource, onOpen }: Props) => {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {selectable && (
+                    <TableHead className="w-10">
+                      <Checkbox checked={allChecked} onCheckedChange={(c) => setSel(c ? items.map((i) => i.id) : [])} aria-label="Выбрать все" />
+                    </TableHead>
+                  )}
                   {def.columns.map((c) => <TableHead key={c.key} className={`whitespace-nowrap ${c.className || ""}`}>{c.label}</TableHead>)}
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {items.map((r) => (
-                  <TableRow key={r.id} className="cursor-pointer" onClick={() => onOpen(resource, r.id)}>
+                  <TableRow key={r.id} className="cursor-pointer" data-state={sel.includes(r.id) ? "selected" : undefined} onClick={() => onOpen(resource, r.id)}>
+                    {selectable && (
+                      <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                        <Checkbox checked={sel.includes(r.id)} onCheckedChange={(c) => setSel((s) => (c ? [...s, r.id] : s.filter((x) => x !== r.id)))} aria-label="Выбрать" />
+                      </TableCell>
+                    )}
                     {def.columns.map((c) => (
                       <TableCell key={c.key} className={c.className}>{c.render ? c.render(r) : r[c.key] ?? "—"}</TableCell>
                     ))}
@@ -176,7 +214,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
                 ))}
                 {!isLoading && items.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={def.columns.length} className="py-12 text-center text-muted-foreground">
+                    <TableCell colSpan={def.columns.length + (selectable ? 1 : 0)} className="py-12 text-center text-muted-foreground">
                       <Icon name={def.icon} size={28} className="mx-auto mb-2 opacity-40" />
                       Ничего не найдено
                     </TableCell>
@@ -186,6 +224,11 @@ const EntityPage = ({ resource, onOpen }: Props) => {
             </Table>
           </div>
         </div>
+      )}
+
+      {canTrash && <TrashDialog resource={resource} open={trashOpen} onOpenChange={setTrashOpen} />}
+      {canBoard && view === "board" && canTrash && (
+        <p className="-mt-2 text-xs text-muted-foreground">Чтобы удалить несколько лидов сразу, переключитесь в режим «Список».</p>
       )}
 
       <EntityForm open={creating} onOpenChange={setCreating} title={`Добавить ${def.single}`} fields={def.fields}

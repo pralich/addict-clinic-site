@@ -172,7 +172,8 @@ def rep(body):
 
 
 def find_one(cur, table, cols, where, args):
-    cur.execute(f'SELECT {cols} FROM {t(table)} WHERE {where} AND archived_at IS NULL ORDER BY id LIMIT 1', args)
+    trashed = ' AND trashed_at IS NULL' if table in ('crm_leads', 'crm_clients') else ''
+    cur.execute(f'SELECT {cols} FROM {t(table)} WHERE {where} AND archived_at IS NULL{trashed} ORDER BY id LIMIT 1', args)
     return cur.fetchone()
 
 
@@ -299,7 +300,7 @@ def create_lead(cur, body, api_key):
         'status': choice(body, 'status', LEAD_STATUS, 'new'),
         'manager_id': ref(cur, 'crm_users', 'manager_id', body.get('manager_id'), 'AND is_active'),
         'partner_id': ref(cur, 'crm_partners', 'partner_id', body.get('partner_id')),
-        'client_id': ref(cur, 'crm_clients', 'client_id', body.get('client_id')),
+        'client_id': ref(cur, 'crm_clients', 'client_id', body.get('client_id'), 'AND trashed_at IS NULL'),
         'external_id': external_id,
         'channel': channel,
         **attr,
@@ -318,7 +319,7 @@ def create_deal(cur, body, api_key):
         if row:
             return row, False, None
     title = s(body, 'title', 250, required=True)
-    client_id = ref(cur, 'crm_clients', 'client_id', body.get('client_id'))
+    client_id = ref(cur, 'crm_clients', 'client_id', body.get('client_id'), 'AND trashed_at IS NULL')
     client_created = None
     if not client_id and isinstance(body.get('client'), dict):
         client, client_created = create_client(cur, {**body['client'], 'manager_id': body.get('manager_id'), 'partner_id': body.get('partner_id')}, api_key)
@@ -329,7 +330,7 @@ def create_deal(cur, body, api_key):
         'client_id': client_id,
         'partner_id': ref(cur, 'crm_partners', 'partner_id', body.get('partner_id')),
         'manager_id': ref(cur, 'crm_users', 'manager_id', body.get('manager_id'), 'AND is_active') or api_key['created_by'],
-        'lead_id': ref(cur, 'crm_leads', 'lead_id', body.get('lead_id')),
+        'lead_id': ref(cur, 'crm_leads', 'lead_id', body.get('lead_id'), 'AND trashed_at IS NULL'),
         'stage': stage,
         'program': s(body, 'program', 200),
         'amount': num(body, 'amount', 0),
