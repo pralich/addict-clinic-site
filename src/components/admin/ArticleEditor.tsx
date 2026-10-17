@@ -114,7 +114,7 @@ const ArticleEditor = ({ id, onClose }: { id: number | null; onClose: () => void
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-5 xl:grid-cols-[1fr_340px] 2xl:grid-cols-[1fr_380px]">
         <div className="flex min-w-0 flex-col gap-4">
           <Input value={a.title || ""} onChange={(e) => set("title", e.target.value)} placeholder="Заголовок статьи (H1)" className="h-14 bg-card font-heading text-xl font-semibold" />
           <Textarea value={a.excerpt || ""} onChange={(e) => set("excerpt", e.target.value)} rows={2} placeholder="Короткий анонс — показывается в карточке и под заголовком" className="bg-card" />

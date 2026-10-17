@@ -216,8 +216,8 @@ const Shell = () => {
         <span className="flex-1 font-heading font-semibold">{FAMILY_SECTION[page] ? `Близкие · ${NAV.find((n) => n.id === page)?.label}` : NAV.find((n) => n.id === page)?.label}</span>
         <PushSettings variant="icon" />
       </header>
-      <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px]">
-        <div className="mx-auto max-w-[1400px]">
+      <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px] 2xl:px-10">
+        <div className="mx-auto max-w-[1760px]">
           {allowed(page) && <>
           {page === "dashboard" && <Dashboard onOpen={open} onNavigate={go} />}
           {["leads", "deals", "clients", "partners"].includes(page) && <EntityPage key={page} resource={page} onOpen={open} />}

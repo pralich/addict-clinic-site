@@ -69,7 +69,7 @@ const ShopOrdersPage = () => {
       ) : !data?.items.length ? (
         <p className="mt-16 text-center text-muted-foreground">Заказов пока нет</p>
       ) : (
-        <div className="mt-6 grid gap-3 lg:grid-cols-2">
+        <div className="mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
           {data.items.map((o) => (
             <div key={o.id} className="rounded-xl border bg-card p-4">
               <div className="flex flex-wrap items-center gap-2">

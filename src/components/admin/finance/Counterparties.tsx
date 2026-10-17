@@ -43,7 +43,7 @@ const Counterparties = () => {
           <p>Здесь будут организации и люди, которым вы выставляете счета:<br />страховые, работодатели, фонды, поставщики</p>
         </div>
       ) : (
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {data.items.map((c) => {
             const debt = Math.max(0, Number(c.invoiced || 0) - Number(c.received || 0));
             return (

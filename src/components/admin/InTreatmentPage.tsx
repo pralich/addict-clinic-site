@@ -256,7 +256,7 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
       {!!data?.upcoming.length && (
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted-foreground">Скоро заезд</p>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {data.upcoming.map((r) => (
               <button key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className="flex items-center gap-3 rounded-xl border bg-card p-3 text-left hover:border-foreground/20">
                 <span className="flex h-10 w-10 shrink-0 flex-col items-center justify-center rounded-lg bg-secondary text-xs leading-tight">

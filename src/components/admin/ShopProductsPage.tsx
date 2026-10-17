@@ -73,7 +73,7 @@ const ShopProductsPage = () => {
       ) : items.length === 0 ? (
         <p className="py-16 text-center text-muted-foreground">Товаров пока нет</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
           {items.map((p) => (
             <div key={p.id} className={`flex flex-col overflow-hidden rounded-xl border bg-card ${p.is_active ? "" : "opacity-60"}`}>
               <button onClick={() => setEditing(p)} className="flex gap-3 p-3 text-left hover:bg-secondary/40">

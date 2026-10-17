@@ -146,7 +146,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
               return (
                 <div
                   key={k}
-                  className="flex w-[270px] flex-col rounded-xl bg-secondary/70 p-2"
+                  className="flex w-[270px] flex-col rounded-xl bg-secondary/70 p-2 2xl:w-[300px]"
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => { const id = Number(e.dataTransfer.getData("id")); if (id) moveTo(id, k); }}
                 >

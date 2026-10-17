@@ -139,7 +139,7 @@ const Operations = () => {
         <Kpi label="Итого" value={money(s?.net)} tone={(s?.net ?? 0) >= 0 ? "pos" : "neg"} />
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[1fr_320px]">
+      <div className="grid gap-5 xl:grid-cols-[1fr_320px] 2xl:grid-cols-[1fr_380px]">
         <div className="overflow-hidden rounded-xl border bg-card">
           <div className="flex gap-1 border-b p-2">
             {[["", "Все"], ["income", "Доходы"], ["expense", "Расходы"]].map(([k, l]) => (
