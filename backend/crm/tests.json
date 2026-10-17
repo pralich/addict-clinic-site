@@ -97,6 +97,12 @@
         ]
       },
       "expectedStatus": 401
+    },
+    {
+      "name": "Shop products require auth",
+      "method": "GET",
+      "path": "/?resource=shop_products",
+      "expectedStatus": 401
     }
   ]
 }

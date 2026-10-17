@@ -15,6 +15,7 @@ import EntityDrawer from "@/components/admin/EntityDrawer";
 import AdminInstall from "@/components/admin/AdminInstall";
 import PushSettings from "@/components/admin/PushSettings";
 import ShopOrdersPage from "@/components/admin/ShopOrdersPage";
+import ShopProductsPage from "@/components/admin/ShopProductsPage";
 import SeoPage from "@/components/admin/SeoPage";
 import ApiPage from "@/components/admin/ApiPage";
 import CallsPage from "@/components/admin/CallsPage";
@@ -28,7 +29,7 @@ import { api } from "@/lib/crm-api";
 import { pingCrmNotify } from "@/lib/crm-push";
 import { useSeo } from "@/lib/seo";
 
-type NavItem = { id: string; label: string; icon: string; admin?: boolean };
+type NavItem = { id: string; label: string; icon: string; admin?: boolean; staff?: boolean };
 
 const LEADS_ONLY_PAGES = ["leads", "tasks"];
 
@@ -62,6 +63,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     title: "Сайт",
     items: [
       { id: "articles", label: "Статьи", icon: "Newspaper" },
+      { id: "products", label: "Товары магазина", icon: "Package", staff: true },
       { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
       { id: "seo", label: "SEO", icon: "SearchCheck" },
     ],
@@ -163,7 +165,7 @@ const Shell = () => {
         {NAV_GROUPS.filter((g) => g.items.some((n) => allowed(n.id))).map((g) => (
           <div key={g.title} className="flex flex-col gap-0.5">
             <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-night-muted/70">{g.title}</p>
-            {g.items.filter((n) => (!n.admin || user.role === "admin") && allowed(n.id)).map((n) => (
+            {g.items.filter((n) => (!n.admin || user.role === "admin") && (!n.staff || ["admin", "manager"].includes(user.role)) && allowed(n.id)).map((n) => (
               <button key={n.id} onClick={() => go(n.id)}
                 className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${page === n.id ? "bg-white/10 font-medium text-white" : "text-night-muted hover:bg-white/5 hover:text-white"}`}>
                 <Icon name={n.icon} size={17} />
@@ -223,6 +225,7 @@ const Shell = () => {
           {page === "articles" && <ArticlesPage />}
           {FAMILY_SECTION[page] && <FamilyAdminPage section={FAMILY_SECTION[page]} />}
           {page === "orders" && <ShopOrdersPage />}
+          {page === "products" && ["admin", "manager"].includes(user.role) && <ShopProductsPage />}
           {page === "seo" && <SeoPage />}
           {page === "api" && <ApiPage />}
           {page === "calls" && <CallsPage onOpen={open} />}

@@ -14,6 +14,7 @@ from schedule import attach_plans
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
+from shop_admin import handle_shop_products
 from trash import handle_trash, purge_expired, TABLES as TRASH_TABLES
 from access import ROLES, LEADS_ONLY_RESOURCES, LEAD_CONTACT_FIELDS, LEAD_TEXT_FIELDS, LEADS_ONLY_SEARCH, is_leads_only, mask_text, mask_contact
 
@@ -796,6 +797,8 @@ def handler(event: dict, context) -> dict:
             return handle_live_calls(cur, t, resp)
         if resource == 'calls':
             return handle_calls(cur, t, params, resp)
+        if resource == 'shop_products':
+            return handle_shop_products(cur, t, method, action, eid, body, user, resp)
         if resource == 'shop_orders':
             return handle_shop_orders(cur, params)
         if resource == 'tags':
