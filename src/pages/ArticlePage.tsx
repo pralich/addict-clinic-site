@@ -115,7 +115,7 @@ const ArticlePage = () => {
         <div className="h-full bg-primary transition-[width] duration-150" style={{ width: `${progress}%` }} />
       </div>
       <Header />
-      <main className="mx-auto max-w-[1280px] px-5 pb-16 pt-8 md:px-16 md:pt-12">
+      <main className="mx-auto max-w-site px-5 pb-16 pt-8 md:px-16 md:pt-12">
         {isLoading && (
           <div className="mx-auto max-w-[760px] space-y-4">
             <div className="h-6 w-40 animate-pulse rounded bg-card" />

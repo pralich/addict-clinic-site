@@ -12,7 +12,7 @@ const CARDS = [
 ];
 
 const Support = () => (
-  <section id="support" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+  <section id="support" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
     <SectionHead
       label="Психологическая служба"
       title={<>Своя служба психологов.<br className="hidden md:block" /> На связи круглосуточно.</>}

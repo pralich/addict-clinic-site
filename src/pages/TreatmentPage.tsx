@@ -67,7 +67,7 @@ const buildLd = (t: Treatment) =>
   );
 
 const Section = ({ label, title, children, id }: { label: string; title: string; children: React.ReactNode; id?: string }) => (
-  <section id={id} className="mx-auto max-w-[1280px] scroll-mt-20 px-5 py-14 md:px-16 md:py-20">
+  <section id={id} className="mx-auto max-w-site scroll-mt-20 px-5 py-14 md:px-16 md:py-20">
     <span className="flex items-center gap-[9px] text-[0.97em] font-medium tracking-tight text-muted-foreground"><i className="block h-2.5 w-2.5 rotate-45 bg-primary" />{label}</span>
     <h2 className="mb-8 mt-4 max-w-[760px] font-heading font-medium" style={{ fontSize: "clamp(28px, 3.6vw, 42px)", lineHeight: 1.1, letterSpacing: "-0.04em" }}>{title}</h2>
     {children}
@@ -98,7 +98,7 @@ const TreatmentPage = () => {
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />
       <main>
-        <section className="mx-auto max-w-[1280px] px-5 pb-10 pt-6 md:px-16 md:pb-16 md:pt-10">
+        <section className="mx-auto max-w-site px-5 pb-10 pt-6 md:px-16 md:pb-16 md:pt-10">
           <nav aria-label="Хлебные крошки" className="mb-6 flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">Главная</Link>
             <Icon name="ChevronRight" size={13} />
@@ -198,7 +198,7 @@ const TreatmentPage = () => {
         </Section>
 
         <section className="bg-night py-14 text-night-foreground md:py-16">
-          <div className="mx-auto grid max-w-[1280px] gap-6 px-5 md:grid-cols-3 md:px-16">
+          <div className="mx-auto grid max-w-site gap-6 px-5 md:grid-cols-3 md:px-16">
             {[
               { icon: "ShieldCheck", title: "Полная анонимность", text: "Без паспорта, без постановки на учёт, без передачи данных." },
               { icon: "Clock", title: "Круглосуточно", text: "Отвечаем и выезжаем 24/7, включая праздники." },
@@ -243,7 +243,7 @@ const TreatmentPage = () => {
           </div>
         </Section>
 
-        <section className="mx-auto max-w-[1280px] px-5 pb-20 md:px-16">
+        <section className="mx-auto max-w-site px-5 pb-20 md:px-16">
           <div className="flex flex-col items-start gap-5 rounded-2xl bg-primary p-7 text-primary-foreground md:flex-row md:items-center md:justify-between md:p-10">
             <div>
               <p className="font-heading text-[1.8em] font-medium leading-tight tracking-tight">Первый шаг — просто позвонить</p>

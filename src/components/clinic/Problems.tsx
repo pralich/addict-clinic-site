@@ -88,7 +88,7 @@ const Problems = () => {
   const related = useMemo(() => (data?.items ?? []).filter((a) => a.category === p.category), [data, p.category]);
 
   return (
-    <section id="problems" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+    <section id="problems" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
       <SectionHead
         label="С чем помогаем"
         title={<>Все виды зависимостей —<br className="hidden md:block" /> в одном центре.</>}

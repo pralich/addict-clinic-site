@@ -48,7 +48,7 @@ const Methods = () => {
 
   return (
     <section id="methods" className="scroll-mt-16 bg-night py-20 text-night-foreground md:py-28">
-      <div className="mx-auto max-w-[1280px] px-5 md:px-16">
+      <div className="mx-auto max-w-site px-5 md:px-16">
         <SectionHead
           dark
           label="Методы лечения"

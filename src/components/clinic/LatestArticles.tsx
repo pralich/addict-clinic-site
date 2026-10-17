@@ -13,7 +13,7 @@ const LatestArticles = () => {
   if (!isLoading && items.length === 0) return null;
 
   return (
-    <section id="articles" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+    <section id="articles" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
       <SectionHead
         label="Полезные статьи"
         title={<>Разбираемся вместе<br className="hidden md:block" /> с врачами клиники.</>}

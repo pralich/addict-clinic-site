@@ -39,7 +39,7 @@ const Faq = () => (
     id="faq"
     className="scroll-mt-16 border-y border-border/60 bg-secondary/70 py-20 md:py-28"
   >
-    <div className="mx-auto max-w-[1280px] px-5 md:px-16">
+    <div className="mx-auto max-w-site px-5 md:px-16">
       <Reveal className="relative overflow-hidden rounded-[24px] border border-border/70 bg-card shadow-[0_1px_0_rgba(0,0,0,0.03),0_30px_60px_-40px_rgba(0,0,0,0.25)]">
         <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative grid lg:grid-cols-[0.9fr_1.4fr]">

@@ -13,7 +13,7 @@ import { openCookieSettings } from "@/lib/cookie-consent";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background">
-    <div className="mx-auto grid max-w-[1280px] gap-8 px-5 py-12 md:grid-cols-[1.2fr_1fr_1fr_1fr] md:px-16">
+    <div className="mx-auto grid max-w-site gap-8 px-5 py-12 md:grid-cols-[1.2fr_1fr_1fr_1fr] md:px-16">
       <div>
         <Logo />
         <p className="mt-4 max-w-[320px] text-[0.92em] leading-relaxed text-muted-foreground">
@@ -61,7 +61,7 @@ const Footer = () => (
       </div>
     </div>
     <div className="border-t border-border">
-      <div className="mx-auto flex max-w-[1280px] flex-col gap-4 px-5 py-6 text-[0.8em] text-muted-foreground md:px-16">
+      <div className="mx-auto flex max-w-site flex-col gap-4 px-5 py-6 text-[0.8em] text-muted-foreground md:px-16">
         <nav className="flex flex-wrap gap-x-5 gap-y-2">
           {LEGAL_LINKS.map((l) => (
             <a key={l.href} href={l.href} className="hover:text-foreground">

@@ -11,7 +11,7 @@ export const STEPS = [
 ];
 
 const Steps = () => (
-  <section id="steps" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+  <section id="steps" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
     <SectionHead
       label="Как проходит обращение"
       title={<>Пять шагов<br className="hidden md:block" /> от звонка до ремиссии.</>}

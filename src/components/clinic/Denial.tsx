@@ -15,7 +15,7 @@ const POINTS = [
 ];
 
 const Denial = () => (
-  <section id="denial" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+  <section id="denial" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
     <Reveal className="overflow-hidden rounded-[10px] bg-ink text-ink-foreground">
       <div className="grid lg:grid-cols-[1.15fr_1fr]">
         <div className="flex flex-col p-6 md:p-10">

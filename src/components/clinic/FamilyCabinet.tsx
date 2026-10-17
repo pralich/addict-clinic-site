@@ -32,7 +32,7 @@ const FEATURES = [
 
 const FamilyCabinet = () => (
   <section id="cabinet" className="scroll-mt-16 bg-night py-20 text-night-foreground md:py-28">
-    <div className="relative mx-auto max-w-[1280px] px-5 md:px-16">
+    <div className="relative mx-auto max-w-site px-5 md:px-16">
       <div className="pointer-events-none absolute -top-24 right-0 h-80 w-80 rounded-full bg-primary/25 blur-[100px]" />
 
       <Reveal className="relative grid gap-6 lg:grid-cols-[1fr_380px] lg:items-end">

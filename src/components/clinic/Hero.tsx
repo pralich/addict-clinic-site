@@ -24,9 +24,9 @@ const chips = [
 
 const Hero = () => {
   return (
-    <section id="top" className="mx-auto max-w-[1280px] overflow-hidden">
+    <section id="top" className="mx-auto max-w-site overflow-hidden">
       {/* headline */}
-      <div className="grid gap-8 px-5 pt-12 md:px-14 lg:grid-cols-[556px_330px] lg:gap-0 lg:pl-[206px] lg:pt-[68px] lg:min-h-[316px]">
+      <div className="grid gap-8 px-5 pt-12 md:px-14 lg:grid-cols-[556px_330px] lg:gap-0 lg:pl-[206px] min-[1800px]:grid-cols-[640px_380px] min-[1800px]:pl-[260px] lg:pt-[68px] lg:min-h-[316px]">
         <h1
           className="animate-up font-heading font-medium text-foreground"
           style={{
@@ -81,7 +81,7 @@ const Hero = () => {
       </div>
 
       {/* bento */}
-      <div className="mt-2 grid gap-[7px] px-3 pb-3 md:px-16 lg:h-[356px] lg:grid-cols-[1fr_281px_137px]">
+      <div className="mt-2 grid gap-[7px] px-3 pb-3 md:px-16 lg:h-[356px] lg:grid-cols-[1fr_281px_137px] min-[1800px]:h-[400px] min-[1800px]:grid-cols-[1fr_360px_240px]">
         <article
           className="animate-up relative min-h-[420px] overflow-hidden rounded-[10px] bg-gradient-to-r from-lavender to-rose px-4 pt-4 lg:min-h-0"
           style={{ animationDelay: ".35s", backgroundImage: "linear-gradient(110deg, hsl(var(--lavender)), hsl(var(--rose)))" }}

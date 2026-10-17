@@ -101,6 +101,22 @@
     @apply border-border;
   }
 
+  :root {
+    --site-w: 1280px;
+  }
+
+  @media (min-width: 1536px) {
+    :root {
+      --site-w: 1440px;
+    }
+  }
+
+  @media (min-width: 1800px) {
+    :root {
+      --site-w: 1680px;
+    }
+  }
+
   html {
     scroll-behavior: smooth;
   }

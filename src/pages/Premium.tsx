@@ -82,7 +82,7 @@ const PremiumHeader = () => {
   }, []);
   return (
     <header className={`fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${scrolled ? "border-b border-white/10 bg-[#0e0e10]/85 backdrop-blur-md" : ""}`}>
-      <div className="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-5 md:px-14">
+      <div className="mx-auto flex h-16 max-w-site items-center justify-between px-5 md:px-14">
         <Link to="/" className="flex items-center gap-2 text-sm text-white/60 transition-colors hover:text-white">
           <Icon name="ArrowLeft" size={16} />
           <span className="hidden sm:inline">Основной сайт</span>
@@ -190,7 +190,7 @@ const Premium = () => {
         <img src={IMG_RESIDENCE} alt="Частная резиденция addict.clinic PREMIUM в сосновом лесу" fetchPriority="high" className="absolute inset-0 h-full w-full object-cover opacity-35" />
         <div className="absolute inset-0 bg-gradient-to-b from-[#0e0e10]/70 via-[#0e0e10]/60 to-[#0e0e10]" />
         <div className="premium-glow absolute left-1/2 top-1/3 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2" />
-        <div className="relative mx-auto w-full max-w-[1280px] px-5 py-16 text-center md:px-14">
+        <div className="relative mx-auto w-full max-w-site px-5 py-16 text-center md:px-14">
           <Reveal>
             <img src="/logo-premium.png" alt="addict.clinic PREMIUM" className="mx-auto w-[240px] md:w-[320px]" />
           </Reveal>
@@ -223,7 +223,7 @@ const Premium = () => {
       </section>
 
       <section className="border-y border-white/10">
-        <div className="mx-auto grid max-w-[1280px] grid-cols-2 px-5 md:grid-cols-4 md:px-14">
+        <div className="mx-auto grid max-w-site grid-cols-2 px-5 md:grid-cols-4 md:px-14">
           {NUMBERS.map((n, i) => (
             <Reveal key={n.label} delay={i * 80} className={`py-10 md:px-6 ${i % 2 ? "pl-5" : ""} ${i > 0 ? "md:border-l md:border-white/10" : ""}`}>
               <p className="premium-gold-text font-heading text-4xl font-medium tracking-tight md:text-5xl">{n.value}</p>
@@ -233,7 +233,7 @@ const Premium = () => {
         </div>
       </section>
 
-      <section id="privacy" className="mx-auto max-w-[1280px] px-5 py-24 md:px-14 md:py-32">
+      <section id="privacy" className="mx-auto max-w-site px-5 py-24 md:px-14 md:py-32">
         <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr]">
           <Reveal>
             <Label>Конфиденциальность</Label>
@@ -263,7 +263,7 @@ const Premium = () => {
       </section>
 
       <section id="experts" className="bg-[#141416] py-24 md:py-32">
-        <div className="mx-auto max-w-[1280px] px-5 md:px-14">
+        <div className="mx-auto max-w-site px-5 md:px-14">
           <div className="grid items-center gap-12 lg:grid-cols-2">
             <Reveal className="relative">
               <div className="premium-glow absolute -inset-10" />
@@ -299,7 +299,7 @@ const Premium = () => {
         </div>
       </section>
 
-      <section id="comfort" className="mx-auto max-w-[1280px] px-5 py-24 md:px-14 md:py-32">
+      <section id="comfort" className="mx-auto max-w-site px-5 py-24 md:px-14 md:py-32">
         <Reveal className="max-w-[720px]">
           <Label>Стационар</Label>
           <h2 className="font-heading text-[2rem] font-medium leading-[1.1] tracking-[-0.03em] text-white md:text-[2.8rem]">
@@ -331,7 +331,7 @@ const Premium = () => {
 
       <section id="request" className="relative overflow-hidden border-t border-white/10 bg-[#141416] py-24 md:py-32">
         <div className="premium-glow absolute -right-40 top-0 h-[600px] w-[600px]" />
-        <div className="relative mx-auto grid max-w-[1280px] gap-12 px-5 md:px-14 lg:grid-cols-2">
+        <div className="relative mx-auto grid max-w-site gap-12 px-5 md:px-14 lg:grid-cols-2">
           <Reveal>
             <Label>Персональный запрос</Label>
             <h2 className="font-heading text-[2rem] font-medium leading-[1.1] tracking-[-0.03em] text-white md:text-[2.8rem]">
@@ -353,12 +353,12 @@ const Premium = () => {
       </section>
 
       <footer className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[1280px] flex-col items-center justify-between gap-4 px-5 py-10 text-sm text-white/40 md:flex-row md:px-14">
+        <div className="mx-auto flex max-w-site flex-col items-center justify-between gap-4 px-5 py-10 text-sm text-white/40 md:flex-row md:px-14">
           <img src="/logo-premium-mark.png" alt="" className="h-7 w-auto opacity-80" />
           <p>© {new Date().getFullYear()} addict.clinic PREMIUM · Анонимно и конфиденциально</p>
           <Link to="/" className="transition-colors hover:text-white">Основной сайт клиники</Link>
         </div>
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 border-t border-white/5 px-5 py-6 text-xs text-white/35 md:px-14">
+        <div className="mx-auto flex max-w-site flex-col gap-3 border-t border-white/5 px-5 py-6 text-xs text-white/35 md:px-14">
           <nav className="flex flex-wrap gap-x-5 gap-y-2">
             {LEGAL_LINKS.map((l) => (
               <a key={l.href} href={l.href} className="hover:text-white">{l.label}</a>

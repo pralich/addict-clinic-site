@@ -93,7 +93,7 @@ const Shop = () => {
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-5 pb-20 pt-10 md:px-16 md:pt-16">
+      <main className="mx-auto max-w-site px-5 pb-20 pt-10 md:px-16 md:pt-16">
         <nav aria-label="Хлебные крошки" className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Главная</Link>
           <Icon name="ChevronRight" size={14} />
@@ -174,13 +174,13 @@ const Shop = () => {
         </div>
 
         {isLoading ? (
-          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 min-[1800px]:grid-cols-5">
             {Array.from({ length: 8 }).map((_, i) => <div key={i} className="aspect-[3/4] animate-pulse rounded-2xl bg-card" />)}
           </div>
         ) : items.length === 0 ? (
           <p className="mt-16 text-center text-muted-foreground">В этой категории пока нет товаров</p>
         ) : (
-          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 min-[1800px]:grid-cols-5">
             {items.map((p) => (
               <button key={p.id} onClick={() => setSelected(p)} className="group flex flex-col overflow-hidden rounded-2xl bg-card text-left transition-all hover:-translate-y-1 hover:shadow-[0_20px_50px_-24px_rgba(0,0,0,0.3)]">
                 <div className="relative aspect-square overflow-hidden bg-secondary">

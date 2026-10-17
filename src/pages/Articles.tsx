@@ -74,7 +74,7 @@ const Articles = () => {
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-5 pb-20 pt-10 md:px-16 md:pt-16">
+      <main className="mx-auto max-w-site px-5 pb-20 pt-10 md:px-16 md:pt-16">
         <nav aria-label="Хлебные крошки" className="mb-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Главная</Link>
           <Icon name="ChevronRight" size={14} />
@@ -113,13 +113,13 @@ const Articles = () => {
         </div>
 
         {isLoading ? (
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-4">
             {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-[360px] animate-pulse rounded-2xl bg-card" />)}
           </div>
         ) : items.length === 0 ? (
           <p className="mt-16 text-center text-muted-foreground">По вашему запросу статей пока нет</p>
         ) : (
-          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3 min-[1800px]:grid-cols-4">
             {items.map((a, i) => (
               <ArticleCard key={a.id} a={a} large={i === 0 && !category && !search} />
             ))}

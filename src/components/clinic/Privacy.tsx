@@ -18,7 +18,7 @@ const STATS = [
 ];
 
 const Privacy = () => (
-  <section id="privacy" className="mx-auto max-w-[1280px] scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
+  <section id="privacy" className="mx-auto max-w-site scroll-mt-16 px-5 py-20 md:px-16 md:py-28">
     <SectionHead
       label="Конфиденциальность и гарантии"
       title={<>О лечении узнаете<br className="hidden md:block" /> только вы.</>}

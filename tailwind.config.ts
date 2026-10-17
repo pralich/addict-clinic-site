@@ -18,6 +18,9 @@ export default {
 			}
 		},
 		extend: {
+			maxWidth: {
+				site: 'var(--site-w)'
+			},
 			fontFamily: {
 				heading: ['Manrope', 'sans-serif'],
 				body: ['Inter', 'sans-serif'],

@@ -94,7 +94,7 @@ const Header = () => {
       <div
         className={`hidden overflow-hidden bg-ink text-ink-foreground transition-all duration-300 xl:block ${scrolled ? "max-h-0" : "max-h-9"}`}
       >
-        <div className="mx-auto flex h-9 max-w-[1280px] items-center justify-between px-14 text-[0.8em]">
+        <div className="mx-auto flex h-9 max-w-site items-center justify-between px-14 text-[0.8em]">
           <div className="flex items-center gap-5 text-white/65">
             <span className="flex items-center gap-2 text-white/90">
               <i className="live-dot block h-1.5 w-1.5 rounded-full bg-live" />
@@ -116,7 +116,7 @@ const Header = () => {
           scrolled ? "border-border bg-background/80 shadow-[0_8px_30px_-18px_rgba(0,0,0,0.25)] backdrop-blur-xl" : "border-transparent bg-background"
         }`}
       >
-        <div className={`mx-auto flex max-w-[1280px] items-center justify-between gap-4 pl-5 pr-4 transition-all duration-300 md:pl-14 md:pr-9 ${scrolled ? "h-[56px]" : "h-[64px]"}`}>
+        <div className={`mx-auto flex max-w-site items-center justify-between gap-4 pl-5 pr-4 transition-all duration-300 md:pl-14 md:pr-9 ${scrolled ? "h-[56px]" : "h-[64px]"}`}>
           <Logo />
 
           <nav className="hidden items-center gap-0.5 rounded-full bg-secondary/70 p-1 xl:flex">

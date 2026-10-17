@@ -28,7 +28,7 @@ export const DOCTORS = [
 
 const Doctors = () => (
   <section id="doctors" className="scroll-mt-16 bg-secondary py-20 md:py-28">
-    <div className="mx-auto max-w-[1280px] px-5 md:px-16">
+    <div className="mx-auto max-w-site px-5 md:px-16">
       <SectionHead
         label="Врачи"
         title={<>Команда, которой<br className="hidden md:block" /> доверяют самое личное.</>}

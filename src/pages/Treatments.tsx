@@ -36,7 +36,7 @@ const Treatments = () => {
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />
-      <main className="mx-auto max-w-[1280px] px-5 pb-20 pt-6 md:px-16 md:pt-10">
+      <main className="mx-auto max-w-site px-5 pb-20 pt-6 md:px-16 md:pt-10">
         <nav className="mb-6 flex items-center gap-1.5 text-sm text-muted-foreground">
           <Link to="/" className="hover:text-foreground">Главная</Link><Icon name="ChevronRight" size={13} /><span className="text-foreground">Лечение</span>
         </nav>
