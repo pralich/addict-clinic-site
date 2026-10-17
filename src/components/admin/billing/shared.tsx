@@ -100,7 +100,7 @@ export const useBillingReload = () => {
   return () => qc.invalidateQueries({ queryKey: ["crm"] });
 };
 
-const ITEM = "group/item mx-1 flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm aria-selected:bg-secondary data-[selected=true]:bg-secondary";
+const ITEM = "group/item mx-1 flex cursor-pointer items-center gap-2.5 rounded-lg border-0 px-2.5 py-2 text-sm shadow-none outline-none ring-0 focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 aria-selected:bg-secondary data-[selected=true]:bg-secondary";
 const initials = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join("").toUpperCase();
 
 const Avatar = ({ name }: { name: string }) => (
@@ -115,9 +115,9 @@ const ComboList = ({ items, isOn, onPick, empty, clear, avatars }: {
   clear?: React.ReactNode;
   avatars?: boolean;
 }) => (
-  <Command className="rounded-xl">
+  <Command className="rounded-xl outline-none focus:outline-none [&_[cmdk-item]]:outline-none">
     <CommandInput placeholder="Поиск…" className="h-10" />
-    <CommandList className="max-h-[280px] py-1">
+    <CommandList className="max-h-[280px] py-1 outline-none focus:outline-none">
       <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">{empty}</CommandEmpty>
       <CommandGroup className="p-0">
         {clear}
