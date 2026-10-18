@@ -4,13 +4,13 @@ import { toast } from "sonner";
 import func2url from "../../../backend/func2url.json";
 import { getToken } from "@/lib/crm-api";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-
-const SYNC_PERIODS = { today: "Сегодня", yesterday: "Вчера", this_week: "Эту неделю", this_month: "Этот месяц" } as const;
-type SyncPeriod = keyof typeof SYNC_PERIODS;
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
 import CallAiSheet from "./CallAiSheet";
+
+const SYNC_PERIODS = { today: "Сегодня", yesterday: "Вчера", this_week: "Эту неделю", this_month: "Этот месяц" } as const;
+type SyncPeriod = keyof typeof SYNC_PERIODS;
 
 type Call = {
   id: number;

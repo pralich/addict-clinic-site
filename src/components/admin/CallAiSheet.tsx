@@ -17,11 +17,11 @@ type Ai = {
   lead_id: number | null;
 };
 
-const URL = (func2url as Record<string, string>)["call-ai"];
+const AI_URL = (func2url as Record<string, string>)["call-ai"];
 
 async function callAi<T = { item: Ai }>(action: string, id: number, body?: unknown): Promise<T> {
-  if (!URL) throw new Error("ИИ-функция ещё не опубликована");
-  const res = await fetch(`${URL}?action=${action}&id=${id}`, {
+  if (!AI_URL) throw new Error("ИИ-функция ещё не опубликована");
+  const res = await fetch(`${AI_URL}?action=${action}&id=${id}`, {
     method: body === undefined ? "GET" : "POST",
     headers: { "Content-Type": "application/json", "X-Auth-Token": getToken() || "" },
     body: body === undefined ? undefined : JSON.stringify({ id, ...(body as object) }),
