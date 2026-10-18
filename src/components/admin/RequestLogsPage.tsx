@@ -25,7 +25,9 @@ type Log = {
 };
 
 type Stat = { total: number; errors: number; last_at: string | null };
-type Resp = { items: Log[]; has_more: boolean; page: number; stats: Record<string, Stat> };
+type Resp = { items: Log[]; has_more: boolean; page: number; per: number; total: number; stats: Record<string, Stat> };
+
+const sel = "h-9 rounded-full border-0 bg-secondary px-3.5 text-sm outline-none focus:ring-0";
 
 const SOURCES: Record<string, { label: string; icon: string }> = {
   api: { label: "Внешний API", icon: "Webhook" },
@@ -107,9 +109,13 @@ const RequestLogsPage = () => {
   const [status, setStatus] = useState("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [direction, setDirection] = useState("all");
+  const [period, setPeriod] = useState("all");
+  const [per, setPer] = useState(50);
   const [openId, setOpenId] = useState<number | null>(null);
 
-  const params = { resource: "request_logs", source: source === "all" ? undefined : source, status: status === "all" ? undefined : status, q, page };
+  const params = { resource: "request_logs", source: source === "all" ? undefined : source, status: status === "all" ? undefined : status, q, page, per, direction: direction === "all" ? undefined : direction, period: period === "all" ? undefined : period };
+
   const { data, isLoading, refetch, isFetching } = useQuery<Resp>({ queryKey: ["crm", "request_logs", params], queryFn: () => api(params), refetchInterval: 15000 });
 
   const reset = (fn: () => void) => { fn(); setPage(1); };
@@ -119,7 +125,7 @@ const RequestLogsPage = () => {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Журнал запросов</h1>
-          <p className="text-sm text-muted-foreground">Обращения к CRM из внешних систем и телефонии. Хранится 60 дней</p>
+          <p className="text-sm text-muted-foreground">Обращения к CRM из внешних систем и телефонии. Записи хранятся 3 дня</p>
         </div>
         <button onClick={() => refetch()} className="flex items-center gap-1.5 rounded-full bg-secondary px-3.5 py-1.5 text-sm hover:bg-secondary/70">
           <Icon name="RefreshCw" size={14} className={isFetching ? "animate-spin" : ""} />Обновить
@@ -152,6 +158,21 @@ const RequestLogsPage = () => {
             <button key={k} onClick={() => reset(() => setStatus(k))} className={`rounded-full px-3.5 py-1.5 text-sm ${status === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
           ))}
         </div>
+        <select value={source} onChange={(e) => reset(() => setSource(e.target.value))} className={sel}>
+          <option value="all">Все источники</option>
+          {Object.entries(SOURCES).map(([k, s]) => <option key={k} value={k}>{s.label}</option>)}
+        </select>
+        <select value={direction} onChange={(e) => reset(() => setDirection(e.target.value))} className={sel}>
+          <option value="all">Любое направление</option>
+          <option value="in">Входящие в CRM</option>
+          <option value="out">Исходящие из CRM</option>
+        </select>
+        <select value={period} onChange={(e) => reset(() => setPeriod(e.target.value))} className={sel}>
+          <option value="all">За 3 дня</option>
+          <option value="24h">За сутки</option>
+          <option value="6h">За 6 часов</option>
+          <option value="1h">За час</option>
+        </select>
         <div className="relative w-full sm:w-72">
           <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={q} onChange={(e) => reset(() => setQ(e.target.value))} placeholder="Номер, действие, IP…" className="pl-9" />
@@ -184,11 +205,20 @@ const RequestLogsPage = () => {
         </div>
       )}
 
-      {data && (page > 1 || data.has_more) && (
-        <div className="mt-4 flex justify-center gap-2">
-          <button disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Назад</button>
-          <span className="px-2 py-1.5 text-sm text-muted-foreground">Стр. {page}</span>
-          <button disabled={!data.has_more} onClick={() => setPage(page + 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Дальше</button>
+      {data && data.total > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            Показывать по
+            <select value={per} onChange={(e) => reset(() => setPer(Number(e.target.value)))} className={sel}>
+              {[20, 50, 100, 200].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>
+            <span>· всего {data.total}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button disabled={page === 1} onClick={() => setPage(page - 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Назад</button>
+            <span className="px-2 py-1.5 text-sm text-muted-foreground">Стр. {page} из {Math.max(1, Math.ceil(data.total / per))}</span>
+            <button disabled={!data.has_more} onClick={() => setPage(page + 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Дальше</button>
+          </div>
         </div>
       )}
 

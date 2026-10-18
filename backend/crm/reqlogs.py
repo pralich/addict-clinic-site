@@ -10,7 +10,11 @@ def handle_request_logs(cur, t, params, user, eid, resp):
         row = cur.fetchone()
         return resp(200, {'item': row}) if row else resp(404, {'error': 'Запись не найдена'})
 
-    where, args = ['1=1'], []
+    cur.execute(f"DELETE FROM {t('crm_integration_log')} WHERE created_at < NOW() - INTERVAL '3 days'")
+    where, args = ["l.created_at > NOW() - INTERVAL '3 days'"], []
+    hours = {'1h': 1, '6h': 6, '24h': 24}.get(params.get('period') or '')
+    if hours:
+        where.append(f"l.created_at > NOW() - INTERVAL '{hours} hours'")
     if params.get('source') in ('api', 'site', 'telephony'):
         where.append('l.source = %s')
         args.append(params['source'])
@@ -30,8 +34,14 @@ def handle_request_logs(cur, t, params, user, eid, resp):
         page = max(1, int(params.get('page') or 1))
     except ValueError:
         page = 1
-    per = 50
+    try:
+        per = int(params.get('per') or 50)
+    except ValueError:
+        per = 50
+    per = per if per in (20, 50, 100, 200) else 50
     w = ' AND '.join(where)
+    cur.execute(f"SELECT COUNT(*) AS c FROM {t('crm_integration_log')} l WHERE {w}", args)
+    total = cur.fetchone()['c']
     cur.execute(f"""SELECT l.id, l.source, l.direction, l.method, l.action, l.status_code, l.duration_ms, l.ip, l.error, l.created_at,
             k.name AS api_key_name, u.name AS user_name, LEFT(l.request, 200) AS preview
         FROM {t('crm_integration_log')} l
@@ -44,4 +54,4 @@ def handle_request_logs(cur, t, params, user, eid, resp):
             MAX(created_at) AS last_at
         FROM {t('crm_integration_log')} WHERE created_at > NOW() - INTERVAL '1 day' GROUP BY source""")
     stats = {r['source']: r for r in cur.fetchall()}
-    return resp(200, {'items': rows[:per], 'has_more': len(rows) > per, 'page': page, 'stats': stats})
+    return resp(200, {'items': rows[:per], 'has_more': len(rows) > per, 'page': page, 'per': per, 'total': total, 'stats': stats})

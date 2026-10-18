@@ -57,7 +57,7 @@ def write_log(source, direction, method, action, status_code, duration_ms, reque
             (source, direction, (method or '')[:10], (action or '')[:100] or None, status_code, duration_ms, (ip or '')[:64] or None,
              api_key_hash, user_id, _cut(request), _cut(response) if response is not None else None, (error or '')[:2000] or None))
         if random.random() < 0.02:
-            cur.execute(f"DELETE FROM {_SCHEMA}.crm_integration_log WHERE created_at < NOW() - INTERVAL '60 days'")
+            cur.execute(f"DELETE FROM {_SCHEMA}.crm_integration_log WHERE created_at < NOW() - INTERVAL '3 days'")
         cur.close()
         conn.close()
     except Exception as e:
