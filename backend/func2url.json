@@ -1,4 +1,5 @@
 {
+  "call-ai": "https://functions.poehali.dev/3b52d29f-d36a-4271-b3a5-2d55cad9392a",
   "telephony": "https://functions.poehali.dev/8569cd64-cfe1-42cd-8709-e633b630c0f1",
   "crm-api": "https://functions.poehali.dev/1145187d-844f-4f3f-8a1f-575d26202624",
   "seo": "https://functions.poehali.dev/b48a94b5-a80a-4058-b6ae-d39dbc9fc8c1",

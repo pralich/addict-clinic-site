@@ -10,6 +10,7 @@ type SyncPeriod = keyof typeof SYNC_PERIODS;
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
+import CallAiSheet from "./CallAiSheet";
 
 type Call = {
   id: number;
@@ -29,6 +30,9 @@ type Call = {
   lead_created: boolean;
   lead_name: string | null;
   client_name: string | null;
+  has_transcript?: boolean;
+  has_summary?: boolean;
+  ai_applied_at?: string | null;
 };
 
 type Resp = { items: Call[]; has_more: boolean; page: number; stats: { today: number; today_in: number; today_missed: number; week_leads: number } };
@@ -60,6 +64,7 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
   const [filter, setFilter] = useState<string>("all");
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
+  const [aiCall, setAiCall] = useState<Call | null>(null);
 
   const params = {
     resource: "calls",
@@ -200,6 +205,12 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                 </div>
                 <div className="flex flex-wrap items-center gap-2 md:justify-end">
                   {c.record_url && <audio controls preload="none" src={c.record_url} className="h-9 w-full max-w-xs md:w-64" />}
+                  {c.record_url && c.duration > 0 && (
+                    <button onClick={() => setAiCall(c)} title="Расшифровка и резюме звонка"
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${c.has_summary ? "bg-violet-100 text-violet-800 hover:bg-violet-200" : "bg-secondary hover:bg-secondary/70"}`}>
+                      <Icon name={c.ai_applied_at ? "CircleCheck" : "Sparkles"} size={14} />{c.has_summary ? "Резюме" : "ИИ-разбор"}
+                    </button>
+                  )}
                   {c.client_id ? (
                     <button onClick={() => onOpen("clients", c.client_id!)} className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70"><Icon name="User" size={14} />Клиент</button>
                   ) : c.lead_id ? (
@@ -218,6 +229,11 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
           <span className="px-2 py-1.5 text-sm text-muted-foreground">Стр. {page}</span>
           <button disabled={!data.has_more} onClick={() => setPage(page + 1)} className="rounded-full bg-secondary px-4 py-1.5 text-sm disabled:opacity-40">Дальше</button>
         </div>
+      )}
+
+      {aiCall && (
+        <CallAiSheet callId={aiCall.id} title={`${aiCall.phone || "Скрытый номер"} · ${dt(aiCall.started_at)}`} onClose={() => setAiCall(null)}
+          onOpenLead={(id) => { setAiCall(null); onOpen("leads", id); }} />
       )}
     </div>
   );
