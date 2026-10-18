@@ -72,7 +72,7 @@ const PushSettings = ({ variant = "sidebar" }: { variant?: "sidebar" | "icon" })
   return (
     <Popover>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent side={variant === "icon" ? "bottom" : "right"} align="end" className="w-[320px] rounded-2xl p-0">
+      <PopoverContent side={variant === "icon" ? "bottom" : "right"} align="end" className="w-[min(320px,calc(100vw-2rem))] rounded-2xl p-0">
         <div className="flex items-start gap-3 border-b p-4">
           <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${on ? "bg-emerald-100 text-emerald-700" : "bg-secondary"}`}>
             <Icon name={on ? "BellRing" : "Bell"} size={20} />

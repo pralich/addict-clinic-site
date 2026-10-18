@@ -83,7 +83,7 @@ export const TagPicker = ({ value, onChange, trigger }: { value: number[]; onCha
           </button>
         )}
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-[340px] p-0">
+      <PopoverContent align="start" className="w-[min(340px,calc(100vw-2rem))] p-0">
         <div className="border-b p-2">
           <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Найти тег…" className="w-full rounded-md bg-secondary px-3 py-1.5 text-sm outline-none" />
         </div>

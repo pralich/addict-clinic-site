@@ -140,7 +140,7 @@ const CallerPopup = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
   if (!items.length) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3 sm:bottom-6 sm:right-6">
+    <div className="pointer-events-none fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] right-4 z-50 flex w-[calc(100%-2rem)] max-w-sm flex-col gap-3 sm:right-6 lg:bottom-6">
       {items.slice(0, 3).map((c) => (
         <Card
           key={c.callid}

@@ -109,7 +109,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <div className="relative min-w-[220px] flex-1">
+        <div className="relative min-w-0 basis-full flex-1 sm:basis-auto sm:min-w-[220px]">
           <Icon name="Search" size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск…" className="bg-card pl-9" />
         </div>
@@ -239,7 +239,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
 
 const TagFilter = ({ value, onChange, tags }: { value: string; onChange: (v: string) => void; tags: Tag[] }) => (
   <Select value={value} onValueChange={onChange}>
-    <SelectTrigger className="h-10 w-auto min-w-[160px] bg-card"><SelectValue /></SelectTrigger>
+    <SelectTrigger className="h-10 w-auto min-w-[140px] max-w-full bg-card sm:min-w-[160px]"><SelectValue /></SelectTrigger>
     <SelectContent>
       <SelectItem value={ALL}>Все теги</SelectItem>
       {Object.entries(TAG_GROUPS).map(([g, meta]) => (
@@ -258,7 +258,7 @@ const TagFilter = ({ value, onChange, tags }: { value: string; onChange: (v: str
 
 const FilterSelect = ({ value, onChange, placeholder, items }: { value: string; onChange: (v: string) => void; placeholder: string; items: { value: string; label: string }[] }) => (
   <Select value={value} onValueChange={onChange}>
-    <SelectTrigger className="h-10 w-auto min-w-[160px] bg-card"><SelectValue /></SelectTrigger>
+    <SelectTrigger className="h-10 w-auto min-w-[140px] max-w-full bg-card sm:min-w-[160px]"><SelectValue /></SelectTrigger>
     <SelectContent>
       <SelectItem value={ALL}>{placeholder}</SelectItem>
       {items.map((i) => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}

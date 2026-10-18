@@ -36,6 +36,14 @@ type NavItem = { id: string; label: string; icon: string; admin?: boolean; staff
 
 const LEADS_ONLY_PAGES = ["leads", "tasks"];
 
+const APP_BAR = [
+  { id: "dashboard", label: "Дашборд", icon: "LayoutDashboard" },
+  { id: "calls", label: "Звонки", icon: "PhoneCall" },
+  { id: "leads", label: "Лиды", icon: "Inbox" },
+  { id: "deals", label: "Сделки", icon: "Handshake" },
+  { id: "in-treatment", label: "Лечатся", icon: "BedDouble" },
+];
+
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "CRM",
@@ -154,7 +162,8 @@ const Shell = () => {
     setDrawer({ resource, id });
   };
   const clearTask = () => setOpenTask(null);
-  const go = (p: string) => { setPage(p); setMenu(false); };
+  const go = (p: string) => { setPage(p); setMenu(false); window.scrollTo({ top: 0 }); };
+  const appBar = APP_BAR.filter((n) => allowed(n.id));
 
 
   const nav = (
@@ -208,7 +217,7 @@ const Shell = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="crm-shell min-h-screen w-full max-w-[100vw] overflow-x-clip bg-background">
       <aside className="fixed inset-y-0 left-0 hidden w-[240px] bg-night text-night-foreground lg:block">{nav}</aside>
       <Sheet open={menu} onOpenChange={setMenu}>
         <SheetContent side="left" className="w-[260px] border-none bg-night p-0 text-night-foreground">{nav}</SheetContent>
@@ -221,8 +230,8 @@ const Shell = () => {
         <span className="flex-1 font-heading font-semibold">{FAMILY_SECTION[page] ? `Близкие · ${NAV.find((n) => n.id === page)?.label}` : NAV.find((n) => n.id === page)?.label}</span>
         <PushSettings variant="icon" />
       </header>
-      <main className="px-4 py-6 md:px-8 md:py-8 lg:ml-[240px] 2xl:px-10">
-        <div className="mx-auto max-w-[1760px]">
+      <main className={`min-w-0 px-4 py-6 [overflow-wrap:anywhere] md:px-8 md:py-8 lg:ml-[240px] lg:pb-8 2xl:px-10 ${appBar.length > 1 ? "pb-[calc(5.5rem+env(safe-area-inset-bottom))]" : ""}`}>
+        <div className="mx-auto w-full min-w-0 max-w-[1760px]">
           {allowed(page) && <>
           {page === "dashboard" && <Dashboard onOpen={open} onNavigate={go} />}
           {["leads", "deals", "clients", "partners"].includes(page) && <EntityPage key={page} resource={page} onOpen={open} />}
@@ -242,6 +251,26 @@ const Shell = () => {
           </>}
         </div>
       </main>
+      {appBar.length > 1 && (
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-lg">
+            {appBar.map((n) => {
+              const active = page === n.id;
+              return (
+                <button key={n.id} onClick={() => go(n.id)} className={`relative flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] transition-colors ${active ? "font-medium text-primary" : "text-muted-foreground"}`}>
+                  <span className={`flex h-7 w-12 items-center justify-center rounded-full ${active ? "bg-primary/10" : ""}`}><Icon name={n.icon} size={20} /></span>
+                  <span className="max-w-full truncate">{n.label}</span>
+                  {badges[n.id] > 0 && (
+                    <span className="absolute left-1/2 top-1 ml-2 min-w-[18px] rounded-full bg-primary px-1 py-0.5 text-center text-[10px] font-semibold leading-none text-primary-foreground tabular-nums">
+                      {badges[n.id] > 99 ? "99+" : badges[n.id]}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      )}
       <CallerPopup onOpen={open} />
       {drawer && (!limited || drawer.resource === "leads") && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
     </div>
