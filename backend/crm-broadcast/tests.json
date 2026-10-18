@@ -1,0 +1,5 @@
+{"tests": [
+  {"name": "Tick", "method": "GET", "path": "/?action=tick", "expectedStatus": 200},
+  {"name": "List requires auth", "method": "GET", "path": "/?action=list", "expectedStatus": 401},
+  {"name": "Create requires auth", "method": "POST", "path": "/?action=create", "body": {"title": "x"}, "expectedStatus": 401}
+]}

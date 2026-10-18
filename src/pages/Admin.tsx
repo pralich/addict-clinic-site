@@ -24,10 +24,12 @@ import RequestLogsPage from "@/components/admin/RequestLogsPage";
 import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
+import BroadcastPage from "@/components/admin/broadcast/BroadcastPage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { pingCrmNotify } from "@/lib/crm-push";
 import { useCallAiQueue } from "@/lib/call-ai";
+import { pingBroadcastTick } from "@/lib/broadcast-api";
 import { useSeo } from "@/lib/seo";
 
 type NavItem = { id: string; label: string; icon: string; admin?: boolean; staff?: boolean };
@@ -46,6 +48,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { id: "clients", label: "Клиенты", icon: "Users" },
       { id: "in-treatment", label: "Сейчас лечатся", icon: "BedDouble" },
       { id: "partners", label: "Партнёры", icon: "Building2" },
+      { id: "broadcasts", label: "Push-рассылки", icon: "Megaphone", staff: true },
       { id: "finance", label: "Финансы", icon: "Wallet", admin: true },
       { id: "users", label: "Пользователи", icon: "UserCog" },
       { id: "api", label: "API", icon: "Webhook" },
@@ -120,7 +123,7 @@ const Shell = () => {
 
   const { data: counters } = useQuery<{ leads: number; questions: number; tasks: number }>({
     queryKey: ["crm", "counters"],
-    queryFn: () => { pingCrmNotify(); return api({ resource: "counters" }); },
+    queryFn: () => { pingCrmNotify(); pingBroadcastTick(); return api({ resource: "counters" }); },
     enabled: !!user,
     refetchInterval: 30000,
     refetchIntervalInBackground: false,
@@ -234,6 +237,7 @@ const Shell = () => {
           {page === "request-logs" && user.role === "admin" && <RequestLogsPage />}
           {page === "in-treatment" && <InTreatmentPage onOpen={open} />}
           {page === "finance" && <FinancePage onOpen={open} />}
+          {page === "broadcasts" && ["admin", "manager"].includes(user.role) && <BroadcastPage />}
           {page === "tasks" && <TasksPage onOpen={open} openTask={openTask} onTaskOpened={clearTask} />}
           </>}
         </div>

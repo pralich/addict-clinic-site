@@ -61,4 +61,9 @@ export const disablePush = async () => {
   await sub.unsubscribe();
 };
 
-export const pushTick = () => fetch(`${URL_}?action=tick`).catch(() => null);
+const BROADCAST_URL = (func2url as Record<string, string>)["crm-broadcast"];
+
+export const pushTick = () => {
+  if (BROADCAST_URL) fetch(`${BROADCAST_URL}?action=tick`).catch(() => null);
+  return fetch(`${URL_}?action=tick`).catch(() => null);
+};
