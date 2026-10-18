@@ -15,6 +15,8 @@ type Ai = {
   ai_fields: Proposal[] | null;
   ai_applied_at: string | null;
   lead_id: number | null;
+  ai_status?: string | null;
+  ai_error?: string | null;
 };
 
 const AI_URL = (func2url as Record<string, string>)["call-ai"];
@@ -35,7 +37,11 @@ type Props = { callId: number; title: string; onClose: () => void; onOpenLead: (
 
 const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
   const qc = useQueryClient();
-  const { data, isLoading } = useQuery({ queryKey: ["call-ai", callId], queryFn: () => callAi("get", callId) });
+  const { data, isLoading } = useQuery({
+    queryKey: ["call-ai", callId],
+    queryFn: () => callAi("get", callId),
+    refetchInterval: (q) => (q.state.data?.item?.ai_status === "processing" && !q.state.data?.item?.ai_summary ? 5000 : false),
+  });
   const [busy, setBusy] = useState<"" | "transcribe" | "analyze" | "apply">("");
   const [picked, setPicked] = useState<Record<string, boolean>>({});
   const [values, setValues] = useState<Record<string, string>>({});
@@ -99,6 +105,8 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
         ) : !ai?.transcript ? (
           <div className="mt-6 flex flex-col items-center gap-4 rounded-xl border border-dashed p-8 text-center">
             <Icon name="AudioLines" size={28} className="text-primary" />
+            {ai?.ai_status === "processing" && !busy && <p className="flex items-center gap-2 text-sm font-medium"><Icon name="Loader2" size={14} className="animate-spin" />Звонок уже разбирается автоматически…</p>}
+            {ai?.ai_status === "error" && ai.ai_error && <p className="text-sm text-red-700">Автоматический разбор не удался: {ai.ai_error}</p>}
             <p className="max-w-sm text-sm text-muted-foreground">ИИ расшифрует запись, составит краткое резюме и предложит, какие поля лида заполнить. Ничего не изменится без вашего одобрения.</p>
             <button onClick={() => run("transcribe")} disabled={!!busy} className="flex items-center gap-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
               <Icon name={busy ? "Loader2" : "Sparkles"} size={15} className={busy ? "animate-spin" : ""} />

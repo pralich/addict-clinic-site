@@ -27,6 +27,7 @@ import TasksPage from "@/components/admin/tasks/TasksPage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { pingCrmNotify } from "@/lib/crm-push";
+import { useCallAiQueue } from "@/lib/call-ai";
 import { useSeo } from "@/lib/seo";
 
 type NavItem = { id: string; label: string; icon: string; admin?: boolean; staff?: boolean };
@@ -88,6 +89,7 @@ const Shell = () => {
   const [menu, setMenu] = useState(false);
   const [openTask, setOpenTask] = useState<number | null>(() => Number(params.get("task")) || null);
   const qc = useQueryClient();
+  useCallAiQueue(!!user && !limited);
 
   useEffect(() => {
     if (params.has("page") || params.has("source") || params.has("open") || params.has("task")) setParams({}, { replace: true });

@@ -4,6 +4,7 @@ import re
 import base64
 import secrets
 import hmac
+import hashlib
 import time
 from urllib.error import HTTPError
 from urllib.parse import urlencode
@@ -114,6 +115,18 @@ def save_record(link, callid):
     key = f'calls/{datetime.utcnow():%Y/%m}/{safe}-{secrets.token_hex(12)}.mp3'
     s3.put_object(Bucket='files', Key=key, Body=data, ContentType='audio/mpeg')
     return f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+
+
+CALL_AI_URL = 'https://functions.poehali.dev/3b52d29f-d36a-4271-b3a5-2d55cad9392a'
+
+
+def ping_call_ai(call_id=None):
+    key = hashlib.sha256(f"call-ai:{os.environ.get('DATABASE_URL', '')}".encode()).hexdigest()
+    url = f"{CALL_AI_URL}?{urlencode({'action': 'auto', 'key': key, **({'id': call_id} if call_id else {})})}"
+    try:
+        urlopen(url, timeout=1.5).read()
+    except Exception:
+        pass
 
 
 def ping_push():
@@ -293,6 +306,8 @@ def handle_sync(conn, cur, user, d):
             leads += 1
     if leads:
         ping_push()
+    if added:
+        ping_call_ai()
 
     return resp(200, {'ok': True, 'period': period, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads, 'partial': partial})
 
@@ -355,6 +370,7 @@ def handler(event: dict, context) -> dict:
                 if url:
                     cur.execute(f"UPDATE {t('crm_calls')} SET record_url = %s WHERE id = %s", (url, rec[0]))
                     conn.commit()
+                ping_call_ai(rec[0])
             return resp(r['statusCode'], out)
         if cmd == 'event':
             r = handle_event(cur, d)

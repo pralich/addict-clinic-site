@@ -33,6 +33,8 @@ type Call = {
   has_transcript?: boolean;
   has_summary?: boolean;
   ai_applied_at?: string | null;
+  ai_status?: string | null;
+  ai_fields_count?: number;
 };
 
 type Resp = { items: Call[]; has_more: boolean; page: number; stats: { today: number; today_in: number; today_missed: number; week_leads: number } };
@@ -44,6 +46,7 @@ const FILTERS = [
   ["missed", "Пропущенные"],
   ["new_leads", "Новые лиды"],
   ["with_record", "С записью"],
+  ["ai_pending", "Ждут одобрения"],
 ] as const;
 
 const STATUS: Record<string, string> = {
@@ -74,6 +77,7 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
     missed: filter === "missed" ? 1 : undefined,
     new_leads: filter === "new_leads" ? 1 : undefined,
     with_record: filter === "with_record" ? 1 : undefined,
+    ai_pending: filter === "ai_pending" ? 1 : undefined,
   };
   const { data, isLoading } = useQuery<Resp>({
     queryKey: ["crm", "calls", params],
@@ -207,8 +211,9 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                   {c.record_url && <audio controls preload="none" src={c.record_url} className="h-9 w-full max-w-xs md:w-64" />}
                   {c.record_url && c.duration > 0 && (
                     <button onClick={() => setAiCall(c)} title="Расшифровка и резюме звонка"
-                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${c.has_summary ? "bg-violet-100 text-violet-800 hover:bg-violet-200" : "bg-secondary hover:bg-secondary/70"}`}>
-                      <Icon name={c.ai_applied_at ? "CircleCheck" : "Sparkles"} size={14} />{c.has_summary ? "Резюме" : "ИИ-разбор"}
+                      className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${c.has_summary && !c.ai_applied_at && c.ai_fields_count ? "bg-primary text-primary-foreground hover:bg-primary/90" : c.has_summary ? "bg-violet-100 text-violet-800 hover:bg-violet-200" : "bg-secondary hover:bg-secondary/70"}`}>
+                      <Icon name={c.ai_applied_at ? "CircleCheck" : c.ai_status === "processing" ? "Loader2" : "Sparkles"} size={14} className={c.ai_status === "processing" && !c.has_summary ? "animate-spin" : ""} />
+                      {c.has_summary ? (c.ai_applied_at ? "Резюме" : c.ai_fields_count ? `Одобрить поля · ${c.ai_fields_count}` : "Резюме") : c.ai_status === "processing" ? "Разбираю…" : "ИИ-разбор"}
                     </button>
                   )}
                   {c.client_id ? (

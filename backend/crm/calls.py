@@ -105,6 +105,8 @@ def handle_calls(cur, t, params, resp):
         where.append('c.lead_created')
     if params.get('with_record') == '1':
         where.append('c.record_url IS NOT NULL')
+    if params.get('ai_pending') == '1':
+        where.append("c.ai_summary IS NOT NULL AND c.ai_applied_at IS NULL")
     digits = re.sub(r'\D', '', params.get('q') or '')
     if digits:
         where.append('c.phone_digits LIKE %s')
@@ -116,7 +118,7 @@ def handle_calls(cur, t, params, resp):
     per = 50
     w = ' AND '.join(where)
     cur.execute(f"""SELECT c.id, c.direction, c.status, c.phone, c.pbx_user, c.ext, c.group_name, c.telnum, c.started_at, c.duration, c.wait,
-            COALESCE(c.record_url, c.record_source_url) AS record_url, c.lead_id, c.client_id, c.lead_created, (c.transcript IS NOT NULL) AS has_transcript, (c.ai_summary IS NOT NULL) AS has_summary, c.ai_applied_at, l.name AS lead_name, cl.full_name AS client_name
+            COALESCE(c.record_url, c.record_source_url) AS record_url, c.lead_id, c.client_id, c.lead_created, (c.transcript IS NOT NULL) AS has_transcript, (c.ai_summary IS NOT NULL) AS has_summary, c.ai_applied_at, c.ai_status, COALESCE(jsonb_array_length(c.ai_fields), 0) AS ai_fields_count, l.name AS lead_name, cl.full_name AS client_name
         FROM {t('crm_calls')} c
         LEFT JOIN {t('crm_leads')} l ON l.id = c.lead_id
         LEFT JOIN {t('crm_clients')} cl ON cl.id = c.client_id

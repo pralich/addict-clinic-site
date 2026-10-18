@@ -2,6 +2,8 @@ import json
 import os
 import re
 import base64
+import hashlib
+import hmac
 from datetime import datetime, date
 from decimal import Decimal
 from urllib.request import Request, urlopen
@@ -37,6 +39,10 @@ FIELDS = {
 STATUSES = {'new': 'Новый', 'in_work': 'В работе', 'qualified': 'Квалифицирован', 'rejected': 'Отказ'}
 RELATIONS = {'self': 'Сам пациент', 'spouse': 'Супруг(а)', 'parent': 'Родитель', 'child': 'Ребёнок', 'sibling': 'Брат / сестра',
              'relative': 'Родственник', 'friend': 'Друг', 'colleague': 'Коллега', 'employer': 'Работодатель', 'guardian': 'Опекун', 'other': 'Другое'}
+
+
+def internal_key():
+    return hashlib.sha256(f"call-ai:{os.environ.get('DATABASE_URL', '')}".encode()).hexdigest()
 
 
 def t(name):
@@ -85,7 +91,43 @@ def load_call(cur, cid):
 
 
 def view(c):
-    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id')}
+    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id', 'ai_status', 'ai_error')}
+
+
+QUEUE = f"""duration > 0 AND COALESCE(record_url, record_source_url) IS NOT NULL AND transcript IS NULL
+    AND started_at > NOW() - INTERVAL '2 days' AND ai_attempts < 3
+    AND (ai_status IS NULL OR ai_status = 'error' OR (ai_status = 'processing' AND ai_started_at < NOW() - INTERVAL '10 minutes'))"""
+
+
+def claim(cur, cid=None):
+    extra, args = ('AND id = %s', (cid,)) if cid else ('', ())
+    cur.execute(f"""UPDATE {t('crm_calls')} SET ai_status = 'processing', ai_started_at = NOW(), ai_attempts = ai_attempts + 1, ai_error = NULL
+        WHERE id = (SELECT id FROM {t('crm_calls')} WHERE {QUEUE} {extra} ORDER BY started_at DESC LIMIT 1 FOR UPDATE SKIP LOCKED)
+        RETURNING id""", args)
+    row = cur.fetchone()
+    return load_call(cur, row['id']) if row else None
+
+
+def process(cur, cid=None):
+    c = claim(cur, cid)
+    if not c:
+        cur.execute(f"SELECT COUNT(*) AS n FROM {t('crm_calls')} WHERE {QUEUE}")
+        return resp(200, {'processed': None, 'left': cur.fetchone()['n']})
+    try:
+        r = transcribe(cur, c)
+        if r['statusCode'] == 200:
+            r = analyze(cur, load_call(cur, c['id']))
+        err = None if r['statusCode'] == 200 else json.loads(r['body']).get('error')
+    except RuntimeError as e:
+        err = str(e)
+    except Exception as e:
+        print(f'auto ai failed {c["id"]}: {e}')
+        err = 'Внутренняя ошибка ИИ-разбора'
+    final = 4 if err and ('записи нет' in err or 'не удалось распознать' in err.lower() or 'слишком длинная' in err) else None
+    cur.execute(f"UPDATE {t('crm_calls')} SET ai_status = %s, ai_error = %s, ai_attempts = COALESCE(%s, ai_attempts) WHERE id = %s",
+                ('error' if err else 'done', err, final, c['id']))
+    cur.execute(f"SELECT COUNT(*) AS n FROM {t('crm_calls')} WHERE {QUEUE}")
+    return resp(200, {'processed': c['id'], 'ok': not err, 'error': err, 'left': cur.fetchone()['n']})
 
 
 def transcribe(cur, c):
@@ -106,7 +148,7 @@ def transcribe(cur, c):
     text = (data.get('text') or '').strip()
     if not text:
         return resp(422, {'error': 'В записи не удалось распознать речь'})
-    cur.execute(f"UPDATE {t('crm_calls')} SET transcript = %s, transcribed_at = NOW(), ai_summary = NULL, ai_fields = NULL, ai_analyzed_at = NULL WHERE id = %s", (text, c['id']))
+    cur.execute(f"UPDATE {t('crm_calls')} SET ai_status = 'done', ai_error = NULL, transcript = %s, transcribed_at = NOW(), ai_summary = NULL, ai_fields = NULL, ai_analyzed_at = NULL WHERE id = %s", (text, c['id']))
     return resp(200, {'item': view(load_call(cur, c['id']))})
 
 
@@ -226,6 +268,15 @@ def handler(event: dict, context) -> dict:
     conn.autocommit = True
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        if action == 'auto':
+            key = params.get('key') or headers.get('X-Internal-Key') or headers.get('x-internal-key') or ''
+            if not hmac.compare_digest(key, internal_key()):
+                return resp(401, {'error': 'Неверный ключ'})
+            try:
+                cid = int(params.get('id') or 0) or None
+            except ValueError:
+                cid = None
+            return process(cur, cid)
         user = get_user(cur, headers)
         if not user:
             return resp(401, {'error': 'Требуется вход'})
@@ -235,6 +286,8 @@ def handler(event: dict, context) -> dict:
             cid = int(params.get('id') or body.get('id') or 0)
         except ValueError:
             cid = 0
+        if action == 'queue' and method == 'POST':
+            return process(cur)
         c = load_call(cur, cid) if cid else None
         if not c:
             return resp(404, {'error': 'Звонок не найден'})

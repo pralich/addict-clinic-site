@@ -10,7 +10,15 @@
       "name": "Transcribe requires auth",
       "method": "POST",
       "path": "/?action=transcribe",
-      "body": {"id": 1},
+      "body": {
+        "id": 1
+      },
+      "expectedStatus": 401
+    },
+    {
+      "name": "Auto requires key",
+      "method": "GET",
+      "path": "/?action=auto&key=wrong",
       "expectedStatus": 401
     }
   ]
