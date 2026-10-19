@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { TREATMENTS } from "./src/lib/treatments";
+import { TREATMENTS, ogImage } from "./src/lib/treatments";
 
 const SITE = "https://addict.clinic";
 const PHONE = "8-800-222-11-25";
@@ -132,7 +132,7 @@ const staticPages = (articles: Article[]): Page[] => [
     path: t.path,
     title: t.title,
     description: t.description,
-    image: t.image,
+    image: ogImage(t),
     h1: t.h1,
     crumbs: [["Лечение", "/lechenie"], [t.h1, t.path]],
     body: [

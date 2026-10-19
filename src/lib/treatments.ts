@@ -276,4 +276,6 @@ export const TREATMENTS: Treatment[] = [
   },
 ];
 
+export const ogImage = (t: Treatment) => `/og-${t.slug}.jpg?v=1`;
+
 export const getTreatment = (slug: string) => TREATMENTS.find((t) => t.slug === slug);

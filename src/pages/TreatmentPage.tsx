@@ -10,7 +10,7 @@ import TreatmentLeadForm from "@/components/treatment/TreatmentLeadForm";
 import ArticleCard from "@/components/articles/ArticleCard";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { fetchArticles } from "@/lib/articles";
-import { getTreatment, TREATMENTS, type Treatment } from "@/lib/treatments";
+import { getTreatment, ogImage, TREATMENTS, type Treatment } from "@/lib/treatments";
 import { SITE_URL, useSeo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 import NotFound from "./NotFound";
@@ -86,7 +86,7 @@ const TreatmentPage = () => {
     title: t?.title || "Страница не найдена — addict.clinic",
     description: t?.description || "",
     path: t?.path || `/lechenie/${slug}`,
-    image: t?.image,
+    image: t ? ogImage(t) : undefined,
     noindex: !t,
     jsonLd: ld,
   });
