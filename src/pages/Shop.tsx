@@ -45,6 +45,7 @@ const Shop = () => {
   useSeo({
     title: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic — мерч, подарочные сертификаты, литература",
     description: "Подарочные сертификаты на консультации психолога, книги и рабочие тетради для семей, мерч клиники. Анонимная упаковка, доставка по России.",
+    image: "/og-shop.jpg?v=1",
     path: category ? `/shop?category=${category}` : "/shop",
     jsonLd: graph(
       clinicNode,

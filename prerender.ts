@@ -5,7 +5,7 @@ import { TREATMENTS } from "./src/lib/treatments";
 const SITE = "https://addict.clinic";
 const PHONE = "8-800-222-11-25";
 const PHONE_HREF = "tel:+78002221125";
-const OG = `${SITE}/og-image.jpg?v=2`;
+const OG = `${SITE}/og-image.jpg?v=3`;
 
 const CATEGORIES: Record<string, string> = {
   rehab: "Реабилитация", alcohol: "Алкоголизм", drugs: "Наркомания", meds: "Лекарственная зависимость", gambling: "Игромания",
@@ -14,7 +14,7 @@ const CATEGORIES: Record<string, string> = {
 
 type Article = { slug: string; title: string; excerpt?: string; meta_title?: string; meta_description?: string; cover_url?: string; cover_alt?: string; category?: string; content?: string; author?: string; published_at?: string; updated_at?: string };
 
-type Page = { path: string; title: string; description: string; image?: string; h1: string; body: string; crumbs?: [string, string][]; ld?: object[] };
+type Page = { path: string; title: string; description: string; image?: string; noindex?: boolean; h1: string; body: string; crumbs?: [string, string][]; ld?: object[] };
 
 const esc = (s = "") => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const p = (s: string) => `<p>${esc(s)}</p>`;
@@ -78,6 +78,7 @@ const render = (tpl: string, pg: Page) => {
   html = setTag(html, /<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${esc(pg.title)}">`);
   html = setTag(html, /<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${esc(pg.description)}">`);
   html = setTag(html, /<meta name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${esc(img)}">`);
+  if (pg.noindex) html = setTag(html, /<meta name="robots"[^>]*>/, `<meta name="robots" content="noindex, nofollow"/>`);
   if (pg.path.startsWith("/articles/")) html = html.replace(/<meta property="og:type"[^>]*>/, '<meta property="og:type" content="article">');
   const ld = [...(pg.crumbs ? [crumbsLd(pg.crumbs)] : []), ...(pg.ld || [])];
   const ldTags = ld.map((o) => `<script type="application/ld+json" data-prerender>${JSON.stringify(o).replace(/</g, "\\u003c")}</script>`).join("\n");
@@ -171,9 +172,19 @@ const staticPages = (articles: Article[]): Page[] => [
     path: "/shop",
     title: "Магазин addict.clinic — мерч, подарочные сертификаты, литература",
     description: "Подарочные сертификаты на консультации психолога, книги и рабочие тетради для семей, мерч клиники. Анонимная упаковка, доставка по России.",
+    image: "/og-shop.jpg?v=1",
     h1: "Подарки, которые поддерживают",
     crumbs: [["Магазин", "/shop"]],
     body: p("Сертификаты на помощь специалистов, книги для семей и вещи, которые напоминают: выздоровление возможно. Анонимная упаковка, доставка по России."),
+  },
+  {
+    path: "/family",
+    title: "Кабинет для родственников зависимых — addict.clinic",
+    description: "Бесплатный личный кабинет для близких зависимых: вопросы психологу, группы поддержки и вебинары, ИИ-психолог для подготовки разговора о лечении.",
+    image: "/og-family.jpg?v=1",
+    noindex: true,
+    h1: "Кабинет для близких зависимого",
+    body: p("Вопросы психологу, ИИ-помощник для подготовки разговора о лечении, группы поддержки и вебинары для родственников."),
   },
   ...([
     ["/privacy", "Политика обработки персональных данных"],
