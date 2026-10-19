@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import Icon from "@/components/ui/icon";
@@ -16,6 +16,7 @@ import { ENTITY_DEFS } from "./entities";
 import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./config";
 import { useCrmMutation, useItem } from "./useCrm";
 import { useAuth } from "./AuthContext";
+import { useNavList } from "./navList";
 
 type Props = {
   resource: string;
@@ -33,6 +34,14 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   const limited = user?.role === "leads_only";
   const item = data?.item;
   const refs = data?.refs ?? {};
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: 0 }); setEdit(false); }, [id]);
+  const nav = useNavList();
+  const ids = nav.resource === resource ? nav.ids : [];
+  const pos = id ? ids.indexOf(id) : -1;
+  const prevId = pos > 0 ? ids[pos - 1] : null;
+  const nextId = pos >= 0 && pos < ids.length - 1 ? ids[pos + 1] : null;
 
   const save = (body: Record<string, any>) => mut.mutateAsync({ params: { resource, id }, method: "PUT", body }).then(() => toast.success("Сохранено"));
 
@@ -69,11 +78,11 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
 
   return (
     <Sheet open={!!id} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full overflow-y-auto p-0 sm:max-w-xl lg:w-[min(1152px,96vw)] lg:max-w-none lg:overflow-hidden">
+      <SheetContent ref={scrollRef} className="w-full overflow-y-auto p-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:max-w-xl lg:pb-0 lg:w-[min(1152px,96vw)] lg:max-w-none lg:overflow-hidden">
         {isLoading || !item ? (
           <div className="flex h-40 items-center justify-center lg:h-full"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>
         ) : (
-          <div className="grid lg:h-full lg:grid-cols-2">
+          <div key={id} className="grid lg:h-full lg:grid-cols-2">
           <div className="flex flex-col gap-6 border-b px-5 py-6 lg:h-full lg:overflow-y-auto lg:border-b-0 lg:border-r lg:px-6">
             <SheetHeader className="pr-8 text-left">
               <p className="text-xs uppercase tracking-wider text-muted-foreground">{def.title} · #{item.id}</p>
@@ -203,6 +212,24 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
           </div>
           </div>
         )}
+        <nav className="fixed inset-x-0 bottom-0 z-[60] border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-xl items-stretch">
+            <button onClick={() => prevId && onOpen(resource, prevId)} disabled={!prevId}
+              className="flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] text-muted-foreground transition-colors active:text-foreground disabled:opacity-35">
+              <span className="flex h-7 items-center justify-center"><Icon name="ChevronLeft" size={22} /></span>
+              <span className="truncate">Предыдущий</span>
+            </button>
+            <button onClick={onClose} className="flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] font-medium text-foreground">
+              <span className="flex h-7 w-12 items-center justify-center rounded-full bg-secondary"><Icon name="X" size={20} /></span>
+              <span className="truncate">Закрыть{pos >= 0 ? ` · ${pos + 1} из ${ids.length}` : ""}</span>
+            </button>
+            <button onClick={() => nextId && onOpen(resource, nextId)} disabled={!nextId}
+              className="flex min-w-0 flex-1 flex-col items-center gap-0.5 pb-1.5 pt-2 text-[11px] text-muted-foreground transition-colors active:text-foreground disabled:opacity-35">
+              <span className="flex h-7 items-center justify-center"><Icon name="ChevronRight" size={22} /></span>
+              <span className="truncate">Следующий</span>
+            </button>
+          </div>
+        </nav>
         <EntityForm open={edit} onOpenChange={setEdit} title={`Редактировать ${def.single}`}
           fields={limited ? def.fields.filter((f) => !["contact", "rep_phone", "rep_email", "rep_messenger", "client_id"].includes(f.name)) : def.fields}
           initial={item} onSubmit={save} />

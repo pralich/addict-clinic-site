@@ -272,7 +272,7 @@ const Shell = () => {
         </nav>
       )}
       <CallerPopup onOpen={open} />
-      {drawer && (!limited || drawer.resource === "leads") && <EntityDrawer key={`${drawer.resource}-${drawer.id}`} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
+      {drawer && (!limited || drawer.resource === "leads") && <EntityDrawer key={drawer.resource} resource={drawer.resource} id={drawer.id} onClose={() => setDrawer(null)} onOpen={open} />}
     </div>
   );
 };

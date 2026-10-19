@@ -10,6 +10,7 @@ import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import EntityForm from "./EntityForm";
 import { DEFAULTS, ENTITY_DEFS } from "./entities";
+import { setNavList, clearNavList } from "./navList";
 import { useCrmMutation, useList, useOptions, type Tag } from "./useCrm";
 import { money } from "./config";
 import { useAuth } from "./AuthContext";
@@ -48,6 +49,13 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const canBoard = resource === "deals" || resource === "leads";
   const selectable = canTrash && (!canBoard || view === "table");
   useEffect(() => setSel((s) => s.filter((id) => items.some((i) => i.id === id))), [items]);
+  useEffect(() => {
+    const ordered = canBoard && view === "board"
+      ? Object.keys(def.statusMap).flatMap((k) => items.filter((i) => i[def.statusKey] === k))
+      : items;
+    setNavList(resource, ordered.map((i) => i.id));
+  }, [items, view, canBoard, resource, def]);
+  useEffect(() => () => clearNavList(resource), [resource]);
   const allChecked = items.length > 0 && items.every((i) => sel.includes(i.id));
 
   const trashSelected = () => {
