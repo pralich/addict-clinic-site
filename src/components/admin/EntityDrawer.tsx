@@ -17,6 +17,7 @@ import { DEAL_STAGES, LEAD_STATUS, CLIENT_STATUS, fmtDate, money } from "./confi
 import { useCrmMutation, useItem } from "./useCrm";
 import { useAuth } from "./AuthContext";
 import { useNavList } from "./navList";
+import { useSwipeNav } from "./useSwipeNav";
 
 type Props = {
   resource: string;
@@ -42,6 +43,15 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   const pos = id ? ids.indexOf(id) : -1;
   const prevId = pos > 0 ? ids[pos - 1] : null;
   const nextId = pos >= 0 && pos < ids.length - 1 ? ids[pos + 1] : null;
+
+  const swipeRef = useSwipeNav({
+    enabled: !!item && !edit,
+    canPrev: !!prevId,
+    canNext: !!nextId,
+    onPrev: () => prevId && onOpen(resource, prevId),
+    onNext: () => nextId && onOpen(resource, nextId),
+    readyKey: item?.id,
+  });
 
   const save = (body: Record<string, any>) => mut.mutateAsync({ params: { resource, id }, method: "PUT", body }).then(() => toast.success("Сохранено"));
 
@@ -79,6 +89,7 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
   return (
     <Sheet open={!!id} onOpenChange={(v) => !v && onClose()}>
       <SheetContent ref={scrollRef} className="w-full overflow-y-auto p-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:max-w-xl lg:pb-0 lg:w-[min(1152px,96vw)] lg:max-w-none lg:overflow-hidden">
+        <div ref={swipeRef} className="min-h-full touch-pan-y will-change-transform lg:h-full lg:touch-auto">
         {isLoading || !item ? (
           <div className="flex h-40 items-center justify-center lg:h-full"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>
         ) : (
@@ -212,6 +223,7 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
           </div>
           </div>
         )}
+        </div>
         <nav className="fixed inset-x-0 bottom-0 z-[60] border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
           <div className="mx-auto flex max-w-xl items-stretch">
             <button onClick={() => prevId && onOpen(resource, prevId)} disabled={!prevId}
