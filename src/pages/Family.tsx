@@ -24,6 +24,15 @@ const NAV = [
   { id: "billing", label: "Тарифы и баланс", icon: "Wallet" },
 ];
 
+type BarItem = { label: string; icon: string; section?: string; to?: string };
+const APP_BAR: BarItem[] = [
+  { section: "ai", label: "ИИ-психолог", icon: "Sparkles" },
+  { section: "questions", label: "Живой психолог", icon: "MessageCircleHeart" },
+  { section: "events", label: "События", icon: "CalendarHeart" },
+  { to: "/shop", label: "Магазин", icon: "ShoppingBag" },
+  { to: "/", label: "Клиника", icon: "Hospital" },
+];
+
 const TITLES: Record<string, { title: string; text: string }> = {
   questions: { title: "Вопрос психологу", text: "Задайте вопрос — специалист клиники ответит письменно в течение 24 часов." },
   events: { title: "Встречи и вебинары", text: "Группы поддержки для родственников и онлайн-эфиры с врачами клиники." },
@@ -100,7 +109,7 @@ const Shell = () => {
           <a href={PHONE_HREF} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground" aria-label="Позвонить"><Icon name="Phone" size={16} /></a>
         </div>
       </header>
-      <main className="px-4 py-6 md:px-8 lg:ml-[260px] lg:py-8">
+      <main className="px-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-6 md:px-8 lg:ml-[260px] lg:py-8">
         <div className="mx-auto max-w-[1200px]">
           <TrialBanner go={go} />
           {head && (
@@ -116,6 +125,28 @@ const Shell = () => {
           {section === "billing" && <BillingSection />}
         </div>
       </main>
+      <nav className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden" aria-label="Быстрые разделы">
+        <div className="grid h-16 grid-cols-5">
+          {APP_BAR.map((b) => {
+            const active = b.section === section;
+            const inner = (
+              <>
+                <span className={`flex h-7 w-12 items-center justify-center rounded-full transition-colors ${active ? "bg-primary text-primary-foreground" : ""}`}>
+                  <Icon name={b.icon} size={19} />
+                </span>
+                <span className={`w-full truncate px-0.5 text-center text-[10.5px] leading-tight ${active ? "font-semibold text-foreground" : ""}`}>{b.label}</span>
+                {b.section === "questions" && !!stats?.answered && !active && <span className="absolute right-[calc(50%-1.4rem)] top-1.5 h-2 w-2 rounded-full bg-emerald-500 ring-2 ring-background" />}
+              </>
+            );
+            const cls = `relative flex min-w-0 flex-col items-center justify-center gap-1 text-muted-foreground active:opacity-70`;
+            return b.to ? (
+              <Link key={b.label} to={b.to} className={cls}>{inner}</Link>
+            ) : (
+              <button key={b.label} onClick={() => go(b.section!)} className={cls} aria-current={active ? "page" : undefined}>{inner}</button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 };

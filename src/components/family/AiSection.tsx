@@ -95,7 +95,7 @@ const Chat = ({ mode, chatId, setup, onExit, onCreated }: { mode: AiMode; chatId
   const userTurns = messages.filter((m) => m.role === "user").length;
 
   return (
-    <div className="flex h-[calc(100vh-9rem)] min-h-[520px] flex-col overflow-hidden rounded-2xl bg-card lg:h-[calc(100vh-7rem)]">
+    <div className="flex h-[calc(100dvh-14rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] min-h-[440px] flex-col overflow-hidden rounded-2xl bg-card lg:h-[calc(100vh-7rem)]">
       <div className="flex items-center gap-3 border-b px-4 py-3">
         <button onClick={onExit} className="rounded-full p-1.5 hover:bg-secondary" aria-label="Назад"><Icon name="ArrowLeft" size={18} /></button>
         <span className={`flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br text-white ${mode.color}`}><Icon name={mode.icon} size={18} /></span>
