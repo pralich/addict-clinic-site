@@ -172,9 +172,9 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-1 rounded-2xl bg-secondary p-1 sm:inline-flex sm:rounded-full">
+      <div className="-mx-4 mt-6 flex gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:inline-flex sm:flex-wrap sm:rounded-full sm:bg-secondary sm:p-1 sm:px-1">
         {FILTERS.map(([k, l]) => (
-          <button key={k} onClick={() => pick(k)} className={`rounded-full px-3.5 py-1.5 text-sm ${filter === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
+          <button key={k} onClick={() => pick(k)} className={`shrink-0 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm max-sm:border ${filter === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
         ))}
       </div>
 
@@ -188,18 +188,31 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
             const missed = c.status === "missed";
             const name = c.client_name || c.lead_name;
             return (
-              <div key={c.id} className="flex flex-col gap-3 p-4 md:flex-row md:items-center">
-                <div className="flex min-w-0 flex-1 items-center gap-3">
+              <div key={c.id} className="flex min-w-0 flex-col gap-3 p-4 md:flex-row md:items-center">
+                <div className="flex min-w-0 flex-1 items-start gap-3 md:items-center">
                   <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${missed ? "bg-red-100 text-red-700" : c.direction === "in" ? "bg-emerald-100 text-emerald-700" : "bg-sky-100 text-sky-700"}`}>
                     <Icon name={missed ? "PhoneMissed" : c.direction === "in" ? "PhoneIncoming" : "PhoneOutgoing"} size={18} />
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-w-0 items-center gap-2 md:hidden">
+                      <a href={`tel:${c.phone}`} className="shrink-0 whitespace-nowrap font-medium">{c.phone || "Скрытый номер"}</a>
+                      <span className="ml-auto shrink-0 whitespace-nowrap text-xs text-muted-foreground">{dt(c.started_at)}</span>
+                    </div>
+                    {(name || c.lead_created) && (
+                      <div className="mt-0.5 flex min-w-0 items-center gap-2 md:hidden">
+                        {name && <span className="min-w-0 truncate text-sm">{name}</span>}
+                        {c.lead_created && <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Новый лид</span>}
+                      </div>
+                    )}
+                    <p className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
+                      {STATUS[c.status] || c.status}{c.duration > 0 && ` · ${dur(c.duration)}`}{c.pbx_user && ` · ${c.pbx_user}`}{c.group_name && ` · ${c.group_name}`}
+                    </p>
+                    <div className="hidden flex-wrap items-center gap-2 md:flex">
                       <a href={`tel:${c.phone}`} className="font-medium hover:underline">{c.phone || "Скрытый номер"}</a>
                       {name && <span className="truncate text-sm text-muted-foreground">· {name}</span>}
                       {c.lead_created && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Новый лид</span>}
                     </div>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
+                    <p className="mt-0.5 hidden text-xs text-muted-foreground md:block">
                       {dt(c.started_at)} · {c.direction === "in" ? "Входящий" : "Исходящий"} · {STATUS[c.status] || c.status}
                       {c.duration > 0 && ` · ${dur(c.duration)}`}
                       {c.pbx_user && ` · ${c.pbx_user}`}
@@ -207,8 +220,8 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  {c.record_url && <audio controls preload="none" src={c.record_url} className="h-9 w-full max-w-xs md:w-64" />}
+                <div className="flex min-w-0 flex-wrap items-center gap-2 [&_button]:whitespace-nowrap md:justify-end">
+                  {c.record_url && <audio controls preload="none" src={c.record_url} className="h-9 w-full md:w-64 md:max-w-xs" />}
                   {c.record_url && c.duration > 0 && (
                     <button onClick={() => setAiCall(c)} title="Расшифровка и резюме звонка"
                       className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium ${c.has_summary && !c.ai_applied_at && c.ai_fields_count ? "bg-primary text-primary-foreground hover:bg-primary/90" : c.has_summary ? "bg-violet-100 text-violet-800 hover:bg-violet-200" : "bg-secondary hover:bg-secondary/70"}`}>

@@ -123,6 +123,85 @@ const Commission = ({ r }: { r: Row }) => {
   );
 };
 
+const tel = (v: string) => `tel:${v.replace(/[^\d+]/g, "")}`;
+
+const MobileRow = ({ r, day, onOpen }: { r: Row; day: Date; onOpen: (resource: string, id: number) => void }) => {
+  const start = toDay(r.check_in_date).getTime();
+  const end = toDay(r.check_out_date).getTime();
+  const total = Math.max(1, Math.round((end - start) / DAY));
+  const passed = Math.min(total, Math.max(0, Math.round((day.getTime() - start) / DAY)));
+  const left = Math.max(0, Math.round((end - day.getTime()) / DAY));
+  const txt = commissionText(r);
+  const repName = r.rep_name || r.client_rep_name;
+  const repRel = r.rep_relation || r.client_rep_relation;
+  const repPhone = r.rep_phone || r.client_rep_phone;
+  const due = daysUntil(r.next_payment_date);
+  return (
+    <div onClick={() => onOpen("deals", r.deal_id)} className={`flex min-w-0 cursor-pointer flex-col gap-3 p-4 active:bg-secondary/50 ${rowTone(r)}`}>
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[15px] font-medium">{r.full_name || "Клиент не указан"}</p>
+          <p className="truncate text-xs text-muted-foreground">{r.program || r.title}</p>
+        </div>
+        <div className="shrink-0 whitespace-nowrap"><StatusBadge map={DEAL_STAGES} value={r.stage} /></div>
+      </div>
+
+      <div>
+        <div className="flex items-baseline justify-between gap-2 whitespace-nowrap text-xs">
+          <span className="text-muted-foreground">{fmtDate(r.check_in_date)} — {fmtDate(r.check_out_date)}</span>
+          <span className={left <= 3 ? "font-medium text-amber-700" : "text-muted-foreground"}>
+            {left === 0 ? "выезд сегодня" : `день ${passed + 1}/${total + 1} · ещё ${left} дн.`}
+          </span>
+        </div>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-secondary">
+          <div className="h-full rounded-full bg-violet-500" style={{ width: `${(passed / total) * 100}%` }} />
+        </div>
+      </div>
+
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
+        <dt className="whitespace-nowrap text-muted-foreground">Сумма</dt>
+        <dd className="min-w-0 truncate text-right tabular-nums">{money(r.amount)}{txt ? <span className="text-muted-foreground"> · комиссия {txt}</span> : ""}</dd>
+        {r.partner_name && <>
+          <dt className="whitespace-nowrap text-muted-foreground">Партнёр</dt>
+          <dd className="min-w-0 truncate text-right">{r.partner_name}</dd>
+        </>}
+        <dt className="whitespace-nowrap text-muted-foreground">Платёж</dt>
+        <dd className={`min-w-0 truncate text-right tabular-nums ${due !== null && due < 0 ? "font-medium text-primary" : due !== null && due <= 3 ? "font-medium text-amber-700" : ""}`}>
+          {r.next_payment_date
+            ? <>{r.next_payment_amount ? money(r.next_payment_amount) : "—"} до {fmtDate(r.next_payment_date)} <span className="text-muted-foreground">({r.payment_index}/{r.payments_total})</span></>
+            : <span className="text-muted-foreground">{r.payments_total ? "всё оплачено" : "нет графика"}</span>}
+        </dd>
+        {Number(r.debt) > 0 && <>
+          <dt className="whitespace-nowrap text-muted-foreground">Долг</dt>
+          <dd className="min-w-0 truncate text-right font-medium tabular-nums text-primary">{money(r.debt)}</dd>
+        </>}
+        {r.manager_name && <>
+          <dt className="whitespace-nowrap text-muted-foreground">Ответственный</dt>
+          <dd className="min-w-0 truncate text-right">{r.manager_name}</dd>
+        </>}
+        {(repName || repPhone) && <>
+          <dt className="whitespace-nowrap text-muted-foreground">{repRel ? REP_RELATIONS[repRel] || repRel : "Контакт"}</dt>
+          <dd className="min-w-0 truncate text-right">{repName || ""}</dd>
+        </>}
+      </dl>
+
+      <div className="flex min-w-0 gap-2" onClick={(e) => e.stopPropagation()}>
+        {r.phone && (
+          <a href={tel(r.phone)} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-secondary px-3 text-xs font-medium">
+            <Icon name="Phone" size={14} className="shrink-0" /><span className="truncate">Клиент</span>
+          </a>
+        )}
+        {repPhone && (
+          <a href={tel(repPhone)} className="flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full bg-secondary px-3 text-xs font-medium">
+            <Icon name="PhoneForwarded" size={14} className="shrink-0" /><span className="truncate">{repName || "Контакт"}</span>
+          </a>
+        )}
+        <div className="flex shrink-0 items-center [&_button]:whitespace-nowrap"><PaymentsButton r={r} /></div>
+      </div>
+    </div>
+  );
+};
+
 const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void }) => {
   const [date, setDate] = useState(todayIso());
   const [search, setSearch] = useState("");
@@ -231,23 +310,7 @@ const InTreatmentPage = ({ onOpen }: { onOpen: (resource: string, id: number) =>
               </table>
             </div>
             <div className="flex flex-col divide-y lg:hidden">
-              {items.map((r) => (
-                <div key={r.deal_id} onClick={() => onOpen("deals", r.deal_id)} className={`flex cursor-pointer flex-col gap-3 p-4 active:bg-secondary/50 ${rowTone(r)}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{r.full_name || "Клиент не указан"}</p>
-                      <p className="truncate text-xs text-muted-foreground">{r.program || r.title}</p>
-                    </div>
-                    <StatusBadge map={DEAL_STAGES} value={r.stage} />
-                  </div>
-                  <Progress r={r} day={day} />
-                  <div className="flex items-start justify-between gap-3 rounded-lg bg-secondary/50 p-3">
-                    <Commission r={r} />
-                    <Payment r={r} />
-                  </div>
-                  <Contacts r={r} />
-                </div>
-              ))}
+              {items.map((r) => <MobileRow key={r.deal_id} r={r} day={day} onOpen={onOpen} />)}
             </div>
           </>
         )}
