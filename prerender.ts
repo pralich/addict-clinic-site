@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { TREATMENTS, ogImage } from "./src/lib/treatments";
+import { HOME_SEO_INTRO, HOME_SEO_PROGRAMS_H2, HOME_SEO_SECTIONS, parseLinks } from "./src/lib/home-seo";
 
 const SITE = "https://addict.clinic";
 const PHONE = "8-800-222-11-25";
@@ -112,11 +113,11 @@ const staticPages = (articles: Article[]): Page[] => [
     body: [
       p("Наркологи, психологи и реабилитологи одной командой. Лечим без постановки на учёт и сопровождаем на каждом этапе — от первого звонка до устойчивой ремиссии."),
       `<p>Срочная помощь 24/7: <a href="${PHONE_HREF}">${PHONE}</a>. Выезд врача по Москве и области за 40–60 минут.</p>`,
-      "<h2>Что мы лечим</h2>",
-      `<ul>${TREATMENTS.map((t) => `<li>${a(t.path, t.h1)} — ${esc(t.hint)}</li>`).join("")}</ul>`,
-      "<h2>Как проходит лечение</h2>",
-      ul(["Бесплатная анонимная консультация по телефону", "Выезд нарколога на дом или госпитализация в стационар", "Детоксикация и диагностика", "Психотерапия и реабилитация", "Сопровождение после лечения"]),
-      `<p>${a("/premium", "PREMIUM-программа")} — лечение в частной резиденции с полной конфиденциальностью.</p>`,
+      p(HOME_SEO_INTRO),
+      `<h2>${esc(HOME_SEO_PROGRAMS_H2)}</h2>`,
+      `<ul>${TREATMENTS.map((t) => `<li>${a(t.path, t.menu)} — ${esc(t.hint)}</li>`).join("")}</ul>`,
+      `<p>${a("/lechenie", "Все направления лечения")}</p>`,
+      ...HOME_SEO_SECTIONS.map((s) => `<h2>${esc(s.h2)}</h2>${s.paras.map((x) => `<p>${parseLinks(x).map((c) => (c.href ? a(c.href, c.text) : esc(c.text))).join("")}</p>`).join("")}`),
       articles.length ? `<h2>Статьи врачей</h2><ul>${articles.slice(0, 8).map((x) => `<li>${a(`/articles/${x.slug}`, x.title)}</li>`).join("")}</ul>` : "",
     ].join(""),
   },

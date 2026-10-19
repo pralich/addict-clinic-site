@@ -13,6 +13,7 @@ import Steps from "@/components/clinic/Steps";
 import Faq from "@/components/clinic/Faq";
 import LatestArticles from "@/components/clinic/LatestArticles";
 import Contacts from "@/components/clinic/Contacts";
+import SeoText from "@/components/clinic/SeoText";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_HREF } from "@/components/clinic/contacts";
 import { useSeo } from "@/lib/seo";
@@ -58,6 +59,7 @@ const Index = () => {
         <Steps />
         <Faq />
         <LatestArticles />
+        <SeoText />
         <Contacts />
       </main>
       <Footer />
