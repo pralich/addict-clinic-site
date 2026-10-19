@@ -104,7 +104,7 @@ const ArticlePage = () => {
     title: a ? a.meta_title || `${a.title} — addict.clinic` : isError ? "Статья не найдена — addict.clinic" : "Статьи — addict.clinic",
     description: a?.meta_description || a?.excerpt || "Статьи врачей addict.clinic о зависимостях и их лечении.",
     path: `/articles/${slug}`,
-    image: a?.cover_url || "/og-image.jpg",
+    image: a?.cover_url || "/og-image.jpg?v=3",
     noindex: isError,
     jsonLd,
   });

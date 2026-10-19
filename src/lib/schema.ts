@@ -63,7 +63,7 @@ export const clinicNode = {
   alternateName: "Аддикт Клиник",
   url: `${SITE_URL}/`,
   logo: { "@id": LOGO_ID },
-  image: `${SITE_URL}/og-image.jpg?v=2`,
+  image: `${SITE_URL}/og-image.jpg?v=3`,
   description: "Медицинский центр анонимного лечения зависимостей: алкоголизм, наркомания, лекарственная зависимость, игромания. Выезд врача 24/7.",
   telephone: PHONE,
   email: ORG.email,

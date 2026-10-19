@@ -31,7 +31,7 @@ const setLink = (rel: string, href: string) => {
   el.setAttribute("href", href);
 };
 
-export const useSeo = ({ title, description, path, image = "/og-image.jpg?v=2", noindex, jsonLd }: Seo) => {
+export const useSeo = ({ title, description, path, image = "/og-image.jpg?v=3", noindex, jsonLd }: Seo) => {
   useEffect(() => {
     const url = SITE_URL + path;
     const img = image.startsWith("http") ? image : SITE_URL + image;
