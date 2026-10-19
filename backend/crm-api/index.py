@@ -9,6 +9,8 @@ from urllib.request import urlopen
 import psycopg2
 import psycopg2.extras
 
+import lead_parse
+
 from reqlog import logged
 
 SCHEMA = 't_p15395438_addict_clinic_site'
@@ -309,6 +311,8 @@ def create_lead(cur, body, api_key):
     cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING {LEAD_OUT}", list(data.values()))
     item = cur.fetchone()
     log(cur, 'leads', item['id'], api_key, 'Лид создан')
+    if lead_parse.auto_enabled(cur, t) and lead_parse.apply(cur, t, item['id']) is not None:
+        item = find_one(cur, 'crm_leads', LEAD_OUT, 'id = %s', (item['id'],))
     return item, True
 
 

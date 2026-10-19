@@ -54,6 +54,13 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
       { onSuccess: () => { toast.success("Перемещено в корзину"); onClose(); } },
     );
 
+  const canParse = resource === "leads" && !limited && !item?.trashed_at && /^\s*[[{]/.test(item?.raw_message || item?.message || "");
+  const parse = () =>
+    mut.mutate(
+      { params: { resource: "lead_parse", action: "one" }, method: "POST", body: { id, force: !!item?.parsed_at } },
+      { onSuccess: (r: any) => toast.success(r.changes?.length ? `Комментарий разобран: ${r.changes.join(", ")}` : "Комментарий разобран") },
+    );
+
   const convert = () =>
     mut.mutate(
       { params: { resource: "leads", id, action: "convert" }, method: "POST", body: { create_deal: true } },
@@ -84,6 +91,11 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
               <Button size="sm" onClick={() => setEdit(true)}><Icon name="Pencil" size={14} className="mr-1.5" />Редактировать</Button>
               {resource === "leads" && item.status !== "converted" && !limited && (
                 <Button size="sm" variant="outline" onClick={convert}><Icon name="ArrowRightLeft" size={14} className="mr-1.5" />В клиента и сделку</Button>
+              )}
+              {canParse && (
+                <Button size="sm" variant="outline" onClick={parse} disabled={mut.isPending}>
+                  <Icon name="Wand2" size={14} className="mr-1.5" />{item.parsed_at ? "Разобрать заново" : "Разобрать комментарий"}
+                </Button>
               )}
               <Button size="sm" variant="outline" onClick={archive}>
                 <Icon name={item.archived_at ? "ArchiveRestore" : "Archive"} size={14} className="mr-1.5" />

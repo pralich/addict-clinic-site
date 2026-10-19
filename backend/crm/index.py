@@ -16,6 +16,7 @@ from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
 from shop_admin import handle_shop_products
 from trash import handle_trash, purge_expired, TABLES as TRASH_TABLES
+import lead_parse
 from access import ROLES, LEADS_ONLY_RESOURCES, LEAD_CONTACT_FIELDS, LEAD_TEXT_FIELDS, LEADS_ONLY_SEARCH, is_leads_only, mask_text, mask_contact
 
 SCHEMA = 't_p15395438_addict_clinic_site'
@@ -600,6 +601,32 @@ def handle_api_keys(cur, method, eid, body, user):
     return resp(400, {'error': 'Неверный запрос'})
 
 
+def handle_lead_parse(cur, method, action, body, user):
+    if action == 'settings':
+        if method == 'POST':
+            if user['role'] != 'admin':
+                return resp(403, {'error': 'Настройку меняет администратор'})
+            q(cur, f"""INSERT INTO {t('crm_settings')} (key, value, updated_at) VALUES ('lead_autoparse', %s::jsonb, NOW())
+                ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()""", ('true' if body.get('auto') else 'false',))
+        q(cur, f"SELECT COUNT(*) AS c FROM {t('crm_leads')} WHERE parsed_at IS NULL AND trashed_at IS NULL AND message ~ '^\\s*[\\[{{]'")
+        return resp(200, {'auto': lead_parse.auto_enabled(cur, t), 'pending': cur.fetchone()['c']})
+    if method != 'POST':
+        return resp(400, {'error': 'Неверный запрос'})
+    if action == 'one':
+        lid = int(body.get('id') or 0)
+        changes = lead_parse.apply(cur, t, lid, user['id'], force=bool(body.get('force')))
+        if changes is None:
+            return resp(400, {'error': 'В комментарии нет данных формы для разбора'})
+        return resp(200, {'ok': True, 'changes': changes})
+    if action == 'all':
+        if user['role'] not in ('admin', 'manager'):
+            return resp(403, {'error': 'Нет прав'})
+        q(cur, f"SELECT id FROM {t('crm_leads')} WHERE parsed_at IS NULL AND trashed_at IS NULL AND message ~ '^\\s*[\\[{{]' ORDER BY id LIMIT 300")
+        done = sum(1 for r in cur.fetchall() if lead_parse.apply(cur, t, r['id'], user['id']) is not None)
+        return resp(200, {'ok': True, 'done': done})
+    return resp(400, {'error': 'Неверный запрос'})
+
+
 CALL_RESULTS = ('reached', 'no_answer', 'busy', 'callback', 'wrong_number')
 MEETING_RESULTS = ('held', 'rescheduled', 'cancelled', 'no_show')
 
@@ -803,6 +830,8 @@ def handler(event: dict, context) -> dict:
             return handle_shop_orders(cur, params)
         if resource == 'tags':
             return handle_tags(cur, method, eid, body, user)
+        if resource == 'lead_parse':
+            return handle_lead_parse(cur, method, action, body, user)
         if resource == 'api_keys':
             return handle_api_keys(cur, method, eid, body, user)
         if resource == 'users':

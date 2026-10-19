@@ -103,6 +103,15 @@
       "method": "GET",
       "path": "/?resource=shop_products",
       "expectedStatus": 401
+    },
+    {
+      "name": "Lead parse requires auth",
+      "method": "POST",
+      "path": "/?resource=lead_parse&action=one",
+      "body": {
+        "id": 1
+      },
+      "expectedStatus": 401
     }
   ]
 }

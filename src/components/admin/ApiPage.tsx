@@ -8,6 +8,7 @@ import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import { useAuth } from "./AuthContext";
 import { fmtDate } from "./config";
+import LeadParseSettings from "./LeadParseSettings";
 
 const API_URL = "https://api.addict.clinic/";
 
@@ -128,6 +129,8 @@ const ApiPage = () => {
           Ключ передаётся в заголовке <code className="rounded bg-secondary px-1.5 py-0.5 text-foreground">X-Api-Key</code>. Данные — методом POST в формате JSON. Ответ <b className="text-foreground">201</b> — запись создана, <b className="text-foreground">200</b> — найдена существующая, <b className="text-foreground">400</b> — ошибка в данных (в ответе указано поле), <b className="text-foreground">401</b> — неверный ключ.
         </p>
       </div>
+
+      <LeadParseSettings isAdmin={isAdmin} />
 
       {isAdmin ? (
         <div className="rounded-xl border bg-card p-5">
