@@ -158,6 +158,14 @@ const FamilySplash = () => {
   const [entering, setEntering] = useState(0);
   const [wasUser, setWasUser] = useState<boolean | null>(null);
   useEffect(() => {
+    const boot = document.getElementById("boot-splash");
+    const t = window.setTimeout(() => {
+      boot?.remove();
+      document.documentElement.classList.remove("boot-family");
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, []);
+  useEffect(() => {
     if (loading) return;
     const has = !!user;
     if (wasUser === false && has) setEntering((n) => n + 1);

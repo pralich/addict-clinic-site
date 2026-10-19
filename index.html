@@ -28,7 +28,7 @@
         var admin = location.pathname === "/admin" || location.pathname.indexOf("/admin/") === 0;
         var family = location.pathname === "/family" || location.pathname.indexOf("/family/") === 0;
         var c = family
-          ? { manifest: "/family.webmanifest?v=1", icon: "/family-apple-touch-icon.png?v=1", title: "Близкие", bar: "default", theme: "#F3F3F1", png: "/family-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
+          ? { manifest: "/family.webmanifest?v=2", icon: "/family-apple-touch-icon.png?v=1", title: "Близкие", bar: "default", theme: "#F3F3F1", png: "/family-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
           : admin
           ? { manifest: "/admin.webmanifest?v=3", icon: "/admin-apple-touch-icon.png?v=3", title: "Clinic CRM", bar: "black-translucent", theme: "#1B1B1A", svg: "/admin-favicon.svg", png: "/admin-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
           : { manifest: "/site.webmanifest?v=3", icon: "/apple-touch-icon.png?v=2", title: "addict.clinic", bar: "default", theme: "#F3F3F1" };
@@ -46,8 +46,20 @@
         if (c.svg) set('link[rel="icon"][type="image/svg+xml"]', "href", c.svg);
         if (c.png) set('link[rel="icon"][sizes="32x32"]', "href", c.png);
         if (c.viewport) set('meta[name="viewport"]', "content", c.viewport);
+        if (family) document.documentElement.className += " boot-family";
       })();
     </script>
+    <style>
+      #boot-splash { display: none; }
+      .boot-family, .boot-family body { background: #1B1B1A; }
+      .boot-family #boot-splash { display: flex; position: fixed; inset: 0; z-index: 199; align-items: center; justify-content: center; overflow: hidden; background: #1B1B1A; }
+      #boot-splash .bs-glow { position: absolute; width: 60vmax; height: 60vmax; border-radius: 9999px; filter: blur(80px); opacity: .35; background: #E02B2F; top: -25vmax; left: -20vmax; }
+      #boot-splash .bs-glow + .bs-glow { background: rgba(224,43,47,.55); top: auto; left: auto; bottom: -30vmax; right: -25vmax; }
+      #boot-splash .bs-box { position: relative; width: 144px; height: 144px; display: flex; align-items: center; justify-content: center; margin-bottom: 121px; }
+      #boot-splash .bs-ring { position: absolute; inset: 6px; border-radius: 9999px; border: 2px solid rgba(255,255,255,.08); border-top-color: #E02B2F; animation: bs-spin 1.4s linear infinite; }
+      #boot-splash img { width: 80px; height: 80px; border-radius: 22px; box-shadow: 0 20px 60px -10px rgba(224,43,47,.6); }
+      @keyframes bs-spin { to { transform: rotate(360deg); } }
+    </style>
 
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="addict.clinic">
@@ -227,6 +239,7 @@
   </head>
 
 <body>
+<div id="boot-splash" aria-hidden="true"><div class="bs-glow"></div><div class="bs-glow"></div><div class="bs-box"><span class="bs-ring"></span><img src="/family-192.png" alt=""></div></div>
 <div id="root"></div>
 <script type="module" src="/src/main.tsx"></script>
 

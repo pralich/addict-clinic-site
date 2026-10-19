@@ -9,7 +9,7 @@
   "scope": "/family",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#F3F3F1",
+  "background_color": "#1B1B1A",
   "theme_color": "#F3F3F1",
   "categories": ["health", "lifestyle"],
   "icons": [
