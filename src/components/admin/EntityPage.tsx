@@ -194,7 +194,47 @@ const EntityPage = ({ resource, onOpen }: Props) => {
           </div>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-xl border bg-card">
+        <>
+        <div className="flex flex-col gap-2 md:hidden">
+          {items.map((r) => {
+            const [titleCol, ...rest] = def.columns;
+            const status = rest.find((c) => c.key === def.statusKey);
+            const tags = rest.find((c) => c.key === "tags");
+            const meta = rest.filter((c) => c !== status && c !== tags && (c.render || (r[c.key] !== null && r[c.key] !== undefined && r[c.key] !== "")));
+            return (
+              <div key={r.id} role="button" tabIndex={0} onClick={() => onOpen(resource, r.id)}
+                className={`flex min-w-0 gap-3 rounded-xl border bg-card p-3.5 text-sm active:bg-secondary/60 ${sel.includes(r.id) ? "border-primary/50 bg-primary/5" : ""}`}>
+                {selectable && (
+                  <div className="pt-0.5" onClick={(e) => e.stopPropagation()}>
+                    <Checkbox checked={sel.includes(r.id)} onCheckedChange={(c) => setSel((s) => (c ? [...s, r.id] : s.filter((x) => x !== r.id)))} aria-label="Выбрать" />
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1 truncate text-[15px] leading-snug">{titleCol.render ? titleCol.render(r) : r[titleCol.key] || "—"}</div>
+                    {status && <div className="shrink-0 whitespace-nowrap">{status.render ? status.render(r) : r[status.key]}</div>}
+                  </div>
+                  {tags && r.tags?.length > 0 && <div className="mt-2 overflow-hidden">{tags.render!(r)}</div>}
+                  <dl className="mt-2.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
+                    {meta.map((c) => (
+                      <div key={c.key} className="contents">
+                        <dt className="whitespace-nowrap text-muted-foreground">{c.label}</dt>
+                        <dd className="min-w-0 truncate text-right [&>*]:inline [&>*]:truncate [&_*]:whitespace-nowrap">{c.render ? c.render(r) : r[c.key]}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              </div>
+            );
+          })}
+          {!isLoading && items.length === 0 && (
+            <div className="rounded-xl border bg-card py-12 text-center text-sm text-muted-foreground">
+              <Icon name={def.icon} size={28} className="mx-auto mb-2 opacity-40" />
+              Ничего не найдено
+            </div>
+          )}
+        </div>
+        <div className="hidden overflow-hidden rounded-xl border bg-card md:block">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
@@ -232,6 +272,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
             </Table>
           </div>
         </div>
+        </>
       )}
 
       {canTrash && <TrashDialog resource={resource} open={trashOpen} onOpenChange={setTrashOpen} />}
