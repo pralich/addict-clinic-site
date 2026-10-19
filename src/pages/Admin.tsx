@@ -6,6 +6,7 @@ import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { AuthProvider, useAuth } from "@/components/admin/AuthContext";
 import LoginScreen from "@/components/admin/LoginScreen";
+import Splash from "@/components/admin/Splash";
 import Dashboard from "@/components/admin/Dashboard";
 import EntityPage from "@/components/admin/EntityPage";
 import UsersPage from "@/components/admin/UsersPage";
@@ -152,9 +153,7 @@ const Shell = () => {
     if (limited && drawer && drawer.resource !== "leads") setDrawer(null);
   }, [limited, page, drawer]);
 
-  if (loading) {
-    return <div className="flex min-h-screen items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>;
-  }
+  if (loading) return null;
   if (!user) return <LoginScreen />;
 
   const open = (resource: string, id: number) => {
@@ -277,11 +276,31 @@ const Shell = () => {
   );
 };
 
+const AdminSplash = () => {
+  const { user, loading } = useAuth();
+  const [shown, setShown] = useState(true);
+  const [entering, setEntering] = useState(0);
+  const [wasUser, setWasUser] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const has = !!user;
+    if (wasUser === false && has) setEntering((n) => n + 1);
+    setWasUser(has);
+  }, [loading, user, wasUser]);
+  return (
+    <>
+      {shown && <Splash ready={!loading} caption={user || loading ? "CRM" : "Вход в кабинет"} onDone={() => setShown(false)} />}
+      {entering > 0 && <Splash key={entering} ready minMs={1100} caption="Добро пожаловать" />}
+    </>
+  );
+};
+
 const Admin = () => {
   useSeo({ title: "CRM — addict.clinic", description: "Панель управления", path: "/admin", noindex: true });
   return (
     <AuthProvider>
       <Shell />
+      <AdminSplash />
     </AuthProvider>
   );
 };
