@@ -96,7 +96,8 @@ def handler(event: dict, context) -> dict:
             item = cur.fetchone()
             if not item:
                 return resp(404, {'error': 'Статья не найдена'})
-            cur.execute(f'UPDATE {T} SET views = views + 1 WHERE id = %s', (item['id'],))
+            if not params.get('prerender'):
+                cur.execute(f'UPDATE {T} SET views = views + 1 WHERE id = %s', (item['id'],))
             cur.execute(f"SELECT {LIST_FIELDS} FROM {T} WHERE status = 'published' AND id <> %s ORDER BY (category = %s) DESC, published_at DESC LIMIT 3", (item['id'], item['category']))
             return resp(200, {'item': item, 'related': cur.fetchall()})
 

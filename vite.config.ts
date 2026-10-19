@@ -117,12 +117,62 @@ const sitemapFromAdmin = {
     },
 };
 
+const usedIcons = {
+    name: 'used-icons',
+    enforce: 'pre' as const,
+    resolveId(id: string) {
+        return id === 'virtual:icons' ? '\0virtual:icons' : null;
+    },
+    async load(id: string) {
+        if (id !== '\0virtual:icons') return null;
+        if (process.env.NODE_ENV !== 'production') return "export * from 'lucide-react';";
+        const fs = await import('fs');
+        const lucide: Record<string, unknown> = await import('lucide-react');
+        const names = new Set<string>(['CircleAlert']);
+        const walk = (dir: string) => {
+            for (const f of fs.readdirSync(dir, {withFileTypes: true})) {
+                const full = path.join(dir, f.name);
+                if (f.isDirectory()) walk(full);
+                else if (/\.(tsx?|jsx?)$/.test(f.name)) {
+                    for (const m of fs.readFileSync(full, 'utf-8').matchAll(/["'`]([A-Z][A-Za-z0-9]+)["'`]/g)) {
+                        if (m[1] in lucide && typeof lucide[m[1]] === 'object') names.add(m[1]);
+                    }
+                }
+            }
+        };
+        walk(path.resolve(__dirname, 'src'));
+        return `export { ${[...names].join(', ')} } from 'lucide-react';`;
+    },
+};
+
+let outDir = path.resolve(__dirname, 'dist');
+
+const prerenderPages = {
+    name: 'prerender-pages',
+    apply: 'build' as const,
+    configResolved(config: any) {
+        outDir = path.resolve(config.root, config.build.outDir);
+    },
+    async closeBundle() {
+        try {
+            const fs = await import('fs');
+            const urls = JSON.parse(fs.readFileSync(path.resolve(__dirname, 'backend/func2url.json'), 'utf-8'));
+            const {prerender} = await import('./prerender');
+            await prerender(outDir, urls.articles);
+        } catch (e) {
+            console.warn('prerender skipped', e);
+        }
+    },
+};
+
 // https://vitejs.dev/config/
 export default defineConfig(({mode}) => ({
     plugins: [
         react(),
         hmrKeepalive,
         sitemapFromAdmin,
+        prerenderPages,
+        usedIcons,
         mode === 'development' &&
         componentTagger(),
     ].filter(Boolean),

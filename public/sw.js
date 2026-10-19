@@ -1,4 +1,4 @@
-const CACHE = "addict-clinic-v4";
+const CACHE = "addict-clinic-v5";
 const SHELL = ["/", "/site.webmanifest", "/family.webmanifest", "/family-192.png", "/pwa-192.png", "/pwa-512.png", "/logo.png", "/favicon.svg"];
 
 self.addEventListener("install", (e) => {
@@ -23,7 +23,7 @@ self.addEventListener("fetch", (e) => {
       fetch(req)
         .then((res) => {
           const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put("/", copy));
+          if (url.pathname === "/" && res.ok) caches.open(CACHE).then((c) => c.put("/", copy));
           return res;
         })
         .catch(() => caches.match("/"))
