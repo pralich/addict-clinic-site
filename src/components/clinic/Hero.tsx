@@ -36,9 +36,7 @@ const Hero = () => {
             animationDelay: ".1s",
           }}
         >
-          Анонимная помощь
-          <br />
-          при зависимости.
+          Анонимное лечение зависимостей в&nbsp;Москве
         </h1>
         <div className="animate-up pt-1.5" style={{ animationDelay: ".25s" }}>
           <p className="text-[1.12em] leading-[1.38] tracking-[-0.012em]">
