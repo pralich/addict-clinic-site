@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -15,6 +15,7 @@ import PushCard from "@/components/family/PushCard";
 import FamilyInstall from "@/components/family/FamilyInstall";
 import { RELATIONS, fmtNum } from "@/lib/family-api";
 import { useSeo } from "@/lib/seo";
+import Splash from "@/components/admin/Splash";
 
 const NAV = [
   { id: "home", label: "Главная", icon: "House" },
@@ -45,7 +46,7 @@ const Shell = () => {
   const section = NAV.some((n) => n.id === params.get("s")) ? params.get("s")! : "home";
   const [menu, setMenu] = useState(false);
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Icon name="Loader2" className="animate-spin text-muted-foreground" /></div>;
+  if (loading) return null;
   if (!user) return <FamilyLogin />;
 
   const go = (s: string) => { setParams(s === "home" ? {} : { s }); setMenu(false); window.scrollTo(0, 0); };
@@ -151,6 +152,25 @@ const Shell = () => {
   );
 };
 
+const FamilySplash = () => {
+  const { user, loading } = useFamilyAuth();
+  const [shown, setShown] = useState(true);
+  const [entering, setEntering] = useState(0);
+  const [wasUser, setWasUser] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (loading) return;
+    const has = !!user;
+    if (wasUser === false && has) setEntering((n) => n + 1);
+    setWasUser(has);
+  }, [loading, user, wasUser]);
+  return (
+    <>
+      {shown && <Splash ready={!loading} logo="/family-192.png" caption={user || loading ? "Кабинет для близких" : "Вход в кабинет"} onDone={() => setShown(false)} />}
+      {entering > 0 && <Splash key={entering} ready minMs={1100} logo="/family-192.png" caption="Добро пожаловать" />}
+    </>
+  );
+};
+
 const Family = () => {
   useSeo({
     title: "Кабинет для родственников зависимых — addict.clinic",
@@ -162,6 +182,7 @@ const Family = () => {
   return (
     <FamilyAuthProvider>
       <Shell />
+      <FamilySplash />
     </FamilyAuthProvider>
   );
 };

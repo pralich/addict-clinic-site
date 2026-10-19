@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 
-type Props = { ready: boolean; caption?: string; minMs?: number; onDone?: () => void };
+type Props = { ready: boolean; caption?: string; minMs?: number; logo?: string; onDone?: () => void };
 
 const BRAND = "addict.clinic";
 
-const Splash = ({ ready, caption = "CRM", minMs = 1500, onDone }: Props) => {
+const Splash = ({ ready, caption = "CRM", minMs = 1500, logo = "/admin-192.png", onDone }: Props) => {
   const [minPassed, setMinPassed] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [gone, setGone] = useState(false);
@@ -48,7 +48,7 @@ const Splash = ({ ready, caption = "CRM", minMs = 1500, onDone }: Props) => {
               </linearGradient>
             </defs>
           </svg>
-          <img src="/admin-192.png" alt="" className="splash-logo relative h-20 w-20 rounded-[22px] shadow-[0_20px_60px_-10px_hsl(var(--primary)/.6)]" />
+          <img src={logo} alt="" className="splash-logo relative h-20 w-20 rounded-[22px] shadow-[0_20px_60px_-10px_hsl(var(--primary)/.6)]" />
         </div>
 
         <p className="mt-8 flex font-heading text-2xl font-semibold tracking-tight">
