@@ -160,7 +160,7 @@ const ArticlePage = () => {
             )}
 
             <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_300px]">
-              <article className="min-w-0 max-w-[760px]">
+              <article className="min-w-0">
                 <ArticleContent content={first} />
                 {second && <ArticleCta type={a.cta_type} source={a.title} />}
                 {second && <ArticleContent content={second} />}
