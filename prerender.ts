@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { TREATMENTS, ogImage } from "./src/lib/treatments";
+import { MED_LICENSE } from "./src/lib/legal";
 import { HOME_SEO_INTRO, HOME_SEO_PROGRAMS_H2, HOME_SEO_SECTIONS, parseLinks } from "./src/lib/home-seo";
 
 const SITE = "https://addict.clinic";
@@ -28,7 +29,7 @@ const NAV = `<nav aria-label="Основное меню">${[
 ].join(" · ")}</nav>`;
 const FOOT = `<footer><p>Анонимная помощь 24/7: <a href="${PHONE_HREF}">${PHONE}</a>. Москва, Ленинградский проспект, 58.</p><p>${[
   a("/privacy", "Политика конфиденциальности"), a("/consent", "Согласие на обработку данных"), a("/offer", "Оферта"), a("/cookies", "Cookie"), a("/requisites", "Реквизиты"),
-].join(" · ")}</p></footer>`;
+].join(" · ")}</p><p>Лицензия на осуществление медицинской деятельности № ${esc(MED_LICENSE.number)} от ${esc(MED_LICENSE.date)}. ${esc(MED_LICENSE.fullName)} (${esc(MED_LICENSE.shortName)}), ОГРН ${esc(MED_LICENSE.ogrn)}. Адрес: ${esc(MED_LICENSE.address)}.</p></footer>`;
 
 const faq = (items: { q: string; a: string }[]) => `<h2>Частые вопросы</h2>${items.map((f) => `<h3>${esc(f.q)}</h3>${p(f.a)}`).join("")}`;
 

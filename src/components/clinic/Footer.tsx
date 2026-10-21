@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Logo } from "./Header";
 import { NAV, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
-import { LEGAL_LINKS, ORG } from "@/lib/legal";
+import { LEGAL_LINKS, MED_LICENSE, ORG } from "@/lib/legal";
 import { openCookieSettings } from "@/lib/cookie-consent";
 
 const Footer = () => (
@@ -54,10 +54,13 @@ const Footer = () => (
         <p className="mt-1 text-[0.9em] text-muted-foreground">
           Бесплатно, 24/7
         </p>
-        <p className="mt-4 flex items-center gap-2 text-[0.85em] text-muted-foreground">
+        <a
+          href="#med-license"
+          className="mt-4 flex w-fit items-center gap-2 text-[0.85em] text-muted-foreground hover:text-foreground"
+        >
           <Icon name="ShieldCheck" size={14} className="text-primary" />
-          Лицензия на медицинскую деятельность
-        </p>
+          Лицензия № {MED_LICENSE.number}
+        </a>
       </div>
     </div>
     <div className="border-t border-border">
@@ -84,6 +87,31 @@ const Footer = () => (
           . Медицинские услуги оказывают лицензированные медицинские
           организации-партнёры.
         </p>
+        <div
+          id="med-license"
+          className="max-w-[900px] scroll-mt-20 rounded-xl bg-card px-4 py-3.5 leading-relaxed"
+        >
+          <p className="flex items-center gap-2 font-medium text-foreground">
+            <Icon name="ShieldCheck" size={14} className="text-primary" />
+            Лицензия на осуществление медицинской деятельности
+          </p>
+          <dl className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-[auto_1fr]">
+            {[
+              ["Регистрационный номер лицензии", MED_LICENSE.number],
+              ["Дата предоставления лицензии", MED_LICENSE.date],
+              ["Полное наименование", MED_LICENSE.fullName],
+              ["Сокращённое наименование", MED_LICENSE.shortName],
+              ["ОПФ", MED_LICENSE.opf],
+              ["Адрес места нахождения", MED_LICENSE.address],
+              ["ОГРН", MED_LICENSE.ogrn],
+            ].map(([k, v]) => (
+              <div key={k} className="contents">
+                <dt>{k}:</dt>
+                <dd className="text-foreground/80">{v}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
         <div className="flex flex-col gap-2 md:flex-row md:justify-between">
           <span>© {new Date().getFullYear()} addict.clinic</span>
           <span>
