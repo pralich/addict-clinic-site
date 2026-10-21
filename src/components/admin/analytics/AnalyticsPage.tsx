@@ -112,7 +112,7 @@ const AnalyticsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => v
           </div>
           <div className="rounded-xl border bg-card p-4 text-xs text-muted-foreground">
             <p className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground"><Icon name="Info" size={15} className="text-primary" />Как это работает</p>
-            Учитываются посетители, которые разрешили аналитику в cookie-баннере. Телефон и имя появляются, когда человек оставляет заявку на сайте, — тогда все его прошлые и будущие визиты связываются с лидом. Источники трафика: {Object.values(CHANNELS).slice(0, 3).map((c) => c.label).join(", ")} и другие.
+            Учитываются все посетители сайта с момента открытия страницы. Телефон и имя появляются, когда человек оставляет заявку на сайте, — тогда все его прошлые и будущие визиты связываются с лидом. Источники трафика: {Object.values(CHANNELS).slice(0, 3).map((c) => c.label).join(", ")} и другие.
           </div>
         </aside>
       </div>

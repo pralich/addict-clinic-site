@@ -1,5 +1,4 @@
 import func2url from "../../backend/func2url.json";
-import { getCookieChoice } from "./cookie-consent";
 
 const URL = `${(func2url as Record<string, string>)["crm-api"]}?resource=track`;
 const VISITOR_KEY = "visitor_id_v1";
@@ -198,12 +197,7 @@ const bind = () => {
 };
 
 export const startVisitTracker = () => {
-  if (started && !state && getCookieChoice()?.analytics) {
-    state = loadSession();
-    onRoute();
-    return;
-  }
-  if (started || location.pathname.startsWith("/admin") || !getCookieChoice()?.analytics) return;
+  if (started || location.pathname.startsWith("/admin")) return;
   if (/bot|crawl|spider|headless|lighthouse/i.test(navigator.userAgent)) return;
   started = true;
   state = loadSession();
@@ -217,8 +211,4 @@ export const startVisitTracker = () => {
 
 export const initVisitTracker = () => {
   startVisitTracker();
-  window.addEventListener("cookie-consent-changed", () => {
-    if (getCookieChoice()?.analytics) startVisitTracker();
-    else state = null;
-  });
 };
