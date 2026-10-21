@@ -14,6 +14,7 @@ from schedule import attach_plans
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
+from analytics import handle_analytics
 from shop_admin import handle_shop_products
 from trash import handle_trash, purge_expired, TABLES as TRASH_TABLES
 import lead_parse
@@ -816,6 +817,8 @@ def handler(event: dict, context) -> dict:
             return handle_in_treatment(cur, params)
         if resource == 'options':
             return handle_options(cur, user)
+        if resource == 'analytics':
+            return handle_analytics(cur, t, params, user, resp)
         if resource == 'request_logs':
             return handle_request_logs(cur, t, params, user, eid, resp)
         if resource == 'make_call' and method == 'POST':

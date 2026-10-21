@@ -1,4 +1,5 @@
 import json
+import base64
 import os
 import re
 import hashlib
@@ -37,7 +38,7 @@ CHANNELS = {
     'social': 'Соцсети и мессенджеры', 'email': 'Рассылка', 'referral': 'Переход с сайта', 'direct': 'Прямой заход', 'api': 'Внешняя система',
 }
 FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта'}
-ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20}
+ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20, 'visitor_id': 64}
 CLIENT_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
 DEAL_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
 
@@ -362,6 +363,68 @@ def log_consent(cur, event, form, subject, lead_id):
                 (form, (subject or '')[:200] or None, PD_DOC_VERSION, lead_id, (ident.get('sourceIp') or '')[:64] or None, (hdrs.get('user-agent') or '')[:400] or None))
 
 
+BOT_RE = re.compile(r'bot|crawl|spider|slurp|headless|lighthouse|preview|monitor', re.I)
+
+
+def _browser(ua):
+    for key, name in (('YaBrowser', 'Яндекс Браузер'), ('Edg/', 'Edge'), ('OPR/', 'Opera'), ('Firefox', 'Firefox'), ('Chrome', 'Chrome'), ('Safari', 'Safari')):
+        if key in ua:
+            return name
+    return None
+
+
+def _clip_list(items, limit, max_len):
+    out = []
+    for it in items[-limit:] if isinstance(items, list) else []:
+        if isinstance(it, dict):
+            out.append({k: (str(v)[:max_len] if isinstance(v, str) else v) for k, v in it.items() if k in ('path', 'title', 'at', 'sec', 'q', 'type', 'label')})
+    return out
+
+
+def track_visit(cur, event, body):
+    hdrs = event.get('headers') or {}
+    ua = hdrs.get('User-Agent') or hdrs.get('user-agent') or ''
+    if BOT_RE.search(ua):
+        return resp(200, {'ok': True})
+    sk = str(body.get('session') or '')[:64]
+    vid = str(body.get('visitor') or '')[:64]
+    if not sk or not vid or sk.startswith('test-'):
+        return resp(200, {'ok': True})
+    attr = read_attr(body)
+    pages = _clip_list(body.get('pages'), 60, 300)
+    events = _clip_list(body.get('events'), 40, 200)
+    searches = _clip_list(body.get('searches'), 30, 200)
+    try:
+        sec = max(0, min(int(body.get('active_seconds') or 0), 86400))
+    except (TypeError, ValueError):
+        sec = 0
+    cur_path = str(body.get('path') or '')[:500]
+    cur_title = str(body.get('title') or '')[:300]
+    cur.execute(f"SELECT id FROM {t('site_visits')} WHERE session_key = %s", (sk,))
+    row = cur.fetchone()
+    if row:
+        cur.execute(f"""UPDATE {t('site_visits')} SET last_seen = NOW(), active_seconds = GREATEST(active_seconds, %s), current_path = %s, current_title = %s,
+            pages = %s::jsonb, events = %s::jsonb, searches = %s::jsonb WHERE id = %s""",
+                    (sec, cur_path, cur_title, json.dumps(pages, ensure_ascii=False), json.dumps(events, ensure_ascii=False), json.dumps(searches, ensure_ascii=False), row['id']))
+    else:
+        cur.execute(f"SELECT COUNT(*) AS c, MAX(lead_id) AS lead_id FROM {t('site_visits')} WHERE visitor_id = %s", (vid,))
+        prev = cur.fetchone()
+        lead_id = prev['lead_id']
+        if not lead_id:
+            cur.execute(f"SELECT id FROM {t('crm_leads')} WHERE visitor_id = %s ORDER BY id DESC LIMIT 1", (vid,))
+            l = cur.fetchone()
+            lead_id = l['id'] if l else None
+        cur.execute(f"""INSERT INTO {t('site_visits')} (session_key, visitor_id, visit_no, active_seconds, current_path, current_title, landing_url, referrer, channel,
+            utm_source, utm_medium, utm_campaign, utm_term, device, browser, pages, events, searches, lead_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s::jsonb, %s::jsonb, %s)""",
+                    (sk, vid, prev['c'] + 1, sec, cur_path, cur_title, attr.get('landing_url'), attr.get('referrer'), detect_channel(attr),
+                     attr.get('utm_source'), attr.get('utm_medium'), attr.get('utm_campaign'), attr.get('utm_term'), attr.get('device'), _browser(ua),
+                     json.dumps(pages, ensure_ascii=False), json.dumps(events, ensure_ascii=False), json.dumps(searches, ensure_ascii=False), lead_id))
+    if body.get('final') is not True and hash(sk) % 50 == 0:
+        cur.execute(f"DELETE FROM {t('site_visits')} WHERE last_seen < NOW() - INTERVAL '30 days'")
+    return resp(200, {'ok': True})
+
+
 def site_lead(cur, event, body):
     if body.get('website'):
         return resp(200, {'ok': True})
@@ -401,6 +464,8 @@ def site_lead(cur, event, body):
         parts.append(f"страница: {attr.get('page_title') or attr.get('page_url')}")
     cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'system', %s)", (lid, ' · '.join(parts)))
     log_consent(cur, event, form, contact, lid)
+    if attr.get('visitor_id'):
+        cur.execute(f"UPDATE {t('site_visits')} SET lead_id = %s WHERE visitor_id = %s AND lead_id IS NULL", (lid, attr['visitor_id']))
     return resp(200, {'ok': True, 'id': lid})
 
 
@@ -447,6 +512,17 @@ def handler(event: dict, context) -> dict:
     conn.autocommit = False
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        if resource == 'track' and method == 'POST':
+            raw = event.get('body') or '{}'
+            if event.get('isBase64Encoded'):
+                raw = base64.b64decode(raw).decode('utf-8', 'replace')
+            try:
+                body = json.loads(raw)
+            except json.JSONDecodeError:
+                body = {}
+            result = track_visit(cur, event, body if isinstance(body, dict) else {})
+            conn.commit()
+            return result
         if resource == 'site_lead' and method == 'POST':
             try:
                 body = json.loads(event.get('body') or '{}')

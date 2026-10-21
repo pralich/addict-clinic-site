@@ -26,6 +26,7 @@ import InTreatmentPage from "@/components/admin/InTreatmentPage";
 import FinancePage from "@/components/admin/finance/FinancePage";
 import TasksPage from "@/components/admin/tasks/TasksPage";
 import BroadcastPage from "@/components/admin/broadcast/BroadcastPage";
+import AnalyticsPage from "@/components/admin/analytics/AnalyticsPage";
 import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { pingCrmNotify } from "@/lib/crm-push";
@@ -75,6 +76,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Сайт",
     items: [
+      { id: "analytics", label: "Аналитика", icon: "Activity", staff: true },
       { id: "articles", label: "Статьи", icon: "Newspaper" },
       { id: "products", label: "Товары магазина", icon: "Package", staff: true },
       { id: "orders", label: "Заказы магазина", icon: "ShoppingBag" },
@@ -240,6 +242,7 @@ const Shell = () => {
           {page === "orders" && <ShopOrdersPage />}
           {page === "products" && ["admin", "manager"].includes(user.role) && <ShopProductsPage />}
           {page === "seo" && <SeoPage />}
+          {page === "analytics" && ["admin", "manager"].includes(user.role) && <AnalyticsPage onOpen={open} />}
           {page === "api" && <ApiPage />}
           {page === "calls" && <CallsPage onOpen={open} />}
           {page === "request-logs" && user.role === "admin" && <RequestLogsPage />}

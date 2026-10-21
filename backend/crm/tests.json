@@ -112,6 +112,12 @@
         "id": 1
       },
       "expectedStatus": 401
+    },
+    {
+      "name": "Analytics requires auth",
+      "method": "GET",
+      "path": "/?resource=analytics",
+      "expectedStatus": 401
     }
   ]
 }

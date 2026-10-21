@@ -68,7 +68,7 @@ def logged(source, action_fn):
     def wrap(fn):
         @functools.wraps(fn)
         def handler(event, context):
-            if event.get('httpMethod') == 'OPTIONS':
+            if event.get('httpMethod') == 'OPTIONS' or (event.get('queryStringParameters') or {}).get('resource') == 'track':
                 return fn(event, context)
             started = time.time()
             headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}

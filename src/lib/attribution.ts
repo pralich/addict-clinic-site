@@ -1,3 +1,4 @@
+import { getVisitorId } from "./visit-tracker";
 const KEY = "lead_attr_v1";
 const TTL = 90 * 24 * 60 * 60 * 1000;
 const UTM = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"] as const;
@@ -74,6 +75,7 @@ export const getAttribution = (form: string) => {
     utm_term: src?.utm_term,
     click_id: src?.click_id,
     ym_client_id: ymClientId(),
+    visitor_id: getVisitorId(),
     device: window.matchMedia("(max-width: 767px)").matches ? "mobile" : window.matchMedia("(max-width: 1199px)").matches ? "tablet" : "desktop",
     first_visit_at: s ? new Date(s.first.at).toISOString() : undefined,
   };

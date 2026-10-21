@@ -63,6 +63,31 @@
         "website": "spam"
       },
       "expectedStatus": 200
+    },
+    {
+      "name": "Track visit",
+      "method": "POST",
+      "path": "/?resource=track",
+      "body": {
+        "session": "test-session-1",
+        "visitor": "test-visitor-1",
+        "path": "/",
+        "title": "Тест",
+        "pages": [
+          {
+            "path": "/",
+            "title": "Тест",
+            "at": 1,
+            "sec": 3
+          }
+        ],
+        "active_seconds": 3
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "ok": true
+      },
+      "bodyMatcher": "partial"
     }
   ]
 }
