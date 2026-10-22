@@ -2,7 +2,8 @@ import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import StatusBadge from "../StatusBadge";
 import { CHANNELS, LEAD_STATUS } from "../config";
-import { DEVICE_ICON, EVENT_ICON, cleanTitle, clock, dur, host, utc, type Visit } from "./types";
+import { DEVICE_ICON, EVENT_ICON, cleanTitle, clock, dur, host, type Visit } from "./types";
+import { fmtMsk } from "@/lib/msk";
 
 type Props = { v: Visit; live: boolean; onVisitor: (id: string) => void; onOpen: (resource: string, id: number) => void };
 
@@ -92,7 +93,7 @@ const VisitCard = ({ v, live, onVisitor, onOpen }: Props) => {
               </ol>
             </div>
             <dl className="grid h-fit grid-cols-[110px_1fr] gap-x-3 gap-y-1.5 rounded-lg bg-secondary/50 p-3 text-xs">
-              <dt className="text-muted-foreground">Начало</dt><dd>{utc(v.started_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</dd>
+              <dt className="text-muted-foreground">Начало</dt><dd>{fmtMsk(v.started_at, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</dd>
               {host(v.referrer) && <><dt className="text-muted-foreground">Пришёл с</dt><dd className="break-all">{host(v.referrer)}</dd></>}
               {v.utm_source && <><dt className="text-muted-foreground">Источник</dt><dd>{v.utm_source}{v.utm_medium ? ` / ${v.utm_medium}` : ""}</dd></>}
               {v.utm_term && <><dt className="text-muted-foreground">Фраза рекламы</dt><dd>{v.utm_term}</dd></>}

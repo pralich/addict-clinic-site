@@ -15,6 +15,7 @@ from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call
 from reqlogs import handle_request_logs
 from analytics import handle_analytics
+from msk import MSK_TODAY, MSK_TODAY_START, msk, msk_today
 from shop_admin import handle_shop_products
 from trash import handle_trash, purge_expired, TABLES as TRASH_TABLES
 import lead_parse
@@ -237,15 +238,15 @@ def handle_dashboard(cur):
     q(cur, f'''SELECT
         COUNT(*) FILTER (WHERE stage NOT IN ('won','lost')) AS open,
         COALESCE(SUM(amount) FILTER (WHERE stage NOT IN ('won','lost')), 0) AS open_amount,
-        COALESCE(SUM(amount) FILTER (WHERE stage = 'won' AND closed_at > date_trunc('month', NOW())), 0) AS won_month,
+        COALESCE(SUM(amount) FILTER (WHERE stage = 'won' AND {msk('closed_at')} > date_trunc('month', {MSK_TODAY})), 0) AS won_month,
         COUNT(*) FILTER (WHERE stage = 'won') AS won,
         COUNT(*) FILTER (WHERE stage = 'lost') AS lost
         FROM {t("crm_deals")} WHERE archived_at IS NULL''')
     res['deals'] = cur.fetchone()
     q(cur, f'SELECT stage, COUNT(*) AS count, COALESCE(SUM(amount),0) AS amount FROM {t("crm_deals")} WHERE archived_at IS NULL GROUP BY stage')
     res['funnel'] = cur.fetchall()
-    q(cur, f'''SELECT to_char(d, 'DD.MM') AS day, (SELECT COUNT(*) FROM {t("crm_leads")} l WHERE l.created_at::date = d::date AND l.trashed_at IS NULL) AS leads
-        FROM generate_series(NOW()::date - 13, NOW()::date, INTERVAL '1 day') d ORDER BY d''')
+    q(cur, f'''SELECT to_char(d, 'DD.MM') AS day, (SELECT COUNT(*) FROM {t("crm_leads")} l WHERE {msk('l.created_at')}::date = d::date AND l.trashed_at IS NULL) AS leads
+        FROM generate_series({MSK_TODAY} - 13, {MSK_TODAY}, INTERVAL '1 day') d ORDER BY d''')
     res['leadsByDay'] = cur.fetchall()
     q(cur, f'SELECT id, name, contact, topic, status, created_at FROM {t("crm_leads")} WHERE archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC LIMIT 6')
     res['recentLeads'] = cur.fetchall()
@@ -355,7 +356,7 @@ CHECKOUT_SQL = "COALESCE(d.check_out_date, (d.check_in_date + make_interval(mont
 
 
 def handle_in_treatment(cur, params):
-    day = params.get('date') or date.today().isoformat()
+    day = params.get('date') or msk_today().isoformat()
     q(cur, f"""SELECT d.id AS deal_id, d.title, d.stage, d.program, d.amount, d.check_in_date, {CHECKOUT_SQL} AS check_out_date,
             d.treatment_months, d.rep_name, d.rep_relation, d.rep_phone, d.rep_email, d.rep_messenger,
             d.commission_type, d.commission_value, d.payment_schedule, d.payment_amount, d.partner_id,
@@ -809,7 +810,7 @@ def handler(event: dict, context) -> dict:
             q(cur, f"""SELECT
                 (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL AND trashed_at IS NULL) AS leads,
                 (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions,
-                (SELECT COUNT(*) FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s)) AND (due_at IS NULL OR due_at < CURRENT_DATE + 1)) AS tasks""", (user['id'], user['id']))
+                (SELECT COUNT(*) FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s)) AND (due_at IS NULL OR due_at < {MSK_TODAY_START} + INTERVAL '1 day')) AS tasks""", (user['id'], user['id']))
             return resp(200, cur.fetchone())
         if resource == 'dashboard':
             return handle_dashboard(cur)

@@ -8,10 +8,9 @@ import { useOptions } from "../useCrm";
 import { Combo, MultiCombo, field, useBillingReload } from "../billing/shared";
 import { ENTITY_LINKS, PRIORITIES, type Task } from "./shared";
 import { Comments, ResultBlock } from "./TaskDiscussion";
+import { fmtMsk, fromMskInput, mskAt, toMskInput } from "@/lib/msk";
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const toLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-const at = (days: number, hour = 10) => { const d = new Date(); d.setDate(d.getDate() + days); d.setHours(hour, 0, 0, 0); return toLocal(d); };
+const at = (days: number, hour = 10) => toMskInput(mskAt(days, hour));
 
 const PRESETS = [
   { label: "Сегодня", value: () => at(0, 18) },
@@ -29,7 +28,7 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
   const src = task || preset || {};
   const [text, setText] = useState(src.text || "");
   const [details, setDetails] = useState(src.details || "");
-  const [due, setDue] = useState(src.due_at ? toLocal(new Date(src.due_at)) : at(1));
+  const [due, setDue] = useState(src.due_at ? toMskInput(src.due_at) : at(1));
   const [priority, setPriority] = useState(src.priority || "normal");
   const [assignee, setAssignee] = useState<number | null>(src.assignee_id ?? user?.id ?? null);
   const [members, setMembers] = useState<number[]>((src.members || []).map((m) => m.id));
@@ -49,7 +48,7 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
     try {
       const body = {
         text, details, priority, assignee_id: assignee, member_ids: members.filter((m) => m !== assignee),
-        due_at: due ? new Date(due).toISOString() : null,
+        due_at: due ? fromMskInput(due).toISOString() : null,
         entity_type: entityType || null, entity_id: entityType ? entityId : null,
       };
       await api({ resource: "tasks", id: task?.id }, task ? "PUT" : "POST", body);
@@ -68,7 +67,7 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
       <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading">{task ? "Задача" : "Новая задача"}</DialogTitle>
-          {task && <p className="text-xs text-muted-foreground">Поставил {task.user_id === user?.id ? "я" : task.author_name || "—"} · {new Date(task.created_at).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
+          {task && <p className="text-xs text-muted-foreground">Поставил {task.user_id === user?.id ? "я" : task.author_name || "—"} · {fmtMsk(task.created_at, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>}
         </DialogHeader>
         {task && <ResultBlock key={`${task.id}-${task.done_at}`} task={task} onDone={onClose} />}
         <form onSubmit={save} className="flex flex-col gap-4">

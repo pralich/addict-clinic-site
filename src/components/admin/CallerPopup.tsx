@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import { CLIENT_STATUS, DEAL_STAGES, LEAD_STATUS, money } from "./config";
+import { dayDiffMsk, fmtMskDate, parseServer } from "@/lib/msk";
 
 type LiveCall = {
   callid: string;
@@ -29,11 +30,10 @@ type LiveCall = {
 
 const ago = (s: string | null) => {
   if (!s) return "";
-  const d = new Date(s.endsWith("Z") ? s : `${s}Z`);
-  const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+  const days = -dayDiffMsk(s);
   if (days <= 0) return "сегодня";
   if (days === 1) return "вчера";
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return fmtMskDate(s, { day: "numeric", month: "short" });
 };
 
 const Timer = ({ from }: { from: string }) => {
@@ -42,7 +42,7 @@ const Timer = ({ from }: { from: string }) => {
     const i = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(i);
   }, []);
-  const s = Math.max(0, Math.floor((Date.now() - new Date(from.endsWith("Z") ? from : `${from}Z`).getTime()) / 1000));
+  const s = Math.max(0, Math.floor((Date.now() - parseServer(from).getTime()) / 1000));
   return <span className="tabular-nums">{Math.floor(s / 60)}:{String(s % 60).padStart(2, "0")}</span>;
 };
 

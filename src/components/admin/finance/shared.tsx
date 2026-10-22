@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { mskDateKey, mskParts, mskToday } from "@/lib/msk";
 
 export const INCOME_CATS: Record<string, string> = {
   services: "Оплата услуг",
@@ -25,13 +26,11 @@ export const catLabel = (kind: string, c: string) => (kind === "income" ? INCOME
 
 export const MONTHS = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
 
-const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
 const PRESETS = [
-  { id: "month", label: "Этот месяц", range: () => { const n = new Date(); return [iso(new Date(n.getFullYear(), n.getMonth(), 1)), iso(n)]; } },
-  { id: "prev", label: "Прошлый месяц", range: () => { const n = new Date(); return [iso(new Date(n.getFullYear(), n.getMonth() - 1, 1)), iso(new Date(n.getFullYear(), n.getMonth(), 0))]; } },
-  { id: "quarter", label: "Квартал", range: () => { const n = new Date(); return [iso(new Date(n.getFullYear(), Math.floor(n.getMonth() / 3) * 3, 1)), iso(n)]; } },
-  { id: "year", label: "Год", range: () => { const n = new Date(); return [iso(new Date(n.getFullYear(), 0, 1)), iso(n)]; } },
+  { id: "month", label: "Этот месяц", range: () => { const n = mskParts(); return [mskDateKey(n.year, n.month, 1), mskToday()]; } },
+  { id: "prev", label: "Прошлый месяц", range: () => { const n = mskParts(); return [mskDateKey(n.year, n.month - 1, 1), mskDateKey(n.year, n.month, 0)]; } },
+  { id: "quarter", label: "Квартал", range: () => { const n = mskParts(); return [mskDateKey(n.year, Math.floor(n.month / 3) * 3, 1), mskToday()]; } },
+  { id: "year", label: "Год", range: () => { const n = mskParts(); return [mskDateKey(n.year, 0, 1), mskToday()]; } },
 ];
 
 export const usePeriod = () => {

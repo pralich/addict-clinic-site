@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { broadcastApi, type Audience, type AudienceCount, type Recipient } from "@/lib/broadcast-api";
 import { RELATIONS } from "@/lib/family-api";
 import { ROLES } from "../config";
+import { fmtMsk, fromMskInput, toMskInput } from "@/lib/msk";
 
 const ACTIVE = [["", "Все"], ["7", "Заходили за 7 дней"], ["30", "За 30 дней"], ["90", "За 90 дней"]] as const;
 
@@ -16,7 +17,7 @@ const Chip = ({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 const toggle = <T,>(list: T[] = [], v: T) => (list.includes(v) ? list.filter((x) => x !== v) : [...list, v]);
 
-const localInput = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+const localInput = (d: Date) => toMskInput(d);
 
 type Props = { recipients: Recipient[]; onDone: () => void };
 
@@ -53,12 +54,12 @@ const BroadcastForm = ({ recipients, onDone }: Props) => {
   const submit = async () => {
     if (!title.trim() || !body.trim()) return toast.error("Заполните заголовок и текст");
     if (!devices) return toast.error("Нет получателей с включёнными уведомлениями");
-    const at = later ? new Date(when) : null;
+    const at = later ? fromMskInput(when) : null;
     if (at && at.getTime() < Date.now() + 60000) return toast.error("Время отправки должно быть в будущем");
     setBusy(true);
     try {
       await broadcastApi.create({ title: title.trim(), body: body.trim(), url: url.trim() || undefined, audience, scheduled_at: at ? at.toISOString() : null });
-      toast.success(at ? `Рассылка запланирована на ${at.toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : "Рассылка отправляется");
+      toast.success(at ? `Рассылка запланирована на ${fmtMsk(at, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}` : "Рассылка отправляется");
       setTitle(""); setBody(""); setUrl(""); setPicked([]); setLater(false);
       onDone();
     } catch (e) {

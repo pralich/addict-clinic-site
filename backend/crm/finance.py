@@ -1,11 +1,13 @@
 from datetime import date
 
+from msk import msk, msk_today
+
 INCOME_CATS = ('services', 'partner_fee', 'grants', 'shop', 'other_income')
 EXPENSE_CATS = ('salary', 'rent', 'marketing', 'commission', 'taxes', 'software', 'telecom', 'bank', 'office', 'other_expense')
 
 
 def _period(params):
-    today = date.today()
+    today = msk_today()
     d_from = params.get('from') or today.replace(day=1).isoformat()
     d_to = params.get('to') or today.isoformat()
     return d_from, d_to
@@ -20,7 +22,7 @@ def _deals(cur, t, params):
         LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
         LEFT JOIN {t('crm_users')} u ON u.id = d.manager_id
         LEFT JOIN {t('crm_partners')} p ON p.id = d.partner_id
-        WHERE d.stage = 'won' AND d.archived_at IS NULL AND d.closed_at::date BETWEEN %s AND %s
+        WHERE d.stage = 'won' AND d.archived_at IS NULL AND {msk('d.closed_at')}::date BETWEEN %s AND %s
         ORDER BY d.closed_at DESC""", (d_from, d_to))
     items = cur.fetchall()
     cur.execute(f"""SELECT COALESCE(SUM(amount), 0) AS amount, COUNT(*) AS count FROM {t('crm_deals')}
@@ -69,7 +71,7 @@ def _validate(body):
     if amount <= 0 or amount > 1e11:
         return None, 'Сумма должна быть больше нуля'
     try:
-        op_date = date.fromisoformat(str(body.get('op_date') or date.today().isoformat())[:10])
+        op_date = date.fromisoformat(str(body.get('op_date') or msk_today().isoformat())[:10])
     except ValueError:
         return None, 'Некорректная дата'
     deal_id = int(body['deal_id']) if str(body.get('deal_id') or '').isdigit() else None
@@ -79,17 +81,18 @@ def _validate(body):
 
 
 def _cashflow(cur, t, params):
-    year = int(params.get('year') or date.today().year)
+    year = int(params.get('year') or msk_today().year)
     opening_to = f'{year}-01-01'
+    closed, paid = msk('closed_at'), msk('COALESCE(paid_at, created_at)')
     months = [{'month': m, 'deals': 0.0, 'shop': 0.0, 'family': 0.0, 'income_manual': 0.0, 'expense': 0.0} for m in range(1, 13)]
     cats = {}
 
-    cur.execute(f"""SELECT EXTRACT(MONTH FROM closed_at)::int AS m, SUM(amount) AS s FROM {t('crm_deals')}
-        WHERE stage = 'won' AND archived_at IS NULL AND EXTRACT(YEAR FROM closed_at) = %s GROUP BY 1""", (year,))
+    cur.execute(f"""SELECT EXTRACT(MONTH FROM {closed})::int AS m, SUM(amount) AS s FROM {t('crm_deals')}
+        WHERE stage = 'won' AND archived_at IS NULL AND EXTRACT(YEAR FROM {closed}) = %s GROUP BY 1""", (year,))
     for r in cur.fetchall():
         months[r['m'] - 1]['deals'] = float(r['s'])
-    cur.execute(f"""SELECT EXTRACT(MONTH FROM COALESCE(paid_at, created_at))::int AS m, CASE WHEN source = 'shop' THEN 'shop' ELSE 'family' END AS src, SUM(amount) AS s
-        FROM {t('orders')} WHERE status = 'paid' AND EXTRACT(YEAR FROM COALESCE(paid_at, created_at)) = %s GROUP BY 1, 2""", (year,))
+    cur.execute(f"""SELECT EXTRACT(MONTH FROM {paid})::int AS m, CASE WHEN source = 'shop' THEN 'shop' ELSE 'family' END AS src, SUM(amount) AS s
+        FROM {t('orders')} WHERE status = 'paid' AND EXTRACT(YEAR FROM {paid}) = %s GROUP BY 1, 2""", (year,))
     for r in cur.fetchall():
         months[r['m'] - 1][r['src']] += float(r['s'])
     cur.execute(f"""SELECT EXTRACT(MONTH FROM op_date)::int AS m, kind, category, SUM(amount) AS s FROM {t('crm_fin_ops')}
@@ -101,8 +104,8 @@ def _cashflow(cur, t, params):
         c[r['m'] - 1] += float(r['s'])
 
     cur.execute(f"""SELECT
-        (SELECT COALESCE(SUM(amount), 0) FROM {t('crm_deals')} WHERE stage = 'won' AND archived_at IS NULL AND closed_at < %s)
-      + (SELECT COALESCE(SUM(amount), 0) FROM {t('orders')} WHERE status = 'paid' AND COALESCE(paid_at, created_at) < %s)
+        (SELECT COALESCE(SUM(amount), 0) FROM {t('crm_deals')} WHERE stage = 'won' AND archived_at IS NULL AND {closed} < %s)
+      + (SELECT COALESCE(SUM(amount), 0) FROM {t('orders')} WHERE status = 'paid' AND {paid} < %s)
       + (SELECT COALESCE(SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END), 0) FROM {t('crm_fin_ops')} WHERE archived_at IS NULL AND op_date < %s) AS v""",
                 (opening_to, opening_to, opening_to))
     balance = float(cur.fetchone()['v'])
@@ -115,10 +118,10 @@ def _cashflow(cur, t, params):
         m['closing'] = balance
 
     cur.execute(f"""SELECT DISTINCT y FROM (
-        SELECT EXTRACT(YEAR FROM closed_at)::int AS y FROM {t('crm_deals')} WHERE stage = 'won' AND closed_at IS NOT NULL
+        SELECT EXTRACT(YEAR FROM {closed})::int AS y FROM {t('crm_deals')} WHERE stage = 'won' AND closed_at IS NOT NULL
         UNION SELECT EXTRACT(YEAR FROM op_date)::int FROM {t('crm_fin_ops')} WHERE archived_at IS NULL
-        UNION SELECT EXTRACT(YEAR FROM COALESCE(paid_at, created_at))::int FROM {t('orders')} WHERE status = 'paid') x ORDER BY y DESC""")
-    years = sorted({r['y'] for r in cur.fetchall()} | {date.today().year}, reverse=True)
+        UNION SELECT EXTRACT(YEAR FROM {paid})::int FROM {t('orders')} WHERE status = 'paid') x ORDER BY y DESC""")
+    years = sorted({r['y'] for r in cur.fetchall()} | {msk_today().year}, reverse=True)
     return {'year': year, 'years': years, 'opening': opening, 'closing': balance, 'months': months,
             'categories': [{'kind': k[0], 'category': k[1], 'months': v, 'total': sum(v)} for k, v in sorted(cats.items(), key=lambda x: (x[0][0] != 'income', -sum(x[1])))]}
 

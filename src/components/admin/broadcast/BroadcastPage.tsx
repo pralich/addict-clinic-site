@@ -6,6 +6,7 @@ import { broadcastApi, type Broadcast } from "@/lib/broadcast-api";
 import { RELATIONS } from "@/lib/family-api";
 import { ROLES } from "../config";
 import BroadcastForm from "./BroadcastForm";
+import { fmtMsk } from "@/lib/msk";
 
 const STATUS: Record<Broadcast["status"], { label: string; cls: string; icon: string }> = {
   scheduled: { label: "Запланирована", cls: "bg-amber-100 text-amber-800", icon: "CalendarClock" },
@@ -15,7 +16,7 @@ const STATUS: Record<Broadcast["status"], { label: string; cls: string; icon: st
   canceled: { label: "Отменена", cls: "bg-neutral-200 text-neutral-600", icon: "CircleX" },
 };
 
-const dt = (s: string | null) => (s ? new Date(s.endsWith("Z") ? s : `${s}Z`).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
+const dt = (s: string | null) => (s ? fmtMsk(s, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "—");
 
 const audienceText = (a: Broadcast["audience"]) => {
   const out: string[] = [];

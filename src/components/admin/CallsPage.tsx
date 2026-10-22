@@ -8,6 +8,7 @@ import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
 import CallAiSheet from "./CallAiSheet";
+import { fmtMsk } from "@/lib/msk";
 
 const SYNC_PERIODS = { today: "Сегодня", yesterday: "Вчера", this_week: "Эту неделю", this_month: "Этот месяц" } as const;
 type SyncPeriod = keyof typeof SYNC_PERIODS;
@@ -61,7 +62,7 @@ const STATUS: Record<string, string> = {
 };
 
 const dur = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-const dt = (s: string) => new Date(s.endsWith("Z") ? s : `${s}Z`).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+const dt = (s: string) => fmtMsk(s, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void }) => {
   const [filter, setFilter] = useState<string>("all");

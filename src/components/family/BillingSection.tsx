@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import { familyApi, fmtDateTime, fmtNum, fmtRub, type BillingOrder } from "@/lib/family-api";
 import { useFamilyAuth } from "./FamilyAuth";
+import { fmtMskDate } from "@/lib/msk";
 
 const PLAN_META: Record<string, { icon: string; features: string[]; accent?: boolean }> = {
   psychologist: {
@@ -152,7 +153,7 @@ const BillingSection = () => {
                 </ul>
                 {until && (
                   <p className={`mt-4 rounded-lg px-3 py-2 text-sm ${meta.accent ? "bg-white/15" : "bg-emerald-500/10 text-emerald-700"}`}>
-                    Активна до {new Date(until).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                    Активна до {fmtMskDate(until, { day: "numeric", month: "long", year: "numeric" })}
                   </p>
                 )}
                 <button disabled={!!busy || !data.payments_enabled} onClick={() => pay(p.code)}

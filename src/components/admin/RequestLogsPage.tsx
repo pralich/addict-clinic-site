@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { api } from "@/lib/crm-api";
+import { fmtMsk } from "@/lib/msk";
 
 type Log = {
   id: number;
@@ -36,7 +37,7 @@ const SOURCES: Record<string, { label: string; icon: string }> = {
 };
 
 const dt = (s: string | null, sec = true) =>
-  s ? new Date(s.endsWith("Z") ? s : `${s}Z`).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: sec ? "2-digit" : undefined }) : "—";
+  s ? fmtMsk(s, { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit", second: sec ? "2-digit" : undefined }) : "—";
 
 const isError = (l: Log) => !l.status_code || l.status_code >= 400 || !!l.error;
 

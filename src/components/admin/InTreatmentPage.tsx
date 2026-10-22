@@ -7,6 +7,7 @@ import StatusBadge from "./StatusBadge";
 import { DEAL_STAGES, REP_RELATIONS, commissionAmount, commissionText, daysUntil, fmtDate, money } from "./config";
 import { DueBadge, InvoiceButton, nextPaymentPreset } from "./billing/NextPayment";
 import DealPaymentsDialog from "./billing/DealPaymentsDialog";
+import { mskToday } from "@/lib/msk";
 
 type Row = Record<string, any>;
 type Data = { date: string; items: Row[]; upcoming: Row[]; no_dates: number };
@@ -17,10 +18,7 @@ const plural = (n: number, a: string, b: string, c: string) => {
   const m10 = n % 10, m100 = n % 100;
   return m10 === 1 && m100 !== 11 ? a : m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? b : c;
 };
-const todayIso = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+const todayIso = () => mskToday();
 
 const Stat = ({ icon, label, value, cls = "" }: { icon: string; label: string; value: number | string; cls?: string }) => (
   <div className="rounded-xl border bg-card p-4">

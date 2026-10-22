@@ -5,6 +5,7 @@ import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
 import { money } from "../config";
 import { Kpi, MONTHS, catLabel, downloadCsv } from "./shared";
+import { mskParts } from "@/lib/msk";
 
 type Month = { month: number; deals: number; shop: number; family: number; income_manual: number; expense: number; inflow: number; net: number; opening: number; closing: number };
 type Resp = { year: number; years: number[]; opening: number; closing: number; months: Month[]; categories: { kind: string; category: string; months: number[]; total: number }[] };
@@ -13,7 +14,7 @@ const compact = (v: number) => (Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1)} м
 const cell = (v: number) => (v ? money(v) : "—");
 
 const Cashflow = () => {
-  const [year, setYear] = useState(new Date().getFullYear());
+  const [year, setYear] = useState(mskParts().year);
   const [details, setDetails] = useState(true);
   const { data, isLoading } = useQuery<Resp>({ queryKey: ["crm", "finance", "cashflow", year], queryFn: () => api({ resource: "finance", action: "cashflow", year }) });
 
@@ -21,7 +22,7 @@ const Cashflow = () => {
 
   const m = data.months;
   const sum = (k: keyof Month) => m.reduce((a, x) => a + Number(x[k]), 0);
-  const nowMonth = year === new Date().getFullYear() ? new Date().getMonth() : 11;
+  const nowMonth = year === mskParts().year ? mskParts().month : 11;
   const chart = m.map((x, i) => ({ name: MONTHS[i], Поступления: x.inflow, Выплаты: -x.expense, Остаток: i <= nowMonth ? x.closing : null }));
   const incomeCats = data.categories.filter((c) => c.kind === "income");
   const expenseCats = data.categories.filter((c) => c.kind === "expense");
@@ -88,7 +89,7 @@ const Cashflow = () => {
             <thead className="bg-secondary/60 text-muted-foreground">
               <tr>
                 <th className="sticky left-0 z-10 bg-secondary px-3 py-2.5 text-left font-medium">Статья</th>
-                {MONTHS.map((mn, i) => <th key={mn} className={`px-2 py-2.5 text-right font-medium ${i === nowMonth && year === new Date().getFullYear() ? "text-foreground" : ""}`}>{mn}</th>)}
+                {MONTHS.map((mn, i) => <th key={mn} className={`px-2 py-2.5 text-right font-medium ${i === nowMonth && year === mskParts().year ? "text-foreground" : ""}`}>{mn}</th>)}
                 <th className="px-3 py-2.5 text-right font-medium text-foreground">Итого</th>
               </tr>
             </thead>

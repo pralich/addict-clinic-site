@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { api } from "@/lib/crm-api";
 import { fmtDate, money } from "../config";
 import { EXPENSE_CATS, INCOME_CATS, Kpi, PeriodPicker, catLabel, downloadCsv, usePeriod } from "./shared";
+import { mskToday } from "@/lib/msk";
 
 type Op = {
   id: number;
@@ -24,7 +25,7 @@ type Resp = {
   by_category: { kind: string; category: string; amount: number }[];
 };
 
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => mskToday();
 const empty = (kind: "income" | "expense" = "expense") => ({ kind, category: kind === "income" ? "services" : "salary", amount: "", op_date: today(), description: "", counterparty: "" });
 const field = "h-10 w-full rounded-lg border bg-background px-3 text-sm outline-none focus:border-foreground/30";
 

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Icon from "@/components/ui/icon";
 import { api } from "@/lib/crm-api";
+import { fmtMsk } from "@/lib/msk";
 
 type Order = {
   id: number;
@@ -25,7 +26,7 @@ const STATUS: Record<string, { label: string; cls: string }> = {
 };
 
 const rub = (n: number) => `${Math.round(Number(n)).toLocaleString("ru-RU")} ₽`;
-const dt = (s: string | null) => (s ? new Date(s).toLocaleString("ru-RU", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
+const dt = (s: string | null) => (s ? fmtMsk(s, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "");
 
 const ShopOrdersPage = () => {
   const [status, setStatus] = useState("paid");

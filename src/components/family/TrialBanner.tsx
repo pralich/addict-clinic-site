@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useFamilyAuth } from "./FamilyAuth";
+import { parseServer } from "@/lib/msk";
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
@@ -11,7 +12,7 @@ export const useCountdown = (until?: string | null) => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, [until]);
-  const end = until ? new Date(until.endsWith("Z") || until.includes("+") ? until : `${until}Z`).getTime() : 0;
+  const end = until ? parseServer(until).getTime() : 0;
   const left = Math.max(0, end - now);
   return {
     left,

@@ -2,7 +2,7 @@ import json
 import os
 import uuid
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
@@ -55,7 +55,7 @@ def create_payment(cur, t, user, body):
     if not auth:
         return 503, {'error': 'Оплата временно недоступна: платёжная система ещё не подключена'}
 
-    number = f"FC-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
+    number = f"FC-{(datetime.utcnow() + timedelta(hours=3)).strftime('%Y%m%d')}-{uuid.uuid4().hex[:8].upper()}"
     cur.execute(f"""INSERT INTO {t('orders')} (order_number, user_name, user_email, user_phone, amount, status, family_user_id, product_code, tokens)
         VALUES (%s, %s, %s, %s, %s, 'pending', %s, %s, %s) RETURNING id""",
                 (number, user['name'], user['email'], user.get('phone'), product['price'], user['id'], product['code'], product['tokens']))

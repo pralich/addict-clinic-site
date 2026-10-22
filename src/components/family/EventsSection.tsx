@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
 import { familyApi, type FamilyEvent } from "@/lib/family-api";
 import { useFamilyAuth } from "./FamilyAuth";
+import { fmtMskDate, fmtMskTime, mskParts, parseMskLocal } from "@/lib/msk";
 
 const KIND = {
   webinar: { label: "Онлайн-вебинар", icon: "MonitorPlay", cls: "bg-sky-100 text-sky-800" },
@@ -11,7 +12,7 @@ const KIND = {
 };
 
 const toIcs = (e: FamilyEvent) => {
-  const s = new Date(e.starts_at);
+  const s = parseMskLocal(e.starts_at);
   const f = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const end = new Date(s.getTime() + e.duration_min * 60000);
   const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT", `DTSTART:${f(s)}`, `DTEND:${f(end)}`, `SUMMARY:${e.title}`, `LOCATION:${e.location || e.link || "Онлайн"}`, "END:VEVENT", "END:VCALENDAR"].join("\n");
@@ -23,7 +24,7 @@ const toIcs = (e: FamilyEvent) => {
 
 const EventCard = ({ e, onChange }: { e: FamilyEvent; onChange: () => void }) => {
   const [busy, setBusy] = useState(false);
-  const d = new Date(e.starts_at);
+  const d = parseMskLocal(e.starts_at);
   const past = d.getTime() + e.duration_min * 60000 < Date.now();
   const full = !!e.capacity && e.regs >= e.capacity && !e.registered;
   const k = KIND[e.kind] || KIND.webinar;
@@ -45,9 +46,9 @@ const EventCard = ({ e, onChange }: { e: FamilyEvent; onChange: () => void }) =>
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl bg-card sm:flex-row ${past ? "opacity-60" : ""}`}>
       <div className={`flex shrink-0 flex-row items-center gap-3 p-5 sm:w-[120px] sm:flex-col sm:justify-center sm:gap-0 ${e.registered ? "bg-primary text-primary-foreground" : "bg-ink text-ink-foreground"}`}>
-        <p className="font-heading text-[2.2em] font-semibold leading-none">{d.getDate()}</p>
-        <p className="text-sm sm:mt-1">{d.toLocaleDateString("ru-RU", { month: "long" })}</p>
-        <p className="text-sm opacity-70 sm:mt-2">{d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</p>
+        <p className="font-heading text-[2.2em] font-semibold leading-none">{mskParts(d).day}</p>
+        <p className="text-sm sm:mt-1">{fmtMskDate(d, { month: "long" })}</p>
+        <p className="text-sm opacity-70 sm:mt-2">{fmtMskTime(d)} МСК</p>
       </div>
       <div className="flex flex-1 flex-col p-5">
         <div className="flex flex-wrap items-center gap-2">

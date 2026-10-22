@@ -141,7 +141,7 @@ def handle_auth(cur, action, body, headers, event=None):
         user = family_user(cur, headers)
     cur.execute(f"SELECT COUNT(*) FILTER (WHERE status = 'answered') AS answered, COUNT(*) FILTER (WHERE status = 'new') AS waiting FROM {t('family_questions')} WHERE user_id = %s", (user['id'],))
     q = cur.fetchone()
-    cur.execute(f"SELECT COUNT(*) AS c FROM {t('family_event_regs')} r JOIN {t('family_events')} e ON e.id = r.event_id WHERE r.user_id = %s AND e.starts_at > NOW()", (user['id'],))
+    cur.execute(f"SELECT COUNT(*) AS c FROM {t('family_event_regs')} r JOIN {t('family_events')} e ON e.id = r.event_id WHERE r.user_id = %s AND e.starts_at > (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')", (user['id'],))
     ev = cur.fetchone()['c']
     cur.execute(f"SELECT COUNT(*) AS c FROM {t('family_ai_chats')} WHERE user_id = %s", (user['id'],))
     ai = cur.fetchone()['c']
@@ -165,7 +165,7 @@ def handle_questions(cur, method, body, user):
 def handle_events(cur, method, params, user):
     if method == 'POST':
         eid = int(params.get('id') or 0)
-        cur.execute(f"SELECT e.capacity, (SELECT COUNT(*) FROM {t('family_event_regs')} r WHERE r.event_id = e.id) AS regs FROM {t('family_events')} e WHERE e.id = %s AND e.status = 'published' AND e.starts_at > NOW()", (eid,))
+        cur.execute(f"SELECT e.capacity, (SELECT COUNT(*) FROM {t('family_event_regs')} r WHERE r.event_id = e.id) AS regs FROM {t('family_events')} e WHERE e.id = %s AND e.status = 'published' AND e.starts_at > (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')", (eid,))
         e = cur.fetchone()
         if not e:
             return resp(404, {'error': 'Событие недоступно'})
@@ -178,7 +178,7 @@ def handle_events(cur, method, params, user):
         return resp(200, {'ok': True})
     cur.execute(f"""SELECT e.*, (SELECT COUNT(*) FROM {t('family_event_regs')} r WHERE r.event_id = e.id) AS regs,
         EXISTS(SELECT 1 FROM {t('family_event_regs')} r WHERE r.event_id = e.id AND r.user_id = %s) AS registered
-        FROM {t('family_events')} e WHERE e.status = 'published' AND e.starts_at > NOW() - INTERVAL '30 days' ORDER BY e.starts_at""", (user['id'],))
+        FROM {t('family_events')} e WHERE e.status = 'published' AND e.starts_at > (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours') - INTERVAL '30 days' ORDER BY e.starts_at""", (user['id'],))
     items = cur.fetchall()
     for it in items:
         if not it['registered']:
@@ -243,7 +243,7 @@ def handle_admin(cur, resource, method, params, body, staff):
     if resource == 'admin_stats':
         cur.execute(f"""SELECT (SELECT COUNT(*) FROM {t('family_users')}) AS users,
             (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS new_questions,
-            (SELECT COUNT(*) FROM {t('family_events')} WHERE status = 'published' AND starts_at > NOW()) AS upcoming,
+            (SELECT COUNT(*) FROM {t('family_events')} WHERE status = 'published' AND starts_at > (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')) AS upcoming,
             (SELECT COUNT(*) FROM {t('family_ai_chats')}) AS ai_chats""")
         return resp(200, cur.fetchone())
     return resp(404, {'error': 'Неизвестный запрос'})

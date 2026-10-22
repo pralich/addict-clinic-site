@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { CATEGORIES, type Article } from "@/lib/articles";
+import { fmtMskDate } from "@/lib/msk";
 
 const ArticleCard = ({ a, large = false }: { a: Article; large?: boolean }) => (
   <Link to={`/articles/${a.slug}`} className={`group flex w-full flex-col overflow-hidden rounded-2xl bg-card transition-shadow hover:shadow-lg ${large ? "md:col-span-2 md:flex-row" : ""}`}>
@@ -19,7 +20,7 @@ const ArticleCard = ({ a, large = false }: { a: Article; large?: boolean }) => (
       <h3 className={`font-heading font-semibold leading-snug tracking-tight transition-colors group-hover:text-primary ${large ? "text-[1.5em] md:text-[1.9em]" : "text-[1.15em]"}`}>{a.title}</h3>
       {a.excerpt && <p className={`mt-2 text-[0.95em] leading-relaxed text-muted-foreground ${large ? "" : "line-clamp-3"}`}>{a.excerpt}</p>}
       <div className="mt-auto flex items-center justify-between pt-4 text-xs text-muted-foreground">
-        <span>{a.published_at ? new Date(a.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" }) : ""}</span>
+        <span>{a.published_at ? fmtMskDate(a.published_at, { day: "numeric", month: "long", year: "numeric" }) : ""}</span>
         <span className="inline-flex items-center gap-1 font-medium text-foreground">Читать<Icon name="ArrowRight" size={13} className="transition-transform group-hover:translate-x-1" /></span>
       </div>
     </div>

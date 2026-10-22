@@ -1,6 +1,8 @@
 import json
 from datetime import date
 
+from msk import msk_today
+
 PAYERS = ('client', 'partner', 'counterparty')
 METHODS = ('bank', 'card', 'cash', 'online', 'other')
 CP_KINDS = ('company', 'ip', 'person')
@@ -33,7 +35,7 @@ def _status(inv):
         return 'paid'
     if paid > 0:
         return 'partial'
-    if inv.get('due_date') and inv['due_date'] < date.today():
+    if inv.get('due_date') and inv['due_date'] < msk_today():
         return 'overdue'
     return 'issued'
 
@@ -151,7 +153,7 @@ def _save_invoice(cur, t, eid, body, user):
     if amount <= 0:
         return 400, {'error': 'Сумма счёта должна быть больше нуля'}
     data = {**payer, 'deal_id': _id(body.get('deal_id')), 'items': json.dumps(items, ensure_ascii=False), 'amount': amount,
-            'issue_date': _date(body.get('issue_date'), date.today()), 'due_date': _date(body.get('due_date')),
+            'issue_date': _date(body.get('issue_date'), msk_today()), 'due_date': _date(body.get('due_date')),
             'notes': _s(body.get('notes'), 3000), 'period_date': _date(body.get('period_date')), 'status': 'canceled' if body.get('status') == 'canceled' else 'issued'}
     if eid:
         if 'period_date' not in body:
@@ -195,7 +197,7 @@ def _save_payment(cur, t, body, user):
             return 400, {'error': err}
         deal_id = _id(body.get('deal_id'))
         inv = None
-    data = {**payer, 'invoice_id': inv_id, 'deal_id': deal_id, 'amount': amount, 'paid_at': _date(body.get('paid_at'), date.today()),
+    data = {**payer, 'invoice_id': inv_id, 'deal_id': deal_id, 'amount': amount, 'paid_at': _date(body.get('paid_at'), msk_today()),
             'method': body.get('method') if body.get('method') in METHODS else 'bank', 'note': _s(body.get('note'), 2000), 'uid': user['id'],
             'purpose': 'treatment' if body.get('purpose') == 'treatment' else 'commission'}
     cur.execute(f"""INSERT INTO {t('crm_payments')} (invoice_id, payer_type, client_id, partner_id, counterparty_id, deal_id, amount, paid_at, method, note, created_by, purpose)
@@ -263,7 +265,7 @@ def _summary(cur, t, params):
     pay = cur.fetchone()
     active = [i for i in inv if i['status'] != 'canceled']
     debt = sum(max(0.0, float(i['amount']) - float(i['paid'])) for i in active)
-    overdue = sum(max(0.0, float(i['amount']) - float(i['paid'])) for i in active if _status(i) == 'overdue' or (_status(i) == 'partial' and i['due_date'] and i['due_date'] < date.today()))
+    overdue = sum(max(0.0, float(i['amount']) - float(i['paid'])) for i in active if _status(i) == 'overdue' or (_status(i) == 'partial' and i['due_date'] and i['due_date'] < msk_today()))
     return {'invoiced': sum(float(i['amount']) for i in active), 'invoices': len(active), 'received': float(pay['s']), 'payments': pay['n'],
             'debt': debt, 'overdue': overdue}
 

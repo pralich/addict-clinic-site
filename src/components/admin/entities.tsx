@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
 import { TagList } from "./Tags";
+import { fmtMskDate, mskDateKey } from "@/lib/msk";
 import {
   CHANNELS, CLIENT_STATUS, PAYMENT_SCHEDULES, commissionText, daysUntil, dueTone, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
@@ -38,9 +39,8 @@ const treatment = (r: any) => {
   const n = Number(r.treatment_months);
   let txt = `${String(n).replace(".", ",")} ${monthsWord(n)}`;
   if (r.check_in_date && !r.check_out_date) {
-    const d = new Date(r.check_in_date);
-    const end = new Date(d.getFullYear(), d.getMonth() + Math.floor(n), d.getDate() + Math.round((n % 1) * 30));
-    txt += ` · до ${end.toLocaleDateString("ru-RU")}`;
+    const [y, m, d] = String(r.check_in_date).slice(0, 10).split("-").map(Number);
+    txt += ` · до ${fmtMskDate(mskDateKey(y, m - 1 + Math.floor(n), d + Math.round((n % 1) * 30)))}`;
   }
   return txt;
 };

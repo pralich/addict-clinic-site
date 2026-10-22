@@ -7,6 +7,7 @@ import Icon from "@/components/ui/icon";
 import { useAuth } from "./AuthContext";
 import { useCrmMutation, useOptions } from "./useCrm";
 import { ACTIVITY_KINDS, fmtDate } from "./config";
+import { dayDiffMsk, fmtMskDate, fmtMskTime, fromMskInput, mskAt, mskParts, parseServer, toMskInput } from "@/lib/msk";
 
 type Activity = {
   id: number;
@@ -54,40 +55,24 @@ const PLACEHOLDER: Record<string, string> = {
   task: "Что нужно сделать, например «Перезвонить и уточнить дату госпитализации»",
 };
 
-const pad = (n: number) => String(n).padStart(2, "0");
-const toLocalInput = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-
-const presets = () => {
-  const now = new Date();
-  const inHour = new Date(now.getTime() + 60 * 60 * 1000);
-  const tomorrow = new Date(now);
-  tomorrow.setDate(now.getDate() + 1);
-  tomorrow.setHours(10, 0, 0, 0);
-  const week = new Date(now);
-  week.setDate(now.getDate() + 7);
-  week.setHours(10, 0, 0, 0);
-  return [
-    { label: "Через час", value: toLocalInput(inHour) },
-    { label: "Завтра 10:00", value: toLocalInput(tomorrow) },
-    { label: "Через неделю", value: toLocalInput(week) },
-  ];
-};
+const presets = () => [
+  { label: "Через час", value: toMskInput(Date.now() + 60 * 60 * 1000) },
+  { label: "Завтра 10:00", value: toMskInput(mskAt(1, 10)) },
+  { label: "Через неделю", value: toMskInput(mskAt(7, 10)) },
+];
 
 const dayLabel = (iso: string) => {
-  const d = new Date(iso);
-  const today = new Date();
-  const y = new Date();
-  y.setDate(today.getDate() - 1);
-  if (d.toDateString() === today.toDateString()) return "Сегодня";
-  if (d.toDateString() === y.toDateString()) return "Вчера";
-  return d.toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: d.getFullYear() === today.getFullYear() ? undefined : "numeric" });
+  const diff = dayDiffMsk(iso);
+  if (diff === 0) return "Сегодня";
+  if (diff === -1) return "Вчера";
+  return fmtMskDate(iso, { day: "numeric", month: "long", year: mskParts(iso).year === mskParts().year ? undefined : "numeric" });
 };
 
-const time = (iso: string) => new Date(iso).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+const time = (iso: string) => fmtMskTime(iso);
 
 const dueState = (a: Activity) => {
   if (a.done_at || !a.due_at) return null;
-  const diff = new Date(a.due_at).getTime() - Date.now();
+  const diff = parseServer(a.due_at).getTime() - Date.now();
   if (diff < 0) return { label: "Просрочено", cls: "text-primary font-medium" };
   if (diff < 24 * 60 * 60 * 1000) return { label: "Сегодня", cls: "text-amber-700 font-medium" };
   return null;
@@ -119,7 +104,7 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
         method: "POST",
         body: {
           entity_type: resource, entity_id: id, kind, text,
-          due_at: due ? new Date(due).toISOString() : undefined,
+          due_at: due ? fromMskInput(due).toISOString() : undefined,
           result: result || undefined,
           direction: kind === "call" ? direction : undefined,
           duration_min: duration || undefined,
@@ -134,7 +119,7 @@ const ActivityPanel = ({ resource, id, activities }: Props) => {
   const remove = (aid: number) => confirm("Удалить запись?") && mut.mutate({ params: { resource: "activities", id: aid }, method: "DELETE" });
 
   const planned = useMemo(
-    () => activities.filter((a) => (a.kind === "task" || a.kind === "meeting") && !a.done_at && a.due_at).sort((a, b) => +new Date(a.due_at!) - +new Date(b.due_at!)),
+    () => activities.filter((a) => (a.kind === "task" || a.kind === "meeting") && !a.done_at && a.due_at).sort((a, b) => +parseServer(a.due_at!) - +parseServer(b.due_at!)),
     [activities],
   );
 

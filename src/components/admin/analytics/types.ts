@@ -1,3 +1,4 @@
+import { fmtMskTime, parseServer } from "@/lib/msk";
 export type VisitPage = { path: string; title?: string; at: number; sec: number };
 export type VisitEvent = { type: string; label: string; at: number };
 export type VisitSearch = { q: string; at: number; path?: string };
@@ -39,10 +40,9 @@ export const dur = (s: number) => {
   return `${Math.floor(m / 60)} ч ${m % 60} мин`;
 };
 
-export const utc = (s: string) => new Date(s.endsWith("Z") ? s : `${s}Z`);
+export const utc = (s: string) => parseServer(s);
 
-export const clock = (v: string | number) =>
-  (typeof v === "number" ? new Date(v) : utc(v)).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+export const clock = (v: string | number) => fmtMskTime(v);
 
 export const cleanTitle = (t?: string | null) => (t || "").replace(/\s[—|-]\s[^—|-]*$/, "").trim();
 

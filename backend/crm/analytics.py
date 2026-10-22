@@ -1,3 +1,5 @@
+from msk import MSK_TODAY_START
+
 ONLINE_SEC = 90
 COLS = """v.id, v.visitor_id, v.visit_no, v.started_at, v.last_seen, v.active_seconds, v.current_path, v.current_title, v.landing_url, v.referrer,
     v.channel, v.utm_source, v.utm_medium, v.utm_campaign, v.utm_term, v.device, v.browser, v.pages, v.events, v.searches, v.lead_id,
@@ -25,10 +27,10 @@ def handle_analytics(cur, t, params, user, resp):
 
     cur.execute(f"""SELECT
         COUNT(*) FILTER (WHERE last_seen > NOW() - INTERVAL '{ONLINE_SEC} seconds') AS online,
-        COUNT(*) FILTER (WHERE started_at > CURRENT_DATE) AS visits_today,
-        COUNT(DISTINCT visitor_id) FILTER (WHERE started_at > CURRENT_DATE) AS visitors_today,
-        COUNT(*) FILTER (WHERE started_at > CURRENT_DATE AND lead_id IS NOT NULL) AS with_lead_today,
-        COALESCE(ROUND(AVG(active_seconds) FILTER (WHERE started_at > CURRENT_DATE)), 0)::int AS avg_seconds_today
+        COUNT(*) FILTER (WHERE started_at > {MSK_TODAY_START}) AS visits_today,
+        COUNT(DISTINCT visitor_id) FILTER (WHERE started_at > {MSK_TODAY_START}) AS visitors_today,
+        COUNT(*) FILTER (WHERE started_at > {MSK_TODAY_START} AND lead_id IS NOT NULL) AS with_lead_today,
+        COALESCE(ROUND(AVG(active_seconds) FILTER (WHERE started_at > {MSK_TODAY_START})), 0)::int AS avg_seconds_today
         FROM {t('site_visits')} WHERE last_seen > NOW() - INTERVAL '2 days'""")
     stats = cur.fetchone()
     cur.execute(f"""SELECT current_path AS path, MAX(current_title) AS title, COUNT(*) AS c FROM {t('site_visits')}

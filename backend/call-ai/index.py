@@ -4,7 +4,7 @@ import re
 import base64
 import hashlib
 import hmac
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from decimal import Decimal
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
@@ -247,7 +247,7 @@ def apply(cur, c, body, user):
         cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, %s, 'system', %s)",
                     (lead_id, user['id'], f'Поля обновлены по звонку (ИИ): {names}'))
     if add_summary:
-        when = c['started_at'].strftime('%d.%m %H:%M') if c.get('started_at') else ''
+        when = (c['started_at'] + timedelta(hours=3)).strftime('%d.%m %H:%M') if c.get('started_at') else ''
         cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, %s, 'call', %s)",
                     (lead_id, user['id'], f"Резюме звонка {when}:\n{c['ai_summary']}"))
     cur.execute(f"UPDATE {t('crm_calls')} SET ai_applied_at = NOW(), ai_applied_by = %s WHERE id = %s", (user['id'], c['id']))

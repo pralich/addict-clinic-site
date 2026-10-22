@@ -3,7 +3,7 @@ import os
 import re
 import uuid
 import base64
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
@@ -124,7 +124,7 @@ def create_order(cur, body, event=None):
     if not auth:
         return 503, {'error': 'Оплата временно недоступна: платёжная система ещё не подключена'}
 
-    number = f"SH-{datetime.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
+    number = f"SH-{(datetime.utcnow() + timedelta(hours=3)).strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
     cur.execute(f"""INSERT INTO {t('orders')} (order_number, user_name, user_email, user_phone, amount, status, product_code, delivery_address, comment, source)
         VALUES (%s, %s, %s, %s, %s, 'pending', 'shop', %s, %s, 'shop') RETURNING id""",
                 (number, name, email, phone, total, address if physical else None, comment))

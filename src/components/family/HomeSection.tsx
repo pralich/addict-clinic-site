@@ -5,6 +5,7 @@ import { familyApi } from "@/lib/family-api";
 import { fetchArticles } from "@/lib/articles";
 import { useFamilyAuth } from "./FamilyAuth";
 import PushCard from "./PushCard";
+import { fmtMskDate, fmtMskTime, mskParts, parseMskLocal } from "@/lib/msk";
 
 const FAMILY_SLUGS = ["sozavisimost-kak-pomoch-sebe", "pomoshch-alkogolikam-kak-ugovorit-lechitsya", "pomoshch-narkomanam-chto-delat-blizkim", "priznaki-narkomanii-u-blizkogo"];
 
@@ -12,9 +13,9 @@ const HomeSection = ({ go }: { go: (s: string) => void }) => {
   const { user, stats } = useFamilyAuth();
   const { data: ev } = useQuery({ queryKey: ["family", "events"], queryFn: familyApi.events });
   const { data: art } = useQuery({ queryKey: ["articles"], queryFn: () => fetchArticles() });
-  const next = (ev?.items ?? []).find((e) => new Date(e.starts_at) > new Date());
+  const next = (ev?.items ?? []).find((e) => parseMskLocal(e.starts_at) > new Date());
   const articles = (art?.items ?? []).filter((a) => FAMILY_SLUGS.includes(a.slug)).slice(0, 3);
-  const hour = new Date().getHours();
+  const hour = mskParts().hours;
   const greet = hour < 6 ? "Доброй ночи" : hour < 12 ? "Доброе утро" : hour < 18 ? "Добрый день" : "Добрый вечер";
 
   const cards = [
@@ -53,11 +54,11 @@ const HomeSection = ({ go }: { go: (s: string) => void }) => {
             <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">Ближайшее событие</p>
             <div className="mt-3 flex gap-4">
               <div className="flex h-16 w-16 shrink-0 flex-col items-center justify-center rounded-xl bg-primary text-primary-foreground">
-                <span className="font-heading text-2xl font-semibold leading-none">{new Date(next.starts_at).getDate()}</span>
-                <span className="text-[11px]">{new Date(next.starts_at).toLocaleDateString("ru-RU", { month: "short" })}</span>
+                <span className="font-heading text-2xl font-semibold leading-none">{mskParts(parseMskLocal(next.starts_at)).day}</span>
+                <span className="text-[11px]">{fmtMskDate(parseMskLocal(next.starts_at), { month: "short" })}</span>
               </div>
               <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">{next.kind === "offline" ? "Офлайн-встреча" : "Онлайн-вебинар"} · {new Date(next.starts_at).toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}</p>
+                <p className="text-xs text-muted-foreground">{next.kind === "offline" ? "Офлайн-встреча" : "Онлайн-вебинар"} · {fmtMskTime(parseMskLocal(next.starts_at))} МСК</p>
                 <p className="mt-1 font-heading font-semibold leading-snug">{next.title}</p>
                 <button onClick={() => go("events")} className="mt-2 text-sm font-medium text-primary">{next.registered ? "Вы записаны · подробнее" : "Записаться"} →</button>
               </div>

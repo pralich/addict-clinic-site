@@ -1,4 +1,5 @@
 import type { Options } from "../useCrm";
+import { dayDiffMsk, fmtMskDate, fmtMskTime, parseServer } from "@/lib/msk";
 
 export type Task = {
   id: number;
@@ -35,18 +36,16 @@ export const ENTITY_LINKS: { value: NonNullable<Task["entity_type"]>; label: str
 
 export const taskDue = (t: Task) => {
   if (!t.due_at) return { label: "Без срока", cls: "text-muted-foreground", group: "nodate" as const };
-  const d = new Date(t.due_at);
+  const d = parseServer(t.due_at);
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const diff = Math.round((day.getTime() - start.getTime()) / 86400000);
-  const time = d.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-  const date = d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  const diff = dayDiffMsk(d);
+  const time = fmtMskTime(d);
+  const date = fmtMskDate(d, { day: "numeric", month: "short" });
   if (t.done_at) return { label: `${date}, ${time}`, cls: "text-muted-foreground", group: "done" as const };
   if (d.getTime() < now.getTime()) return { label: diff === 0 ? `Сегодня ${time} · просрочено` : `${date} · просрочено`, cls: "text-primary font-medium", group: "overdue" as const };
   if (diff === 0) return { label: `Сегодня, ${time}`, cls: "text-amber-700 font-medium", group: "today" as const };
   if (diff === 1) return { label: `Завтра, ${time}`, cls: "text-foreground", group: "soon" as const };
-  if (diff <= 7) return { label: `${d.toLocaleDateString("ru-RU", { weekday: "short", day: "numeric", month: "short" })}, ${time}`, cls: "text-foreground", group: "soon" as const };
+  if (diff <= 7) return { label: `${fmtMskDate(d, { weekday: "short", day: "numeric", month: "short" })}, ${time}`, cls: "text-foreground", group: "soon" as const };
   return { label: `${date}, ${time}`, cls: "text-muted-foreground", group: "later" as const };
 };
 

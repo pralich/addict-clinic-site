@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import Icon from "@/components/ui/icon";
 import { toast } from "sonner";
-import { familyAdminApi, fmtDateTime, RELATIONS, type FamilyEvent, type Question } from "@/lib/family-api";
+import { familyAdminApi, fmtDateTime, fmtEventDateTime, RELATIONS, type FamilyEvent, type Question } from "@/lib/family-api";
+import { parseMskLocal } from "@/lib/msk";
 
 const TABS = [
   { id: "questions", label: "Вопросы", icon: "MessageCircleQuestion" },
@@ -143,8 +144,8 @@ const Events = () => {
           <TableHeader><TableRow><TableHead>Дата</TableHead><TableHead>Событие</TableHead><TableHead>Формат</TableHead><TableHead className="text-center">Записались</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {items.map((e) => (
-              <TableRow key={e.id} className={new Date(e.starts_at) < new Date() ? "opacity-50" : ""}>
-                <TableCell className="whitespace-nowrap">{fmtDateTime(e.starts_at)}</TableCell>
+              <TableRow key={e.id} className={parseMskLocal(e.starts_at) < new Date() ? "opacity-50" : ""}>
+                <TableCell className="whitespace-nowrap">{fmtEventDateTime(e.starts_at)}</TableCell>
                 <TableCell className="font-medium">{e.title}</TableCell>
                 <TableCell>{e.kind === "offline" ? "Офлайн" : "Вебинар"}</TableCell>
                 <TableCell className="text-center">

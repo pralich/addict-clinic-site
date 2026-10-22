@@ -1,5 +1,7 @@
 from datetime import datetime
 
+from msk import MSK_TODAY, msk
+
 ENTITY_TITLE = {
     'leads': ('crm_leads', 'name'),
     'deals': ('crm_deals', 'title'),
@@ -74,7 +76,7 @@ def list_tasks(cur, t, params, user):
     cur.execute(f"""SELECT
         COUNT(*) AS mine,
         COUNT(*) FILTER (WHERE due_at < NOW()) AS overdue,
-        COUNT(*) FILTER (WHERE due_at::date = CURRENT_DATE) AS today
+        COUNT(*) FILTER (WHERE {msk('due_at')}::date = {MSK_TODAY}) AS today
         FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL
           AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s))""", (user['id'],) * 2)
     return {'items': items, 'counts': cur.fetchone()}

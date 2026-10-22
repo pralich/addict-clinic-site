@@ -1,3 +1,4 @@
+import { fmtMsk, mskToday } from "@/lib/msk";
 export type Status = { label: string; cls: string };
 export type StatusMap = Record<string, Status>;
 
@@ -82,8 +83,7 @@ export const money = (v: number | string | null | undefined) =>
 
 export const fmtDate = (v?: string | null, withTime = false) => {
   if (!v) return "—";
-  const d = new Date(v);
-  return d.toLocaleString("ru-RU", withTime ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "numeric" });
+  return fmtMsk(v, withTime ? { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" } : { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
 export const CHANNELS: Record<string, { label: string; icon: string; paid?: boolean }> = {
@@ -152,10 +152,7 @@ export const commissionText = (r: { amount?: any; commission_type?: string | nul
 
 export const daysUntil = (iso?: string | null) => {
   if (!iso) return null;
-  const d = new Date(String(iso).slice(0, 10) + "T00:00:00");
-  const now = new Date();
-  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  return Math.round((d.getTime() - t.getTime()) / 86400000);
+  return Math.round((Date.parse(`${String(iso).slice(0, 10)}T00:00:00Z`) - Date.parse(`${mskToday()}T00:00:00Z`)) / 86400000);
 };
 
 export const dueTone = (days: number | null) => {

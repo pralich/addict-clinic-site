@@ -11,6 +11,7 @@ import { CATEGORIES, fetchArticle, readingTime } from "@/lib/articles";
 import { PHONE_HREF } from "@/components/clinic/contacts";
 import { SITE_URL, useSeo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, isoDate, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
+import { fmtMskDate } from "@/lib/msk";
 
 const splitContent = (content: string): [string, string] => {
   const lines = content.split("\n");
@@ -148,7 +149,7 @@ const ArticlePage = () => {
               {a.excerpt && <p className="mt-5 max-w-[720px] text-[1.15em] leading-relaxed text-muted-foreground">{a.excerpt}</p>}
               <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5"><Icon name="UserRoundCheck" size={15} className="text-primary" />{a.author || "Врачи addict.clinic"}</span>
-                {a.published_at && <span className="inline-flex items-center gap-1.5"><Icon name="Calendar" size={15} /><time dateTime={a.published_at}>{new Date(a.published_at).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}</time></span>}
+                {a.published_at && <span className="inline-flex items-center gap-1.5"><Icon name="Calendar" size={15} /><time dateTime={a.published_at}>{fmtMskDate(a.published_at, { day: "numeric", month: "long", year: "numeric" })}</time></span>}
                 <span className="inline-flex items-center gap-1.5"><Icon name="Clock" size={15} />{readingTime(a.content)} мин чтения</span>
               </div>
             </header>

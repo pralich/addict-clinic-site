@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import Icon from "@/components/ui/icon";
+import { mskDateKey, mskToday } from "@/lib/msk";
 
 export type PayerType = "client" | "partner" | "counterparty";
 
@@ -80,15 +81,11 @@ export const StateBadge = ({ state }: { state: InvoiceState }) => {
   return <span className={`inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${s.cls}`}><Icon name={s.icon} size={11} />{s.label}</span>;
 };
 
-export const today = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
+export const today = () => mskToday();
 
 export const addDays = (iso: string, n: number) => {
-  const d = new Date(iso);
-  d.setDate(d.getDate() + n);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+  return mskDateKey(y, m - 1, d + n);
 };
 
 export const num = (v: string | number) => Number(String(v).replace(/\s/g, "").replace(",", ".")) || 0;

@@ -1,5 +1,6 @@
 import func2url from "../../backend/func2url.json";
 import { getToken as getCrmToken } from "./crm-api";
+import { fmtMsk, parseMskLocal } from "./msk";
 
 const URLS = func2url as Record<string, string>;
 const FAMILY_URL = URLS.family;
@@ -135,4 +136,7 @@ export const familyAdminApi = {
 };
 
 export const fmtDateTime = (s?: string | null) =>
-  s ? new Date(s).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+  s ? fmtMsk(s, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";
+
+export const fmtEventDateTime = (s?: string | null) =>
+  s ? fmtMsk(parseMskLocal(s), { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) : "";

@@ -5,6 +5,7 @@ import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
 import DashboardCalls from "./DashboardCalls";
 import { CHANNELS, DEAL_STAGES, ENTITY_LABEL, LEAD_STATUS, fmtDate, money } from "./config";
+import { fmtMskDate } from "@/lib/msk";
 
 type Props = { onOpen: (resource: string, id: number) => void; onNavigate: (page: string) => void };
 
@@ -34,7 +35,7 @@ const Dashboard = ({ onOpen, onNavigate }: Props) => {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="font-heading text-2xl font-semibold tracking-tight md:text-3xl">Сводка</h1>
-        <p className="text-sm text-muted-foreground">{new Date().toLocaleDateString("ru-RU", { weekday: "long", day: "numeric", month: "long" })}</p>
+        <p className="text-sm text-muted-foreground">{fmtMskDate(new Date(), { weekday: "long", day: "numeric", month: "long" })}</p>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
