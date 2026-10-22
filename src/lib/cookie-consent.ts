@@ -1,8 +1,9 @@
 import func2url from "../../backend/func2url.json";
+import { flushGoals } from "./goals";
 
 const KEY = "cookie_consent_v1";
 const COUNTERS_URL = `${(func2url as Record<string, string>).seo}?action=counters`;
-const FALLBACK: Counters = { yandex_metrika: "101026698" };
+const FALLBACK: Counters = { yandex_metrika: "113599378" };
 
 type Counters = Partial<Record<"yandex_metrika" | "google_analytics" | "vk_pixel" | "top_mail_ru" | "yandex_verification" | "google_verification", string>>;
 
@@ -58,6 +59,16 @@ const loadMetrika = (id: string) => {
   addScript("https://mc.yandex.ru/metrika/tag.js");
   (w as unknown as Record<string, unknown>).__ymId = Number(id);
   w.ym(Number(id), "init", { trustedDomains: ["poehali.dev"], clickmap: true, trackLinks: true, accurateTrackBounce: true, webvisor: true, trackHash: true });
+  flushGoals();
+};
+
+let metrikaStarted = false;
+const startMetrika = () => {
+  if (metrikaStarted) return;
+  metrikaStarted = true;
+  fetchCounters().then((c) => {
+    if (c.yandex_metrika) loadMetrika(c.yandex_metrika);
+  });
 };
 
 const loadGoogle = (id: string) => {
@@ -103,16 +114,15 @@ const loadTopMail = (id: string) => {
 
 const loadAnalytics = async () => {
   const c = await fetchCounters();
-  if (c.yandex_metrika) loadMetrika(c.yandex_metrika);
   if (c.google_analytics) loadGoogle(c.google_analytics);
   if (c.vk_pixel) loadVk(c.vk_pixel);
   if (c.top_mail_ru) loadTopMail(c.top_mail_ru);
 };
 
-const clearMetrikaCookies = () => {
+const clearOptionalCookies = () => {
   document.cookie.split(";").forEach((c) => {
     const name = c.split("=")[0].trim();
-    if (/^_ym|^yandexuid|^yabs|^ymex|^_ga|^_gid|^tmr_|^remixretarget/.test(name)) {
+    if (/^_ga|^_gid|^tmr_|^remixretarget/.test(name)) {
       const host = location.hostname;
       [host, `.${host}`, host.split(".").slice(-2).join(".")].forEach((d) => {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; domain=${d}`;
@@ -124,6 +134,7 @@ const clearMetrikaCookies = () => {
 
 export const applyCookieChoice = () => {
   if (location.pathname.startsWith("/admin")) return;
+  startMetrika();
   fetchCounters().then((c) => {
     addMeta("yandex-verification", c.yandex_verification);
     addMeta("google-site-verification", c.google_verification);
@@ -136,7 +147,7 @@ export const saveCookieChoice = (analytics: boolean) => {
   localStorage.setItem(KEY, JSON.stringify({ analytics, at: Date.now() }));
   if (analytics) loadAnalytics();
   else {
-    clearMetrikaCookies();
+    clearOptionalCookies();
     if (prev?.analytics) location.reload();
   }
   window.dispatchEvent(new Event("cookie-consent-changed"));

@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { familyApi, fmtDateTime, fmtNum, fmtRub, type BillingOrder } from "@/lib/family-api";
 import { useFamilyAuth } from "./FamilyAuth";
 import { fmtMskDate } from "@/lib/msk";
+import { reachGoal, reachGoalOnce } from "@/lib/goals";
 
 const PLAN_META: Record<string, { icon: string; features: string[]; accent?: boolean }> = {
   psychologist: {
@@ -43,17 +44,22 @@ const BillingSection = () => {
   });
 
   useEffect(() => {
+    if (returned?.order.status === "paid") {
+      const o = returned.order;
+      reachGoalOnce(o.order_number, "family_paid", { order_id: o.order_number, order_price: Number(o.amount), currency: "RUB", product: o.product_code });
+    }
     if (returned?.order.status && returned.order.status !== "pending") {
       qc.invalidateQueries({ queryKey: ["family", "billing"] });
       refresh();
     }
-  }, [returned?.order.status, qc, refresh]);
+  }, [returned?.order, qc, refresh]);
 
   const pay = async (product: string, thousands?: number) => {
     const key = thousands ? `tokens-${thousands}` : product;
     setBusy(key);
     try {
       const r = await familyApi.pay({ product, thousands, return_url: `${window.location.origin}/family?s=billing` });
+      reachGoal("family_pay", { product, order_id: r.order_number });
       window.location.href = r.payment_url;
     } catch (e) {
       toast({ title: "Не удалось перейти к оплате", description: (e as Error).message, variant: "destructive" });

@@ -9,6 +9,7 @@ import CartSheet from "@/components/shop/CartSheet";
 import { fetchOrder, fetchProducts, rub, SHOP_CATEGORIES, useCart, type Product, type ShopCategory } from "@/lib/shop";
 import { SITE_URL, useSeo } from "@/lib/seo";
 import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
+import { reachGoalOnce } from "@/lib/goals";
 
 type Sort = "popular" | "cheap" | "expensive";
 
@@ -26,6 +27,7 @@ const Shop = () => {
   const { data: order } = useQuery({ queryKey: ["shop-order", orderNumber], queryFn: () => fetchOrder(orderNumber!), enabled: !!orderNumber, retry: false });
   useEffect(() => {
     if (order?.status !== "paid") return;
+    reachGoalOnce(order.order_number, "purchase", { order_id: order.order_number, order_price: order.amount, currency: "RUB" });
     const k = `shop_cleared_${order.order_number}`;
     if (sessionStorage.getItem(k)) return;
     sessionStorage.setItem(k, "1");

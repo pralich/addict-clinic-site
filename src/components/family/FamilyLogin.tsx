@@ -7,6 +7,7 @@ import { LOGO_URL, PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contact
 import { familyApi, RELATIONS } from "@/lib/family-api";
 import { useFamilyAuth } from "./FamilyAuth";
 import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
+import { reachGoal } from "@/lib/goals";
 
 const IMG = "https://cdn.poehali.dev/projects/1eb84f6e-14c3-4877-b42b-93b6450a03c2/files/835def65-2d36-46aa-a64d-01df6f28c38f.jpg";
 
@@ -33,6 +34,7 @@ const FamilyLogin = () => {
     setBusy(true);
     try {
       const r = mode === "login" ? await familyApi.login({ email: form.email, password: form.password }) : await familyApi.register({ ...form, consent: agree, offer });
+      reachGoal(mode === "login" ? "family_login" : "family_register");
       await signIn(r.token);
     } catch (err) {
       setError((err as Error).message);

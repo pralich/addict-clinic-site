@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { optionLabel, productPrice, rub, SHOP_CATEGORIES, useCart, type Product } from "@/lib/shop";
+import { reachGoal } from "@/lib/goals";
 
 type Props = { product: Product | null; onClose: () => void; onAdded: () => void };
 
@@ -23,6 +24,7 @@ const ProductDialog = ({ product: p, onClose, onAdded }: Props) => {
   const submit = () => {
     if (needOption) return toast.error(p.category === "merch" ? "Выберите размер" : "Выберите вариант");
     add(p, option, qty);
+    reachGoal("cart_add", { product: p.slug, price: price * qty });
     toast.success("Добавлено в корзину", { action: { label: "Корзина", onClick: onAdded } });
     onClose();
   };

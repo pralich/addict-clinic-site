@@ -4,6 +4,7 @@ import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { checkout, rub, useCart } from "@/lib/shop";
 import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
+import { reachGoal } from "@/lib/goals";
 
 type Props = { open: boolean; onOpenChange: (o: boolean) => void; delivery?: { price: number; free_from: number } };
 
@@ -38,6 +39,7 @@ const CartSheet = ({ open, onOpenChange, delivery = { price: 390, free_from: 500
         items: lines.map((l) => ({ id: l.id, option: l.raw, qty: l.qty })),
         return_url: `${window.location.origin}/shop`,
       });
+      reachGoal("checkout_submit", { order_id: r.order_number });
       window.location.href = r.payment_url;
     } catch (err) {
       toast.error((err as Error).message);
@@ -101,7 +103,7 @@ const CartSheet = ({ open, onOpenChange, delivery = { price: 390, free_from: 500
                 {physical && <div className="flex justify-between"><span className="text-muted-foreground">Доставка</span><span>{ship ? rub(ship) : "бесплатно"}</span></div>}
                 <div className="mt-1 flex justify-between font-heading text-lg font-semibold"><span>Итого</span><span>{rub(total)}</span></div>
               </div>
-              <button onClick={() => setStep("form")} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-medium text-primary-foreground hover:opacity-90">
+              <button onClick={() => { setStep("form"); reachGoal("checkout_start"); }} className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary font-medium text-primary-foreground hover:opacity-90">
                 Оформить заказ<Icon name="ArrowRight" size={16} />
               </button>
             </div>

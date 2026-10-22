@@ -6,6 +6,7 @@ import Icon from "@/components/ui/icon";
 import { SITEMAP_LIVE_URL, SITEMAP_PUBLIC_URL, seoApi, type RegenerateResult } from "@/lib/seo-api";
 import { fmtDate } from "./config";
 import SeoCounters from "./SeoCounters";
+import SeoGoals from "./SeoGoals";
 
 const short = (u: string) => u.replace("https://addict.clinic", "") || "/";
 
@@ -132,6 +133,7 @@ const SeoPage = () => {
       </div>
 
       <SeoCounters />
+      <SeoGoals />
 
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-3">

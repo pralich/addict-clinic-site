@@ -1,5 +1,6 @@
 import func2url from "../../backend/func2url.json";
 import { getAttribution } from "./attribution";
+import { reachLeadGoal } from "./goals";
 
 const URL = (func2url as Record<string, string>).crm;
 const TOKEN_KEY = "crm_token";
@@ -52,7 +53,6 @@ export async function sendPublicLead(data: { name?: string; contact: string; top
   });
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new ApiError(body.error || "Не удалось отправить заявку", res.status);
-  const w = window as Window & { ym?: (...args: unknown[]) => void; __ymId?: number };
-  if (w.ym && w.__ymId) w.ym(w.__ymId, "reachGoal", "lead", { form });
+  reachLeadGoal(form);
   return body as { ok: boolean; id?: number };
 }

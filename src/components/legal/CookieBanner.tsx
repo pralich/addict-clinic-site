@@ -37,7 +37,7 @@ const CookieBanner = () => {
         <div className="text-sm">
           <p className="font-medium">Мы используем cookie</p>
           <p className="mt-1 text-muted-foreground">
-            Необходимые — чтобы работали корзина и кабинет. Аналитические («Яндекс Метрика») — только с вашего согласия, чтобы улучшать сайт.{" "}
+            Необходимые и статистика «Яндекс Метрики» — чтобы сайт работал и становился удобнее. Дополнительная аналитика — только с вашего согласия.{" "}
             <a href="/cookies" className="text-foreground underline underline-offset-2">Подробнее</a>
           </p>
         </div>
@@ -46,11 +46,11 @@ const CookieBanner = () => {
       {details && (
         <div className="mt-4 flex flex-col gap-1 rounded-xl bg-secondary/60 p-2">
           <div className="flex items-center gap-3 rounded-lg p-2.5">
-            <span className="flex-1 text-sm"><span className="block font-medium">Необходимые</span><span className="block text-xs text-muted-foreground">Корзина, вход в кабинет, настройки</span></span>
+            <span className="flex-1 text-sm"><span className="block font-medium">Необходимые</span><span className="block text-xs text-muted-foreground">Корзина, вход в кабинет, настройки, статистика Яндекс Метрики</span></span>
             <span className="text-xs text-muted-foreground">Всегда</span>
           </div>
           <label className="flex cursor-pointer items-center gap-3 rounded-lg p-2.5 hover:bg-secondary">
-            <span className="flex-1 text-sm"><span className="block font-medium">Аналитические</span><span className="block text-xs text-muted-foreground">Яндекс Метрика: статистика и карта кликов</span></span>
+            <span className="flex-1 text-sm"><span className="block font-medium">Аналитические</span><span className="block text-xs text-muted-foreground">Другие счётчики посещаемости</span></span>
             <Switch checked={analytics} onCheckedChange={setAnalytics} />
           </label>
         </div>

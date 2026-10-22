@@ -3,9 +3,11 @@ import App from './App'
 import './index.css'
 import { captureAttribution } from './lib/attribution'
 import { initVisitTracker } from './lib/visit-tracker'
+import { initGoalClicks } from './lib/goals'
 
 captureAttribution();
 initVisitTracker();
+initGoalClicks();
 
 createRoot(document.getElementById("root")!).render(<App />);
 
