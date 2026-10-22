@@ -1,7 +1,9 @@
 import json
 import os
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta, timezone
+from email.utils import format_datetime
+import html as html_lib
 from xml.sax.saxutils import escape
 
 import boto3
@@ -85,6 +87,124 @@ def build_sitemap(cur):
     return '\n'.join(parts) + '\n', urls, len(articles)
 
 
+CATEGORY_LABELS = {
+    'rehab': 'Реабилитация', 'alcohol': 'Алкоголизм', 'drugs': 'Наркомания', 'meds': 'Лекарственная зависимость',
+    'gambling': 'Игромания', 'codependency': 'Созависимость', 'eating': 'Пищевое поведение', 'nicotine': 'Никотин',
+    'internet': 'Интернет-зависимость', 'mental': 'Депрессия и тревога',
+}
+MSK_TZ = timezone(timedelta(hours=3))
+INLINE_RE = [
+    (re.compile(r'\*\*(.+?)\*\*'), r'<strong>\1</strong>'),
+    (re.compile(r'(?<![*\w])\*(?!\s)(.+?)(?<!\s)\*(?!\w)'), r'<em>\1</em>'),
+    (re.compile(r'\[([^\]]+)\]\((https?://[^)\s]+|/[^)\s]*)\)'), r'<a href="\2">\1</a>'),
+]
+
+
+def _inline(text):
+    out = html_lib.escape(text, quote=False)
+    for rx, rep in INLINE_RE:
+        out = rx.sub(rep, out)
+    return out.replace('href="/', f'href="{SITE}/')
+
+
+def md_to_html(md):
+    parts, para, items, kind = [], [], [], None
+
+    def flush():
+        nonlocal para, items, kind
+        if para:
+            parts.append(f"<p>{_inline(' '.join(para))}</p>")
+        if items:
+            parts.append(f"<{kind}>" + ''.join(f'<li>{_inline(i)}</li>' for i in items) + f"</{kind}>")
+        para, items, kind = [], [], None
+
+    for raw in (md or '').splitlines():
+        line = raw.strip()
+        if not line:
+            flush()
+            continue
+        h = re.match(r'^(#{2,4})\s+(.*)$', line)
+        ul = re.match(r'^[-*•]\s+(.*)$', line)
+        ol = re.match(r'^\d+[.)]\s+(.*)$', line)
+        if h:
+            flush()
+            parts.append(f"<h{len(h.group(1))}>{_inline(h.group(2))}</h{len(h.group(1))}>")
+        elif line.startswith('>'):
+            flush()
+            parts.append(f"<blockquote>{_inline(line.lstrip('> '))}</blockquote>")
+        elif ul or ol:
+            k = 'ul' if ul else 'ol'
+            if para or (kind and kind != k):
+                flush()
+            kind = k
+            items.append((ul or ol).group(1))
+        else:
+            if items:
+                flush()
+            para.append(line)
+    flush()
+    return '\n'.join(parts)
+
+
+def _rfc822(dt):
+    return format_datetime(dt.replace(tzinfo=timezone.utc).astimezone(MSK_TZ))
+
+
+def _cdata(s):
+    return '<![CDATA[' + (s or '').replace(']]>', ']]]]><![CDATA[>') + ']]>'
+
+
+def build_rss(cur, limit=50):
+    cur.execute(f"""SELECT slug, title, excerpt, meta_description, category, cover_url, cover_alt, content, author, published_at, updated_at
+        FROM {SCHEMA}.articles WHERE status = 'published' AND published_at <= NOW() ORDER BY published_at DESC LIMIT %s""", (limit,))
+    rows = cur.fetchall()
+    last = max([r['updated_at'] or r['published_at'] for r in rows], default=datetime.utcnow())
+    out = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/" '
+        'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/" xmlns:yandex="http://news.yandex.ru">',
+        '<channel>',
+        '  <title>Статьи addict.clinic — о зависимостях и восстановлении</title>',
+        f'  <link>{SITE}/articles</link>',
+        '  <description>Статьи врачей и психологов о лечении зависимостей, реабилитации и помощи близким</description>',
+        '  <language>ru</language>',
+        f'  <atom:link href="{SITE}/rss.xml" rel="self" type="application/rss+xml"/>',
+        f'  <lastBuildDate>{_rfc822(last)}</lastBuildDate>',
+        '  <image>',
+        f'    <url>{SITE}/logo.png</url>',
+        '    <title>Статьи addict.clinic — о зависимостях и восстановлении</title>',
+        f'    <link>{SITE}/articles</link>',
+        '  </image>',
+    ]
+    for r in rows:
+        link = f"{SITE}/articles/{r['slug']}"
+        desc = r['excerpt'] or r['meta_description'] or ''
+        body = md_to_html(r['content'])
+        if r['cover_url']:
+            body = f'<figure><img src="{escape(r["cover_url"])}" alt="{escape(r["cover_alt"] or r["title"], {chr(34): "&quot;"})}"/></figure>\n' + body
+        out += [
+            '  <item>',
+            f"    <title>{escape(r['title'])}</title>",
+            f'    <link>{link}</link>',
+            f'    <guid isPermaLink="true">{link}</guid>',
+            f"    <pubDate>{_rfc822(r['published_at'])}</pubDate>",
+            f'    <description>{_cdata(desc)}</description>',
+            f'    <content:encoded>{_cdata(body)}</content:encoded>',
+            f'    <yandex:full-text>{_cdata(re.sub(r"<[^>]+>", " ", body))}</yandex:full-text>',
+        ]
+        if r['author']:
+            out.append(f"    <dc:creator>{escape(r['author'])}</dc:creator>")
+        if r['category']:
+            out.append(f"    <category>{escape(CATEGORY_LABELS.get(r['category'], r['category']))}</category>")
+        if r['cover_url']:
+            ctype = 'image/png' if r['cover_url'].lower().endswith('.png') else 'image/webp' if r['cover_url'].lower().endswith('.webp') else 'image/jpeg'
+            out.append(f'    <enclosure url="{escape(r["cover_url"])}" type="{ctype}" length="0"/>')
+            out.append(f'    <media:content url="{escape(r["cover_url"])}" medium="image"/>')
+        out.append('  </item>')
+    out += ['</channel>', '</rss>']
+    return '\n'.join(out) + '\n'
+
+
 def upload(xml):
     key_id = os.environ['AWS_ACCESS_KEY_ID']
     s3 = boto3.client('s3', endpoint_url='https://bucket.poehali.dev', aws_access_key_id=key_id, aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
@@ -148,6 +268,9 @@ def handler(event: dict, context) -> dict:
             row = cur.fetchone()
             xml = row['xml'] if row else build_sitemap(cur)[0]
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/xml; charset=utf-8', 'Cache-Control': 'public, max-age=600'}, 'body': xml}
+
+        if method == 'GET' and action in ('rss', 'rss.xml'):
+            return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/rss+xml; charset=utf-8', 'Cache-Control': 'public, max-age=600'}, 'body': build_rss(cur)}
 
         if method == 'GET' and action == 'counters':
             return {'statusCode': 200, 'headers': {**CORS, 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=300'}, 'body': json.dumps(read_counters(cur, True))}
