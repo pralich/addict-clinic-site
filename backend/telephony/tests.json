@@ -39,6 +39,16 @@
       "path": "/?cmd=sync",
       "body": {},
       "expectedStatus": 401
+    },
+    {
+      "name": "Autosync wrong key",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "cmd": "autosync",
+        "key": "wrong"
+      },
+      "expectedStatus": 401
     }
   ]
 }

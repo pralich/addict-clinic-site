@@ -337,6 +337,19 @@ def handler(event: dict, context) -> dict:
         return resp(200, {'ok': True, 'service': 'megapbx'})
 
     headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}
+    if (d.get('cmd') or '').lower() == 'autosync':
+        expected_key = os.environ.get('CALLS_SYNC_KEY') or ''
+        given = d.get('key') or headers.get('x-sync-key') or ''
+        if not expected_key or not hmac.compare_digest(str(given), expected_key):
+            return resp(401, {'error': 'Неверный ключ автообновления'})
+        conn = psycopg2.connect(os.environ['DATABASE_URL'])
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            return handle_sync(conn, cur, {'id': None, 'name': 'Автообновление по расписанию'}, {'period': 'today'})
+        finally:
+            cur.close()
+            conn.close()
+
     if (d.get('cmd') or '').lower() == 'sync':
         conn = psycopg2.connect(os.environ['DATABASE_URL'])
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
