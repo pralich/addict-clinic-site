@@ -20,6 +20,8 @@ type Ai = {
   lead_state?: string | null;
   ai_target?: boolean | null;
   ai_target_reason?: string | null;
+  ai_callback?: string | null;
+  callback_task_id?: number | null;
 };
 
 const AI_URL = (func2url as Record<string, string>)["call-ai"];
@@ -145,6 +147,14 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
                   {ai.lead_state === "dismissed" && <> · отмечен как «не лид»</>}
                 </p>
               </div>
+            )}
+
+            {ai.ai_callback && busy !== "analyze" && (
+              <section className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wider text-primary"><Icon name="PhoneForwarded" size={13} />О чём поговорить при перезвоне</p>
+                <p className="whitespace-pre-line text-sm leading-relaxed">{ai.ai_callback}</p>
+                {ai.callback_task_id && <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground"><Icon name="ListChecks" size={12} />Задача «Перезвонить» поставлена менеджеру</p>}
+              </section>
             )}
 
             {ai.ai_summary && busy !== "analyze" && (

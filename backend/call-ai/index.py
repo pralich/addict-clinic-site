@@ -92,7 +92,7 @@ def load_call(cur, cid):
 
 
 def view(c):
-    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id', 'ai_status', 'ai_error', 'lead_state', 'ai_target', 'ai_target_reason', 'phone')}
+    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id', 'ai_status', 'ai_error', 'lead_state', 'ai_target', 'ai_target_reason', 'phone', 'ai_callback', 'callback_task_id')}
 
 
 QUEUE = f"""duration > 0 AND COALESCE(record_url, record_source_url) IS NOT NULL AND transcript IS NULL
@@ -172,6 +172,7 @@ def analyze(cur, c):
 1. summary — краткое резюме звонка на русском, 3–6 пунктов через перенос строки, каждый с «• »: кто звонил, проблема, о чём договорились, следующий шаг.
 2. target — true, если это ЦЕЛЕВОЙ звонок: звонит пациент, его родственник или близкий, который интересуется лечением, реабилитацией, консультацией, ценами, госпитализацией или другими услугами клиники. false — если это не клиент: реклама и продажи, поставщики, соискатели, ошибся номером, спам, автоответчик, тишина, служебный разговор сотрудников, партнёры по делам, не связанным с пациентом.
 3. target_reason — одно короткое предложение, почему target такой.
+3a. callback — только если target = true: подсказка менеджеру для обратного звонка, 3–5 пунктов через перенос строки, каждый с «• »: с чего начать разговор (сослаться на прошлый звонок), что уточнить (чего не хватило в разговоре), что предложить (подходящая услуга, консультация, выезд, госпитализация), какие опасения или возражения снять, о чём договориться. Пиши конкретно по этому разговору, мягко и бережно — это тема зависимости. Если target = false — null.
 4. fields — значения полей лида, которые ЯВНО следуют из разговора. Не выдумывай. Если данных нет — null.
 Поля:
 - name: имя пациента (или как представился звонящий, если он сам пациент)
@@ -183,7 +184,7 @@ def analyze(cur, c):
 - rep_phone, rep_email, rep_messenger: дополнительные контакты, если продиктованы
 - rep_note: важное о звонящем (удобное время, просьбы)
 Текущие значения в CRM: {json.dumps(current, ensure_ascii=False, default=_ser)}
-Ответ — строго JSON без пояснений: {{"summary": "...", "target": true, "target_reason": "...", "fields": {{...}}}}
+Ответ — строго JSON без пояснений: {{"summary": "...", "target": true, "target_reason": "...", "callback": "...", "fields": {{...}}}}
 
 Расшифровка:
 {c['transcript'][:24000]}"""
@@ -216,8 +217,12 @@ def analyze(cur, c):
     target = out.get('target')
     target = target if isinstance(target, bool) else (str(target).lower() in ('true', '1', 'да', 'yes') if target is not None else None)
     reason = str(out.get('target_reason') or '').strip()[:500] or None
-    cur.execute(f"UPDATE {t('crm_calls')} SET ai_summary = %s, ai_fields = %s, ai_analyzed_at = NOW(), ai_target = %s, ai_target_reason = %s WHERE id = %s",
-                (summary, json.dumps(proposals, ensure_ascii=False), target, reason, c['id']))
+    callback = str(out.get('callback') or '').strip()[:3000] or None
+    cur.execute(f"UPDATE {t('crm_calls')} SET ai_summary = %s, ai_fields = %s, ai_analyzed_at = NOW(), ai_target = %s, ai_target_reason = %s, ai_callback = %s WHERE id = %s",
+                (summary, json.dumps(proposals, ensure_ascii=False), target, reason, callback, c['id']))
+    if c.get('callback_task_id') and callback:
+        cur.execute(f"""UPDATE {t('crm_activities')} SET details = %s, updated_at = NOW() WHERE id = %s AND kind = 'task' AND done_at IS NULL""",
+                    (task_details(load_call(cur, c['id'])), c['callback_task_id']))
     if c.get('lead_state') in ('pending', 'not_target') and not c.get('lead_id'):
         if target is True:
             values = {p['field']: p['proposed'] for p in proposals}
@@ -232,6 +237,50 @@ def ping_push():
         urlopen(CRM_PUSH_URL, timeout=2.5).read()
     except Exception as e:
         print(f'crm push ping failed: {e}')
+
+
+def pick_assignee(cur, c, user):
+    if user:
+        return user['id']
+    if c.get('pbx_user'):
+        cur.execute(f"""SELECT id FROM {t('crm_users')} WHERE is_active AND role <> 'leads_only' AND LOWER(pbx_login) = LOWER(%s) ORDER BY id LIMIT 1""", (c['pbx_user'],))
+        r = cur.fetchone()
+        if r:
+            return r['id']
+    cur.execute(f"""SELECT id FROM {t('crm_users')} WHERE is_active AND role IN ('manager', 'admin') ORDER BY (role = 'manager') DESC, id LIMIT 1""")
+    r = cur.fetchone()
+    return r['id'] if r else None
+
+
+def task_details(c):
+    parts = []
+    if c.get('ai_callback'):
+        parts.append(f"О чём поговорить (подсказка ИИ):\n{c['ai_callback']}")
+    elif c.get('status') == 'missed':
+        parts.append('О чём поговорить:\n• Представьтесь и скажите, что видите пропущенный звонок\n• Спросите, удобно ли говорить, и чем можете помочь\n• Уточните, кому нужна помощь — самому человеку или близкому')
+    else:
+        parts.append('О чём поговорить:\n• Сошлитесь на прошлый разговор\n• Уточните, остались ли вопросы после звонка\n• Предложите следующий шаг: консультацию врача или визит в клинику')
+    if c.get('ai_summary'):
+        parts.append(f"Резюме прошлого звонка:\n{c['ai_summary']}")
+    if c.get('phone'):
+        parts.append(f"Телефон: {c['phone']}")
+    return '\n\n'.join(parts)[:5000]
+
+
+def create_callback_task(cur, c, lead_id, name, user):
+    assignee = pick_assignee(cur, c, user)
+    if not assignee:
+        return None
+    missed = c.get('status') == 'missed'
+    who = name or c.get('phone') or 'клиенту'
+    text = f"{'Перезвонить по пропущенному' if missed else 'Перезвонить'}: {who}"[:500]
+    cur.execute(f"""INSERT INTO {t('crm_activities')} (kind, user_id, entity_type, entity_id, text, details, priority, due_at, assignee_id)
+        VALUES ('task', %s, 'leads', %s, %s, %s, %s, NOW() + %s * INTERVAL '1 minute', %s) RETURNING id""",
+        (user['id'] if user else None, lead_id, text, task_details(c), 'high' if missed or c.get('ai_target') else 'normal', 15 if missed else 30, assignee))
+    task_id = cur.fetchone()['id']
+    cur.execute(f"UPDATE {t('crm_calls')} SET callback_task_id = %s WHERE id = %s", (task_id, c['id']))
+    cur.execute(f"UPDATE {t('crm_leads')} SET manager_id = COALESCE(manager_id, %s) WHERE id = %s", (assignee, lead_id))
+    return task_id
 
 
 def call_topic(c):
@@ -269,6 +318,7 @@ def create_lead(cur, c, values, user, state):
         when = (c['started_at'] + timedelta(hours=3)).strftime('%d.%m %H:%M') if c.get('started_at') else ''
         cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'call', %s)",
                     (lead_id, f"Резюме звонка {when}:\n{c['ai_summary']}"))
+    create_callback_task(cur, c, lead_id, values.get('name'), user)
     ping_push()
     return lead_id
 
