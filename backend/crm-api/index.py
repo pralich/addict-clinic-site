@@ -3,6 +3,7 @@ import base64
 import os
 import re
 import hashlib
+import hmac
 from datetime import datetime, date
 from decimal import Decimal
 from urllib.request import urlopen
@@ -37,7 +38,7 @@ CHANNELS = {
     'organic_yandex': 'Поиск Яндекса', 'organic_google': 'Поиск Google', 'organic_other': 'Поиск', 'ai': 'ИИ-ассистенты',
     'social': 'Соцсети и мессенджеры', 'email': 'Рассылка', 'referral': 'Переход с сайта', 'direct': 'Прямой заход', 'api': 'Внешняя система',
 }
-FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта'}
+FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта', 'vidzhitum': 'Виджитум'}
 ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20, 'visitor_id': 64}
 CLIENT_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
 DEAL_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
@@ -469,6 +470,125 @@ def site_lead(cur, event, body):
     return resp(200, {'ok': True, 'id': lid})
 
 
+VZ_WIDGETS = {'quiz': 'Квиз', 'callback': 'Обратный звонок', 'popup': 'Попап', 'wheel': 'Колесо фортуны', 'form': 'Форма', 'chat': 'Чат'}
+
+
+def raw_body(event):
+    raw = event.get('body') or ''
+    if event.get('isBase64Encoded') and raw:
+        return base64.b64decode(raw)
+    return raw.encode('utf-8')
+
+
+def vz_verify(event, raw):
+    secret = (os.environ.get('VIDZHITUM_SECRET') or '').strip()
+    if not secret:
+        raise ApiError(401, 'Не задан секрет вебхука Виджитума')
+    headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}
+    sig = (headers.get('x-vidzhitum-signature') or '').strip()
+    sig = sig.split('=', 1)[1] if sig.lower().startswith('sha256=') else sig
+    if not sig:
+        raise ApiError(401, 'Нет подписи X-Vidzhitum-Signature')
+    ts = (headers.get('x-vidzhitum-timestamp') or '').strip().encode()
+    variants = [raw]
+    if ts:
+        variants += [ts + b'.' + raw, ts + raw, ts + b'\n' + raw]
+    for msg in variants:
+        if hmac.compare_digest(hmac.new(secret.encode(), msg, hashlib.sha256).hexdigest(), sig.lower()):
+            return
+    raise ApiError(401, 'Неверная подпись вебхука')
+
+
+def _txt(v, limit):
+    v = '' if v is None else str(v).strip()
+    return v[:limit] or None
+
+
+def vidzhitum_lead(cur, event):
+    raw = raw_body(event)
+    vz_verify(event, raw)
+    try:
+        body = json.loads(raw.decode('utf-8', 'replace') or '{}')
+    except json.JSONDecodeError:
+        raise ApiError(400, 'Тело запроса должно быть JSON')
+    headers = {k.lower(): v for k, v in (event.get('headers') or {}).items()}
+    ev = body.get('event') or headers.get('x-vidzhitum-event') or ''
+    if ev != 'lead.created':
+        return resp(200, {'ok': True, 'ignored': ev or 'unknown'}), None
+    d = body.get('data') if isinstance(body.get('data'), dict) else {}
+    contact_in = d.get('contact') if isinstance(d.get('contact'), dict) else {}
+    phone = norm_phone(_txt(contact_in.get('phone'), 50))
+    email = _txt(contact_in.get('email'), 200)
+    if email and not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        email = None
+    contact = phone or (email.lower() if email else None)
+    if not contact:
+        raise ApiError(400, 'В заявке нет телефона или email', 'contact')
+    ext = f"vidzhitum:{d.get('id')}" if d.get('id') not in (None, '') else None
+    if ext:
+        cur.execute(f"SELECT id FROM {t('crm_leads')} WHERE external_id = %s LIMIT 1", (ext,))
+        row = cur.fetchone()
+        if row:
+            return resp(200, {'ok': True, 'id': row['id'], 'duplicate': True}), None
+
+    widget = d.get('widget') if isinstance(d.get('widget'), dict) else {}
+    site = d.get('site') if isinstance(d.get('site'), dict) else {}
+    det = d.get('details') if isinstance(d.get('details'), dict) else {}
+    wtype = str(widget.get('type') or '')
+    wname = _txt(widget.get('name'), 120) or VZ_WIDGETS.get(wtype) or wtype or 'виджет'
+    lines = []
+    for a in det.get('answers') or []:
+        if isinstance(a, dict) and (a.get('q') or a.get('a')):
+            ans = a.get('a')
+            ans = ', '.join(map(str, ans)) if isinstance(ans, list) else ans
+            lines.append(f"{str(a.get('q') or 'Вопрос').strip()} — {str(ans or '—').strip()}")
+    if det.get('prize'):
+        lines.append(f"Приз: {det['prize']}")
+    if det.get('promo'):
+        lines.append(f"Промокод: {det['promo']}")
+    if email and phone:
+        lines.append(f"Email: {email.lower()}")
+    if d.get('roistat_visit'):
+        lines.append(f"Roistat visit: {d['roistat_visit']}")
+
+    page = _txt(d.get('page'), 500)
+    utm = d.get('utm') if isinstance(d.get('utm'), dict) else {}
+    attr = {k: str(utm[k]).strip()[:ATTR_FIELDS[k]] for k in ('utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term') if utm.get(k)}
+    if page:
+        attr['page_url'] = page
+        attr['landing_url'] = page
+        q = re.search(r'[?&](yclid|gclid|vkclid)=([^&#]+)', page)
+        if q:
+            attr['click_id'] = f'{q.group(1)}:{q.group(2)}'[:250]
+    channel = detect_channel(attr) if (attr.get('utm_source') or attr.get('click_id')) else 'api'
+    paid = channel in ('yandex_direct', 'google_ads', 'vk_ads', 'ads_other')
+    data = {
+        'name': _txt(contact_in.get('name'), 250),
+        'contact': contact,
+        'topic': f'Виджитум: {wname}'[:200],
+        'message': '\n'.join(lines)[:5000] or None,
+        'source': 'ads' if paid else 'site',
+        'status': 'new',
+        'channel': channel,
+        'external_id': ext,
+        **attr,
+        'form': 'vidzhitum',
+        'page_title': _txt(site.get('domain'), 300),
+    }
+    data = {k: v for k, v in data.items() if v is not None}
+    cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING id", list(data.values()))
+    lid = cur.fetchone()['id']
+    parts = [f'Заявка из Виджитума · {wname}', f'канал: {CHANNELS[channel]}']
+    if site.get('domain'):
+        parts.append(f"сайт: {site['domain']}")
+    if attr.get('utm_campaign'):
+        parts.append(f"кампания: {attr['utm_campaign']}")
+    cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'system', %s)", (lid, ' · '.join(parts)))
+    if lead_parse.auto_enabled(cur, t):
+        lead_parse.apply(cur, t, lid)
+    return resp(200, {'ok': True, 'id': lid}), lid
+
+
 def get_item(cur, resource, params):
     table, cols = {'leads': ('crm_leads', LEAD_OUT), 'clients': ('crm_clients', CLIENT_OUT), 'deals': ('crm_deals', DEAL_OUT)}[resource]
     if params.get('id'):
@@ -493,7 +613,7 @@ def ping_push():
 
 
 @logged(
-    lambda e: 'site' if (e.get('queryStringParameters') or {}).get('resource') == 'site_lead' else 'api',
+    lambda e: {'site_lead': 'site', 'vidzhitum': 'vidzhitum'}.get((e.get('queryStringParameters') or {}).get('resource'), 'api'),
     lambda e, r: f"{e.get('httpMethod')} {(e.get('queryStringParameters') or {}).get('resource') or '/'}",
 )
 def handler(event: dict, context) -> dict:
@@ -531,6 +651,14 @@ def handler(event: dict, context) -> dict:
             result = site_lead(cur, event, body if isinstance(body, dict) else {})
             conn.commit()
             if json.loads(result['body']).get('id'):
+                ping_push()
+            return result
+        if resource == 'vidzhitum':
+            if method != 'POST':
+                return resp(200, {'ok': True, 'service': 'vidzhitum-webhook'})
+            result, lid = vidzhitum_lead(cur, event)
+            conn.commit()
+            if lid:
                 ping_push()
             return result
         if resource not in ('leads', 'clients', 'deals', 'ping'):

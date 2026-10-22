@@ -9,7 +9,7 @@ import { fmtMsk } from "@/lib/msk";
 
 type Log = {
   id: number;
-  source: "api" | "site" | "telephony";
+  source: "api" | "site" | "telephony" | "vidzhitum";
   direction: "in" | "out";
   method: string | null;
   action: string | null;
@@ -34,6 +34,7 @@ const SOURCES: Record<string, { label: string; icon: string }> = {
   api: { label: "Внешний API", icon: "Webhook" },
   telephony: { label: "Телефония", icon: "PhoneCall" },
   site: { label: "Формы сайта", icon: "Globe" },
+  vidzhitum: { label: "Виджитум", icon: "MessageSquareDot" },
 };
 
 const dt = (s: string | null, sec = true) =>
@@ -133,7 +134,7 @@ const RequestLogsPage = () => {
         </button>
       </div>
 
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {Object.entries(SOURCES).map(([k, s]) => {
           const st = data?.stats?.[k];
           return (

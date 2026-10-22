@@ -88,6 +88,35 @@
         "ok": true
       },
       "bodyMatcher": "partial"
+    },
+    {
+      "name": "Vidzhitum health",
+      "method": "GET",
+      "path": "/?resource=vidzhitum",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "ok": true
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Vidzhitum bad signature",
+      "method": "POST",
+      "path": "/?resource=vidzhitum",
+      "headers": {
+        "X-Vidzhitum-Signature": "sha256=bad",
+        "X-Vidzhitum-Timestamp": "1791380000"
+      },
+      "body": {
+        "event": "lead.created",
+        "data": {
+          "id": 1,
+          "contact": {
+            "phone": "+79001234567"
+          }
+        }
+      },
+      "expectedStatus": 401
     }
   ]
 }

@@ -108,6 +108,7 @@ export const LEAD_FORMS: Record<string, string> = {
   premium: "Форма PREMIUM",
   article_cta: "Форма в статье",
   lead: "Форма сайта",
+  vidzhitum: "Виджитум",
 };
 
 export const REP_RELATIONS: Record<string, string> = {

@@ -15,7 +15,7 @@ def handle_request_logs(cur, t, params, user, eid, resp):
     hours = {'1h': 1, '6h': 6, '24h': 24}.get(params.get('period') or '')
     if hours:
         where.append(f"l.created_at > NOW() - INTERVAL '{hours} hours'")
-    if params.get('source') in ('api', 'site', 'telephony'):
+    if params.get('source') in ('api', 'site', 'telephony', 'vidzhitum'):
         where.append('l.source = %s')
         args.append(params['source'])
     st = params.get('status')
