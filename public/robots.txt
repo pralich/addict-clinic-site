@@ -2,10 +2,12 @@ User-agent: *
 Allow: /
 Disallow: /admin
 Disallow: /family
+Disallow: /partner
 
 User-agent: Yandex
 Allow: /
 Disallow: /admin
 Disallow: /family
+Disallow: /partner
 
 Sitemap: https://addict.clinic/sitemap.xml

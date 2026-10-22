@@ -18,6 +18,8 @@ import { useCrmMutation, useItem } from "./useCrm";
 import { useAuth } from "./AuthContext";
 import { useNavList } from "./navList";
 import { useSwipeNav } from "./useSwipeNav";
+import PartnerAccessBlock from "./PartnerAccessBlock";
+import PartnerTreatmentBlock from "./PartnerTreatmentBlock";
 
 type Props = {
   resource: string;
@@ -201,6 +203,9 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
 
             {resource === "deals" && <NextPayment deal={item} onEdit={() => setEdit(true)} />}
 
+            {resource === "partners" && user?.role !== "leads_only" && <PartnerAccessBlock partnerId={item.id} />}
+            {resource === "deals" && item.partner_id && user?.role !== "leads_only" && <PartnerTreatmentBlock dealId={item.id} partnerId={item.partner_id} />}
+            {resource === "partners" && user?.role !== "leads_only" && <PartnerTreatmentBlock partnerId={item.id} />}
             {(resource === "deals" || resource === "clients" || resource === "partners") && <BillingBlock resource={resource} item={item} onOpen={onOpen} />}
 
             {data?.related?.deals && (

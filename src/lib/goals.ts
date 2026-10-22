@@ -39,7 +39,7 @@ export const flushGoals = () => {
 };
 
 export const reachGoal = (goal: GoalId, params?: Params) => {
-  if (location.pathname.startsWith("/admin")) return;
+  if (/^\/(admin|partner)/.test(location.pathname)) return;
   queue.push([goal, params]);
   flushGoals();
 };
@@ -73,7 +73,7 @@ export const reachLeadGoal = (form: string) => {
 
 let clicksBound = false;
 export const initGoalClicks = () => {
-  if (clicksBound || location.pathname.startsWith("/admin")) return;
+  if (clicksBound || /^\/(admin|partner)/.test(location.pathname)) return;
   clicksBound = true;
   document.addEventListener("click", (e) => {
     const a = (e.target as HTMLElement)?.closest?.("a");

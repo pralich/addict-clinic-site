@@ -133,7 +133,7 @@ const clearOptionalCookies = () => {
 };
 
 export const applyCookieChoice = () => {
-  if (location.pathname.startsWith("/admin")) return;
+  if (/^\/(admin|partner)/.test(location.pathname)) return;
   startMetrika();
   fetchCounters().then((c) => {
     addMeta("yandex-verification", c.yandex_verification);

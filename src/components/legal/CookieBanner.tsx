@@ -22,7 +22,7 @@ const CookieBanner = () => {
     return () => window.removeEventListener("cookie-settings-open", onOpen);
   }, []);
 
-  if (!open || pathname.startsWith("/admin")) return null;
+  if (!open || /^\/(admin|partner)/.test(pathname)) return null;
 
   const choose = (a: boolean) => {
     saveCookieChoice(a);

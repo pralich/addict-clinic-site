@@ -12,6 +12,7 @@ import CookieBanner from "@/components/legal/CookieBanner";
 import { lazy, Suspense } from "react";
 
 const Admin = lazy(() => import("./pages/Admin"));
+const Partner = lazy(() => import("./pages/Partner"));
 const Premium = lazy(() => import("./pages/Premium"));
 const Articles = lazy(() => import("./pages/Articles"));
 const ArticlePage = lazy(() => import("./pages/ArticlePage"));
@@ -39,6 +40,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/admin" element={<Admin />} />
+          <Route path="/partner" element={<Partner />} />
           <Route path="/premium" element={<Premium />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<ArticlePage />} />

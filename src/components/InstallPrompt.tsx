@@ -68,7 +68,7 @@ const InstallPrompt = () => {
     };
   }, []);
 
-  if (!open || pathname.startsWith("/admin")) return null;
+  if (!open || /^\/(admin|partner)/.test(pathname)) return null;
 
   const close = () => {
     localStorage.setItem(KEY, String(Date.now()));

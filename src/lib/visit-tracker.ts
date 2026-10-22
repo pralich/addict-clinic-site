@@ -106,7 +106,7 @@ const send = (final = false) => {
 };
 
 const onRoute = () => {
-  if (!state || location.pathname.startsWith("/admin")) return;
+  if (!state || /^\/(admin|partner)/.test(location.pathname)) return;
   const path = fullPath();
   const last = state.pages[state.pages.length - 1];
   if (last && last.path === path) return;
@@ -197,7 +197,7 @@ const bind = () => {
 };
 
 export const startVisitTracker = () => {
-  if (started || location.pathname.startsWith("/admin")) return;
+  if (started || /^\/(admin|partner)/.test(location.pathname)) return;
   if (/bot|crawl|spider|headless|lighthouse/i.test(navigator.userAgent)) return;
   started = true;
   state = loadSession();
@@ -205,7 +205,7 @@ export const startVisitTracker = () => {
   bind();
   onRoute();
   window.setInterval(() => {
-    if (state && document.visibilityState === "visible" && !location.pathname.startsWith("/admin")) send();
+    if (state && document.visibilityState === "visible" && !/^\/(admin|partner)/.test(location.pathname)) send();
   }, HEARTBEAT);
 };
 

@@ -1,0 +1,6 @@
+{"tests": [
+  {"name": "Me requires login", "method": "GET", "path": "/?resource=auth", "expectedStatus": 401},
+  {"name": "Wrong login", "method": "POST", "path": "/?resource=auth&action=login", "body": {"email": "nobody@example.com", "password": "123456"}, "expectedStatus": 401},
+  {"name": "Leads require login", "method": "GET", "path": "/?resource=leads", "expectedStatus": 401},
+  {"name": "CRM scope requires login", "method": "GET", "path": "/?resource=access&scope=crm&partner_id=1", "expectedStatus": 401}
+]}

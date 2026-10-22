@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 
 const SRC = "https://xn--b1aeggcy5bi.xn--p1ai/w.js";
 const TOKEN = "wg_0b64aa04c7526147b140453b";
-const isPrivate = (path: string) => path === "/admin" || path.startsWith("/admin/");
+const isPrivate = (path: string) => /^\/(admin|partner)(\/|$)/.test(path);
 
 const SiteWidget = () => {
   const { pathname } = useLocation();
