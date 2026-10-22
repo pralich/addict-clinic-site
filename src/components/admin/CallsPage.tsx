@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import func2url from "../../../backend/func2url.json";
-import { getToken } from "@/lib/crm-api";
+import { CALLS_AUTOSYNC_MIN, syncCalls, useLastAutoSync } from "@/lib/calls-sync";
+import { fmtMskTime } from "@/lib/msk";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
@@ -91,24 +91,12 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
   const qc = useQueryClient();
   const [syncing, setSyncing] = useState(false);
   const [period, setPeriod] = useState<SyncPeriod>("today");
+  const lastSync = useLastAutoSync();
   const sync = async (p: SyncPeriod = period) => {
     setPeriod(p);
     setSyncing(true);
     try {
-      let added = 0, leads = 0, received = 0;
-      for (let i = 0; i < 6; i++) {
-        const res = await fetch(`${(func2url as Record<string, string>).telephony}?cmd=sync`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Auth-Token": getToken() || "" },
-          body: JSON.stringify({ period: p }),
-        });
-        const r = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(r.error || "Не удалось загрузить историю");
-        added += r.added || 0;
-        leads += r.leads_created || 0;
-        received = r.received || 0;
-        if (!r.partial) break;
-      }
+      const { added, leads, received } = await syncCalls(p);
       const label = SYNC_PERIODS[p].toLowerCase();
       toast.success(added ? `За ${label}: загружено новых звонков ${added}${leads ? `, новых лидов ${leads}` : ""}` : `За ${label} новых звонков нет (в АТС: ${received})`);
       qc.invalidateQueries({ queryKey: ["crm", "calls"] });
@@ -126,6 +114,9 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
         <div>
           <h1 className="font-heading text-2xl font-semibold tracking-tight">Журнал звонков</h1>
           <p className="text-sm text-muted-foreground">Входящие и исходящие звонки из Виртуальной АТС МегаФон</p>
+          <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Icon name="Timer" size={12} />Автообновление каждые {CALLS_AUTOSYNC_MIN} мин{lastSync ? ` · последнее в ${fmtMskTime(lastSync)}` : ""}
+          </p>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <div className="flex h-10 overflow-hidden rounded-md bg-primary text-primary-foreground">

@@ -31,6 +31,7 @@ import { ROLES } from "@/components/admin/config";
 import { api } from "@/lib/crm-api";
 import { pingCrmNotify } from "@/lib/crm-push";
 import { useCallAiQueue } from "@/lib/call-ai";
+import { useCallsAutoSync } from "@/lib/calls-sync";
 import { pingBroadcastTick } from "@/lib/broadcast-api";
 import { useSeo } from "@/lib/seo";
 
@@ -104,6 +105,7 @@ const Shell = () => {
   const [openTask, setOpenTask] = useState<number | null>(() => Number(params.get("task")) || null);
   const qc = useQueryClient();
   useCallAiQueue(!!user && !limited);
+  useCallsAutoSync(!!user && !limited);
 
   useEffect(() => {
     if (params.has("page") || params.has("source") || params.has("open") || params.has("task")) setParams({}, { replace: true });
