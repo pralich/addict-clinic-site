@@ -19,7 +19,7 @@ export const markSynced = () => {
 };
 
 export async function syncCalls(period = "today") {
-  let added = 0, leads = 0, received = 0;
+  let added = 0, leads = 0, pending = 0, received = 0;
   for (let i = 0; i < 6; i++) {
     const res = await fetch(`${URL}?cmd=sync`, {
       method: "POST",
@@ -30,11 +30,12 @@ export async function syncCalls(period = "today") {
     if (!res.ok) throw new Error(r.error || "Не удалось загрузить историю");
     added += r.added || 0;
     leads += r.leads_created || 0;
+    pending += r.leads_pending || 0;
     received = r.received || 0;
     if (!r.partial) break;
   }
   markSynced();
-  return { added, leads, received };
+  return { added, leads, pending, received };
 }
 
 export function useCallsAutoSync(enabled: boolean) {

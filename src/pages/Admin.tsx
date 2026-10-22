@@ -134,7 +134,7 @@ const Shell = () => {
     return () => navigator.serviceWorker.removeEventListener("message", onMsg);
   }, [qc]);
 
-  const { data: counters } = useQuery<{ leads: number; questions: number; tasks: number }>({
+  const { data: counters } = useQuery<{ leads: number; questions: number; tasks: number; calls?: number }>({
     queryKey: ["crm", "counters"],
     queryFn: () => { pingCrmNotify(); pingBroadcastTick(); return api({ resource: "counters" }); },
     enabled: !!user,
@@ -142,8 +142,8 @@ const Shell = () => {
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
   });
-  const badges: Record<string, number> = { leads: counters?.leads ?? 0, family: counters?.questions ?? 0, tasks: counters?.tasks ?? 0 };
-  const badgeTotal = badges.leads + badges.family + badges.tasks;
+  const badges: Record<string, number> = { leads: counters?.leads ?? 0, family: counters?.questions ?? 0, tasks: counters?.tasks ?? 0, calls: counters?.calls ?? 0 };
+  const badgeTotal = badges.leads + badges.family + badges.tasks + badges.calls;
 
   useEffect(() => {
     const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };

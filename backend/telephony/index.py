@@ -163,25 +163,17 @@ def handle_history(cur, d):
 
     client, lead = find_contact(cur, d10)
     lead_created = False
-    if not client and not lead and len(d10) >= 10:
-        topic = {'in': 'Входящий звонок', 'out': 'Исходящий звонок'}[direction]
-        if is_missed:
-            topic = 'Пропущенный звонок'
-        cur.execute(f"""INSERT INTO {t('crm_leads')} (name, contact, topic, source, status, channel, form)
-            VALUES (%s, %s, %s, 'phone', 'new', NULL, 'call') RETURNING id, name, client_id""", (None, phone, topic))
-        lead = cur.fetchone()
-        lead_created = True
-        log_activity(cur, 'leads', lead['id'], f'Лид создан автоматически по звонку с {phone}')
+    lead_state = 'pending' if (not client and not lead and len(d10) >= 10) else None
 
     record_url = None
     raw = {k: v for k, v in d.items() if k != 'crm_token'}
     cur.execute(f"""INSERT INTO {t('crm_calls')}
-        (callid, direction, status, phone, phone_digits, pbx_user, ext, group_name, diversion, telnum, started_at, duration, wait, record_source_url, record_url, lead_id, client_id, lead_created, raw)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+        (callid, direction, status, phone, phone_digits, pbx_user, ext, group_name, diversion, telnum, started_at, duration, wait, record_source_url, record_url, lead_id, client_id, lead_created, raw, lead_state)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id""",
         (callid, direction, status[:30], phone[:50], d10, (d.get('user') or '')[:150] or None, (d.get('ext') or '')[:50] or None,
          (d.get('groupRealName') or d.get('group_name') or '')[:200] or None, pretty_phone(d.get('diversion'))[:50] or None,
          pretty_phone(d.get('telnum'))[:50] or None, started, duration, to_int(d.get('wait')) or None, link, record_url,
-         lead['id'] if lead else None, client['id'] if client else None, lead_created, json.dumps(raw, ensure_ascii=False)))
+         lead['id'] if lead else None, client['id'] if client else None, lead_created, json.dumps(raw, ensure_ascii=False), lead_state))
     call_id = cur.fetchone()['id']
     cur.execute(f"UPDATE {t('crm_live_calls')} SET state = 'ended', lead_id = %s, updated_at = NOW() WHERE callid = %s", (lead['id'] if lead else None, callid))
 
@@ -194,7 +186,7 @@ def handle_history(cur, d):
     target = ('clients', client['id']) if client else (('leads', lead['id']) if lead else None)
     if target:
         log_activity(cur, target[0], target[1], text, 'call', direction, result, dur_min)
-    return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, '_record': (call_id, link, callid) if (link and duration > 0) else None})
+    return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, 'lead_pending': bool(lead_state), '_record': (call_id, link, callid) if (link and duration > 0) else None})
 
 
 def handle_event(cur, d):
@@ -269,7 +261,7 @@ def handle_sync(conn, cur, user, d):
     rows = data if isinstance(data, list) else (data.get('data') or data.get('items') or data.get('history') or []) if isinstance(data, dict) else []
     out_log(200, {'count': len(rows), 'sample': rows[:3]})
 
-    added, leads, skipped = 0, 0, 0
+    added, leads, skipped, pending = 0, 0, 0, 0
     partial = False
     for r in rows:
         if time.time() - started > 3.5:
@@ -304,12 +296,14 @@ def handle_sync(conn, cur, user, d):
         added += 1
         if out.get('lead_created'):
             leads += 1
+        if out.get('lead_pending'):
+            pending += 1
     if leads:
         ping_push()
     if added:
         ping_call_ai()
 
-    return resp(200, {'ok': True, 'period': period, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads, 'partial': partial})
+    return resp(200, {'ok': True, 'period': period, 'received': len(rows), 'added': added, 'skipped': skipped, 'leads_created': leads, 'leads_pending': pending, 'partial': partial})
 
 
 def handle_contact(cur, d):

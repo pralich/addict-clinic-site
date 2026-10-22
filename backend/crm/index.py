@@ -810,6 +810,7 @@ def handler(event: dict, context) -> dict:
             q(cur, f"""SELECT
                 (SELECT COUNT(*) FROM {t('crm_leads')} WHERE status = 'new' AND archived_at IS NULL AND trashed_at IS NULL) AS leads,
                 (SELECT COUNT(*) FROM {t('family_questions')} WHERE status = 'new') AS questions,
+                (SELECT COUNT(*) FROM {t('crm_calls')} WHERE lead_state = 'pending' AND lead_id IS NULL AND client_id IS NULL) AS calls,
                 (SELECT COUNT(*) FROM {t('crm_activities')} a WHERE kind = 'task' AND done_at IS NULL AND (assignee_id = %s OR EXISTS (SELECT 1 FROM {t('crm_task_members')} m WHERE m.task_id = a.id AND m.user_id = %s)) AND (due_at IS NULL OR due_at < {MSK_TODAY_START} + INTERVAL '1 day')) AS tasks""", (user['id'], user['id']))
             return resp(200, cur.fetchone())
         if resource == 'dashboard':

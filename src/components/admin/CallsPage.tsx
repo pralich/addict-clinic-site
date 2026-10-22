@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
-import CallAiSheet from "./CallAiSheet";
+import CallAiSheet, { callAi } from "./CallAiSheet";
 import { fmtMsk } from "@/lib/msk";
 
 const SYNC_PERIODS = { today: "Сегодня", yesterday: "Вчера", this_week: "Эту неделю", this_month: "Этот месяц" } as const;
@@ -36,12 +36,17 @@ type Call = {
   ai_applied_at?: string | null;
   ai_status?: string | null;
   ai_fields_count?: number;
+  lead_state?: string | null;
+  ai_target?: boolean | null;
+  ai_target_reason?: string | null;
+  ai_summary?: string | null;
 };
 
-type Resp = { items: Call[]; has_more: boolean; page: number; stats: { today: number; today_in: number; today_missed: number; week_leads: number } };
+type Resp = { items: Call[]; has_more: boolean; page: number; stats: { today: number; today_in: number; today_missed: number; week_leads: number; pending_leads?: number } };
 
 const FILTERS = [
   ["all", "Все"],
+  ["lead_pending", "Ждут решения по лиду"],
   ["in", "Входящие"],
   ["out", "Исходящие"],
   ["missed", "Пропущенные"],
@@ -79,6 +84,7 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
     new_leads: filter === "new_leads" ? 1 : undefined,
     with_record: filter === "with_record" ? 1 : undefined,
     ai_pending: filter === "ai_pending" ? 1 : undefined,
+    lead_pending: filter === "lead_pending" ? 1 : undefined,
   };
   const { data, isLoading } = useQuery<Resp>({
     queryKey: ["crm", "calls", params],
@@ -88,6 +94,21 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
 
   const pick = (f: string) => { setFilter(f); setPage(1); };
 
+  const [deciding, setDeciding] = useState<number | null>(null);
+  const decide = async (c: Call, action: "confirm_lead" | "dismiss_lead") => {
+    setDeciding(c.id);
+    try {
+      const r = await callAi<{ lead_id?: number }>(action, c.id, {});
+      qc.invalidateQueries({ queryKey: ["crm"] });
+      if (action === "confirm_lead" && r.lead_id) toast.success("Лид создан", { action: { label: "Открыть", onClick: () => onOpen("leads", r.lead_id!) } });
+      else toast.success("Отмечено: не лид");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setDeciding(null);
+    }
+  };
+
   const qc = useQueryClient();
   const [syncing, setSyncing] = useState(false);
   const [period, setPeriod] = useState<SyncPeriod>("today");
@@ -96,9 +117,9 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
     setPeriod(p);
     setSyncing(true);
     try {
-      const { added, leads, received } = await syncCalls(p);
+      const { added, pending, received } = await syncCalls(p);
       const label = SYNC_PERIODS[p].toLowerCase();
-      toast.success(added ? `За ${label}: загружено новых звонков ${added}${leads ? `, новых лидов ${leads}` : ""}` : `За ${label} новых звонков нет (в АТС: ${received})`);
+      toast.success(added ? `За ${label}: загружено новых звонков ${added}${pending ? `, с новых номеров ${pending} — ждут решения по лиду` : ""}` : `За ${label} новых звонков нет (в АТС: ${received})`);
       qc.invalidateQueries({ queryKey: ["crm", "calls"] });
       qc.invalidateQueries({ queryKey: ["crm", "dashboard"] });
     } catch (e) {
@@ -149,14 +170,15 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
       </div>
 
       {data?.stats && (
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-5">
           {[
             { icon: "Phone", l: "Звонков за сутки", v: data.stats.today },
             { icon: "PhoneIncoming", l: "Входящих за сутки", v: data.stats.today_in },
             { icon: "PhoneMissed", l: "Пропущено за сутки", v: data.stats.today_missed },
             { icon: "UserPlus", l: "Новых лидов за неделю", v: data.stats.week_leads },
-          ].map((s) => (
-            <div key={s.l} className="flex items-center gap-3 rounded-xl border bg-card p-4">
+            { icon: "UserSearch", l: "Ждут решения по лиду", v: data.stats.pending_leads ?? 0, f: "lead_pending" },
+          ].map((s: { icon: string; l: string; v: number; f?: string }) => (
+            <div key={s.l} onClick={s.f ? () => pick(s.f!) : undefined} className={`flex items-center gap-3 rounded-xl border bg-card p-4 ${s.f ? "cursor-pointer hover:border-primary/40" : ""}`}>
               <Icon name={s.icon} size={20} className="text-primary" />
               <div><p className="text-xs text-muted-foreground">{s.l}</p><p className="font-heading text-xl font-semibold">{s.v}</p></div>
             </div>
@@ -193,7 +215,7 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                     {(name || c.lead_created) && (
                       <div className="mt-0.5 flex min-w-0 items-center gap-2 md:hidden">
                         {name && <span className="min-w-0 truncate text-sm">{name}</span>}
-                        {c.lead_created && <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">Новый лид</span>}
+                        {c.lead_created && <span className="shrink-0 whitespace-nowrap rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary">{c.lead_state === "auto" ? "Лид (ИИ)" : "Новый лид"}</span>}
                       </div>
                     )}
                     <p className="mt-0.5 truncate text-xs text-muted-foreground md:hidden">
@@ -202,7 +224,7 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                     <div className="hidden flex-wrap items-center gap-2 md:flex">
                       <a href={`tel:${c.phone}`} className="font-medium hover:underline">{c.phone || "Скрытый номер"}</a>
                       {name && <span className="truncate text-sm text-muted-foreground">· {name}</span>}
-                      {c.lead_created && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">Новый лид</span>}
+                      {c.lead_created && <span title={c.lead_state === "auto" ? c.ai_target_reason || "" : ""} className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">{c.lead_state === "auto" ? "Лид создан ИИ" : "Новый лид"}</span>}
                     </div>
                     <p className="mt-0.5 hidden text-xs text-muted-foreground md:block">
                       {dt(c.started_at)} · {c.direction === "in" ? "Входящий" : "Исходящий"} · {STATUS[c.status] || c.status}
@@ -220,6 +242,24 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
                       <Icon name={c.ai_applied_at ? "CircleCheck" : c.ai_status === "processing" ? "Loader2" : "Sparkles"} size={14} className={c.ai_status === "processing" && !c.has_summary ? "animate-spin" : ""} />
                       {c.has_summary ? (c.ai_applied_at ? "Резюме" : c.ai_fields_count ? `Одобрить поля · ${c.ai_fields_count}` : "Резюме") : c.ai_status === "processing" ? "Разбираю…" : "ИИ-разбор"}
                     </button>
+                  )}
+                  {!c.lead_id && !c.client_id && (c.lead_state === "pending" || c.lead_state === "not_target") && (
+                    <>
+                      {c.lead_state === "not_target" && (
+                        <span title={c.ai_target_reason || ""} className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground"><Icon name="UserX" size={13} />ИИ: нецелевой</span>
+                      )}
+                      {c.lead_state === "pending" && c.ai_status === "processing" && (
+                        <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs text-muted-foreground"><Icon name="Loader2" size={13} className="animate-spin" />ИИ проверяет</span>
+                      )}
+                      <button onClick={() => decide(c, "confirm_lead")} disabled={deciding === c.id}
+                        className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-60">
+                        <Icon name={deciding === c.id ? "Loader2" : "UserPlus"} size={14} className={deciding === c.id ? "animate-spin" : ""} />Создать лид
+                      </button>
+                      <button onClick={() => decide(c, "dismiss_lead")} disabled={deciding === c.id}
+                        className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70 disabled:opacity-60">
+                        <Icon name="X" size={14} />Не лид
+                      </button>
+                    </>
                   )}
                   {c.client_id ? (
                     <button onClick={() => onOpen("clients", c.client_id!)} className="flex items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70"><Icon name="User" size={14} />Клиент</button>

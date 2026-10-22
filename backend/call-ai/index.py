@@ -16,6 +16,7 @@ SCHEMA = 't_p15395438_addict_clinic_site'
 API = 'https://polza.ai/api/v1'
 STT_MODEL = 'openai/whisper-1'
 LLM_MODEL = 'deepseek/deepseek-v4-flash-0731'
+CRM_PUSH_URL = 'https://functions.poehali.dev/b525b7b2-701a-46d0-9842-7774ed5dcd2a?action=notify'
 
 CORS = {
     'Access-Control-Allow-Origin': '*',
@@ -91,7 +92,7 @@ def load_call(cur, cid):
 
 
 def view(c):
-    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id', 'ai_status', 'ai_error')}
+    return {k: c.get(k) for k in ('id', 'transcript', 'transcribed_at', 'ai_summary', 'ai_fields', 'ai_analyzed_at', 'ai_applied_at', 'lead_id', 'ai_status', 'ai_error', 'lead_state', 'ai_target', 'ai_target_reason', 'phone')}
 
 
 QUEUE = f"""duration > 0 AND COALESCE(record_url, record_source_url) IS NOT NULL AND transcript IS NULL
@@ -169,7 +170,9 @@ def analyze(cur, c):
     prompt = f"""Ты помощник CRM наркологической клиники. Ниже расшифровка телефонного звонка ({'входящий' if c['direction'] == 'in' else 'исходящий'}, номер {c.get('phone') or 'скрыт'}).
 Задачи:
 1. summary — краткое резюме звонка на русском, 3–6 пунктов через перенос строки, каждый с «• »: кто звонил, проблема, о чём договорились, следующий шаг.
-2. fields — значения полей лида, которые ЯВНО следуют из разговора. Не выдумывай. Если данных нет — null.
+2. target — true, если это ЦЕЛЕВОЙ звонок: звонит пациент, его родственник или близкий, который интересуется лечением, реабилитацией, консультацией, ценами, госпитализацией или другими услугами клиники. false — если это не клиент: реклама и продажи, поставщики, соискатели, ошибся номером, спам, автоответчик, тишина, служебный разговор сотрудников, партнёры по делам, не связанным с пациентом.
+3. target_reason — одно короткое предложение, почему target такой.
+4. fields — значения полей лида, которые ЯВНО следуют из разговора. Не выдумывай. Если данных нет — null.
 Поля:
 - name: имя пациента (или как представился звонящий, если он сам пациент)
 - topic: повод обращения, коротко (например «Вывод из запоя», «Кодирование», «Реабилитация»)
@@ -180,7 +183,7 @@ def analyze(cur, c):
 - rep_phone, rep_email, rep_messenger: дополнительные контакты, если продиктованы
 - rep_note: важное о звонящем (удобное время, просьбы)
 Текущие значения в CRM: {json.dumps(current, ensure_ascii=False, default=_ser)}
-Ответ — строго JSON без пояснений: {{"summary": "...", "fields": {{...}}}}
+Ответ — строго JSON без пояснений: {{"summary": "...", "target": true, "target_reason": "...", "fields": {{...}}}}
 
 Расшифровка:
 {c['transcript'][:24000]}"""
@@ -210,8 +213,84 @@ def analyze(cur, c):
             continue
         proposals.append({'field': f, 'label': label, 'current': cur_v, 'proposed': v,
                           'display': STATUSES.get(v) if f == 'status' else RELATIONS.get(v) if f == 'rep_relation' else v})
-    cur.execute(f"UPDATE {t('crm_calls')} SET ai_summary = %s, ai_fields = %s, ai_analyzed_at = NOW() WHERE id = %s",
-                (summary, json.dumps(proposals, ensure_ascii=False), c['id']))
+    target = out.get('target')
+    target = target if isinstance(target, bool) else (str(target).lower() in ('true', '1', 'да', 'yes') if target is not None else None)
+    reason = str(out.get('target_reason') or '').strip()[:500] or None
+    cur.execute(f"UPDATE {t('crm_calls')} SET ai_summary = %s, ai_fields = %s, ai_analyzed_at = NOW(), ai_target = %s, ai_target_reason = %s WHERE id = %s",
+                (summary, json.dumps(proposals, ensure_ascii=False), target, reason, c['id']))
+    if c.get('lead_state') in ('pending', 'not_target') and not c.get('lead_id'):
+        if target is True:
+            values = {p['field']: p['proposed'] for p in proposals}
+            create_lead(cur, load_call(cur, c['id']), values, None, 'auto')
+        elif target is False and c.get('lead_state') == 'pending':
+            cur.execute(f"UPDATE {t('crm_calls')} SET lead_state = 'not_target' WHERE id = %s AND lead_state = 'pending'", (c['id'],))
+    return resp(200, {'item': view(load_call(cur, c['id']))})
+
+
+def ping_push():
+    try:
+        urlopen(CRM_PUSH_URL, timeout=2.5).read()
+    except Exception as e:
+        print(f'crm push ping failed: {e}')
+
+
+def call_topic(c):
+    if c.get('status') == 'missed':
+        return 'Пропущенный звонок'
+    return 'Входящий звонок' if c.get('direction') == 'in' else 'Исходящий звонок'
+
+
+def create_lead(cur, c, values, user, state):
+    """Создаёт лид из звонка. state: auto — по решению ИИ, confirmed — подтвердил менеджер"""
+    cur.execute(f"UPDATE {t('crm_calls')} SET lead_state = 'creating' WHERE id = %s AND lead_id IS NULL AND COALESCE(lead_state, 'pending') NOT IN ('creating', 'auto', 'confirmed') RETURNING id", (c['id'],))
+    if not cur.fetchone():
+        return None
+    if not c.get('phone'):
+        cur.execute(f"UPDATE {t('crm_calls')} SET lead_state = %s WHERE id = %s", (c.get('lead_state') or 'pending', c['id']))
+        raise ValueError('Нет номера, чтобы создать лид')
+    uid = user['id'] if user else None
+    cols = {'contact': c['phone'], 'source': 'phone', 'status': 'new', 'form': 'call', 'topic': call_topic(c), **({'manager_id': uid} if uid else {}), **values}
+    cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) RETURNING id", list(cols.values()))
+    lead_id = cur.fetchone()['id']
+    cur.execute(f"""UPDATE {t('crm_calls')} SET lead_id = %s, lead_created = TRUE, lead_state = %s, lead_decided_by = %s, lead_decided_at = NOW(),
+        ai_applied_at = CASE WHEN %s THEN NOW() ELSE ai_applied_at END WHERE id = %s""", (lead_id, state, uid, bool(values), c['id']))
+    if c.get('phone_digits'):
+        cur.execute(f"""UPDATE {t('crm_calls')} SET lead_id = %s, lead_state = 'merged' WHERE phone_digits = %s AND id <> %s AND lead_id IS NULL AND client_id IS NULL
+            AND lead_state IN ('pending', 'not_target')""", (lead_id, c['phone_digits'], c['id']))
+    why = f"Лид создан автоматически: ИИ признал звонок целевым{(' — ' + c['ai_target_reason']) if c.get('ai_target_reason') else ''}" if state == 'auto' else 'Лид создан из звонка после подтверждения'
+    cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, %s, 'system', %s)", (lead_id, uid, why))
+    dir_text = 'Входящий' if c.get('direction') == 'in' else 'Исходящий'
+    dur = int(c.get('duration') or 0)
+    cur.execute(f"""INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text, done_at, result, direction, duration_min)
+        VALUES ('leads', %s, NULL, 'call', %s, COALESCE(%s, NOW()), %s, %s, %s)""",
+        (lead_id, f"{dir_text} звонок через АТС" + (f", {dur // 60}:{dur % 60:02d}" if dur else ''), c.get('started_at'),
+         'reached' if dur > 0 else 'no_answer', c.get('direction'), max(1, round(dur / 60)) if dur else None))
+    if c.get('ai_summary'):
+        when = (c['started_at'] + timedelta(hours=3)).strftime('%d.%m %H:%M') if c.get('started_at') else ''
+        cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'call', %s)",
+                    (lead_id, f"Резюме звонка {when}:\n{c['ai_summary']}"))
+    ping_push()
+    return lead_id
+
+
+def confirm_lead(cur, c, body, user):
+    if c.get('lead_id') or c.get('client_id'):
+        return resp(200, {'item': view(c), 'lead_id': c.get('lead_id')})
+    values = {}
+    if body.get('use_ai', True):
+        values = {p['field']: p['proposed'] for p in (c.get('ai_fields') or []) if p.get('field') in FIELDS}
+    try:
+        lead_id = create_lead(cur, c, values, user, 'confirmed')
+    except ValueError as e:
+        return resp(400, {'error': str(e)})
+    c = load_call(cur, c['id'])
+    return resp(200, {'item': view(c), 'lead_id': lead_id or c.get('lead_id')})
+
+
+def dismiss_lead(cur, c, user):
+    if c.get('lead_id'):
+        return resp(400, {'error': 'Лид по звонку уже создан'})
+    cur.execute(f"UPDATE {t('crm_calls')} SET lead_state = 'dismissed', lead_decided_by = %s, lead_decided_at = NOW() WHERE id = %s", (user['id'], c['id']))
     return resp(200, {'item': view(load_call(cur, c['id']))})
 
 
@@ -234,12 +313,14 @@ def apply(cur, c, body, user):
     if not lead_id:
         if not c.get('phone'):
             return resp(400, {'error': 'Нет номера, чтобы создать лид'})
-        cols = {'contact': c['phone'], 'source': 'phone', 'form': 'call', 'manager_id': user['id'], **data}
-        cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(cols)}) VALUES ({', '.join(['%s'] * len(cols))}) RETURNING id", list(cols.values()))
-        lead_id = cur.fetchone()['id']
-        cur.execute(f"UPDATE {t('crm_calls')} SET lead_id = %s WHERE id = %s", (lead_id, c['id']))
-        cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, %s, 'system', %s)",
-                    (lead_id, user['id'], 'Лид создан из звонка с помощью ИИ'))
+        try:
+            lead_id = create_lead(cur, c, data, user, 'confirmed')
+        except ValueError as e:
+            return resp(400, {'error': str(e)})
+        if not lead_id:
+            return resp(200, {'item': view(load_call(cur, c['id'])), 'lead_id': load_call(cur, c['id']).get('lead_id')})
+        cur.execute(f"UPDATE {t('crm_calls')} SET ai_applied_at = NOW(), ai_applied_by = %s WHERE id = %s", (user['id'], c['id']))
+        return resp(200, {'item': view(load_call(cur, c['id'])), 'lead_id': lead_id})
     elif data:
         sets = ', '.join(f'{k} = %s' for k in data)
         cur.execute(f"UPDATE {t('crm_leads')} SET {sets}, updated_at = NOW() WHERE id = %s", list(data.values()) + [lead_id])
@@ -302,6 +383,10 @@ def handler(event: dict, context) -> dict:
                 return analyze(cur, c)
             if action == 'apply':
                 return apply(cur, c, body, user)
+            if action == 'confirm_lead':
+                return confirm_lead(cur, c, body, user)
+            if action == 'dismiss_lead':
+                return dismiss_lead(cur, c, user)
             return resp(400, {'error': 'Неизвестное действие'})
         except RuntimeError as e:
             return resp(502, {'error': str(e)})

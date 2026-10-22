@@ -17,11 +17,14 @@ type Ai = {
   lead_id: number | null;
   ai_status?: string | null;
   ai_error?: string | null;
+  lead_state?: string | null;
+  ai_target?: boolean | null;
+  ai_target_reason?: string | null;
 };
 
 const AI_URL = (func2url as Record<string, string>)["call-ai"];
 
-async function callAi<T = { item: Ai }>(action: string, id: number, body?: unknown): Promise<T> {
+export async function callAi<T = { item: Ai }>(action: string, id: number, body?: unknown): Promise<T> {
   if (!AI_URL) throw new Error("ИИ-функция ещё не опубликована");
   const res = await fetch(`${AI_URL}?action=${action}&id=${id}`, {
     method: body === undefined ? "GET" : "POST",
@@ -130,6 +133,19 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
                 <p className="text-sm text-muted-foreground">Резюме ещё не составлено</p>
               )}
             </section>
+
+            {ai.ai_summary && busy !== "analyze" && ai.ai_target != null && (
+              <div className={`flex items-start gap-2 rounded-xl p-3 text-sm ${ai.ai_target ? "bg-emerald-500/10 text-emerald-800" : "bg-secondary text-muted-foreground"}`}>
+                <Icon name={ai.ai_target ? "UserCheck" : "UserX"} size={16} className="mt-0.5 shrink-0" />
+                <p>
+                  <span className="font-medium">{ai.ai_target ? "Целевой звонок" : "Нецелевой звонок"}</span>
+                  {ai.ai_target_reason && <> — {ai.ai_target_reason}</>}
+                  {ai.lead_state === "auto" && <> · лид создан автоматически</>}
+                  {ai.lead_state === "not_target" && <> · лид не создан, можно создать вручную</>}
+                  {ai.lead_state === "dismissed" && <> · отмечен как «не лид»</>}
+                </p>
+              </div>
+            )}
 
             {ai.ai_summary && busy !== "analyze" && (
               <section>
