@@ -67,7 +67,7 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
       { onSuccess: () => { toast.success(item?.archived_at ? "Восстановлено" : "Перемещено в архив"); onClose(); } },
     );
 
-  const canTrash = (resource === "leads" || resource === "clients") && !limited;
+  const canTrash = ["leads", "clients", "deals"].includes(resource) && !limited;
   const trash = () =>
     confirm("Переместить в корзину? Восстановить можно в течение 30 дней.") &&
     mut.mutate(

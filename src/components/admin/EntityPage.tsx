@@ -34,7 +34,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const [sel, setSel] = useState<number[]>([]);
   const [trashOpen, setTrashOpen] = useState(false);
   const mut = useCrmMutation();
-  const canTrash = (resource === "leads" || resource === "clients") && user?.role !== "leads_only";
+  const canTrash = ["leads", "clients", "deals"].includes(resource) && user?.role !== "leads_only";
 
   const params = {
     search: search.trim() || undefined,
@@ -277,7 +277,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
 
       {canTrash && <TrashDialog resource={resource} open={trashOpen} onOpenChange={setTrashOpen} />}
       {canBoard && view === "board" && canTrash && (
-        <p className="-mt-2 text-xs text-muted-foreground">Чтобы удалить несколько лидов сразу, переключитесь в режим «Список».</p>
+        <p className="-mt-2 text-xs text-muted-foreground">Чтобы удалить несколько записей сразу, переключитесь в режим «Список».</p>
       )}
 
       <EntityForm open={creating} onOpenChange={setCreating} title={`Добавить ${def.single}`} fields={def.fields}

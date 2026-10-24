@@ -28,10 +28,12 @@
       (function () {
         var admin = location.pathname === "/admin" || location.pathname.indexOf("/admin/") === 0;
         var family = location.pathname === "/family" || location.pathname.indexOf("/family/") === 0;
+        var partner = location.pathname === "/partner" || location.pathname.indexOf("/partner/") === 0;
+        var noZoom = "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover";
         var c = family
-          ? { manifest: "/family.webmanifest?v=2", icon: "/family-apple-touch-icon.png?v=1", title: "Близкие", bar: "default", theme: "#F3F3F1", png: "/family-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
-          : admin
-          ? { manifest: "/admin.webmanifest?v=3", icon: "/admin-apple-touch-icon.png?v=3", title: "Clinic CRM", bar: "black-translucent", theme: "#1B1B1A", svg: "/admin-favicon.svg", png: "/admin-favicon-32.png", viewport: "width=device-width, initial-scale=1.0, viewport-fit=cover" }
+          ? { manifest: "/family.webmanifest?v=2", icon: "/family-apple-touch-icon.png?v=1", title: "Близкие", bar: "default", theme: "#F3F3F1", png: "/family-favicon-32.png", viewport: noZoom }
+          : admin || partner
+          ? { manifest: "/admin.webmanifest?v=3", icon: "/admin-apple-touch-icon.png?v=3", title: partner ? "Кабинет партнёра" : "Clinic CRM", bar: "black-translucent", theme: "#1B1B1A", svg: "/admin-favicon.svg", png: "/admin-favicon-32.png", viewport: noZoom }
           : { manifest: "/site.webmanifest?v=3", icon: "/apple-touch-icon.png?v=2", title: "addict.clinic", bar: "default", theme: "#F3F3F1" };
         var head = document.head;
         var add = function (tag, attrs) { var el = document.createElement(tag); for (var k in attrs) el.setAttribute(k, attrs[k]); head.appendChild(el); };
@@ -48,6 +50,13 @@
         if (c.png) set('link[rel="icon"][sizes="32x32"]', "href", c.png);
         if (c.viewport) set('meta[name="viewport"]', "content", c.viewport);
         if (family) document.documentElement.className += " boot-family";
+        if (c.viewport === noZoom) {
+          document.documentElement.className += " app-locked";
+          var stop = function (e) { e.preventDefault(); };
+          document.addEventListener("gesturestart", stop, { passive: false });
+          document.addEventListener("gesturechange", stop, { passive: false });
+          document.addEventListener("touchmove", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+        }
       })();
     </script>
     <style>

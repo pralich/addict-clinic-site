@@ -1,5 +1,5 @@
 TRASH_DAYS = 30
-TABLES = {'leads': 'crm_leads', 'clients': 'crm_clients'}
+TABLES = {'leads': 'crm_leads', 'clients': 'crm_clients', 'deals': 'crm_deals'}
 
 
 def _ids(body):
@@ -26,6 +26,9 @@ def destroy(cur, t, entity, ids):
         cur.execute(f"UPDATE {t('crm_calls')} SET lead_id = NULL WHERE lead_id = ANY(%s)", (ids,))
         cur.execute(f"UPDATE {t('crm_deals')} SET lead_id = NULL WHERE lead_id = ANY(%s)", (ids,))
         cur.execute(f"UPDATE {t('crm_live_calls')} SET lead_id = NULL WHERE lead_id = ANY(%s)", (ids,))
+    elif entity == 'deals':
+        for tbl in ('crm_invoices', 'crm_payments', 'crm_fin_ops', 'partner_patients'):
+            cur.execute(f"UPDATE {t(tbl)} SET deal_id = NULL WHERE deal_id = ANY(%s)", (ids,))
     else:
         for tbl in ('crm_calls', 'crm_deals', 'crm_invoices', 'crm_payments', 'crm_leads', 'crm_live_calls'):
             cur.execute(f"UPDATE {t(tbl)} SET client_id = NULL WHERE client_id = ANY(%s)", (ids,))
@@ -45,9 +48,10 @@ def purge_expired(cur, t):
 
 def trash_list(cur, t, entity):
     purge_expired(cur, t)
-    title = 'COALESCE(e.name, e.contact)' if entity == 'leads' else 'e.full_name'
-    sub = 'e.contact' if entity == 'leads' else "COALESCE(e.phone, e.email)"
-    cur.execute(f"""SELECT e.id, {title} AS title, {sub} AS subtitle, e.status, e.trashed_at, u.name AS trashed_by_name,
+    title = {'leads': 'COALESCE(e.name, e.contact)', 'clients': 'e.full_name', 'deals': 'e.title'}[entity]
+    sub = {'leads': 'e.contact', 'clients': "COALESCE(e.phone, e.email)", 'deals': "NULLIF(e.amount, 0)::text"}[entity]
+    status = 'e.stage' if entity == 'deals' else 'e.status'
+    cur.execute(f"""SELECT e.id, {title} AS title, {sub} AS subtitle, {status} AS status, e.trashed_at, u.name AS trashed_by_name,
             GREATEST(0, {TRASH_DAYS} - EXTRACT(DAY FROM NOW() - e.trashed_at))::int AS days_left
         FROM {t(TABLES[entity])} e LEFT JOIN {t('crm_users')} u ON u.id = e.trashed_by
         WHERE e.trashed_at IS NOT NULL ORDER BY e.trashed_at DESC LIMIT 1000""")

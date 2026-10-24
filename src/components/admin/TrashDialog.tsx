@@ -43,7 +43,7 @@ const TrashDialog = ({ resource, open, onOpenChange }: { resource: string; open:
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSel([]); }}>
       <DialogContent className="flex max-h-[85vh] max-w-2xl flex-col">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Icon name="Trash2" size={18} />Корзина · {resource === "leads" ? "лиды" : "клиенты"}</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Icon name="Trash2" size={18} />Корзина · {({ leads: "лиды", clients: "клиенты", deals: "сделки" } as Record<string, string>)[resource]}</DialogTitle>
           <p className="text-sm text-muted-foreground">Записи хранятся {data?.days ?? 30} дней, затем удаляются автоматически.</p>
         </DialogHeader>
 

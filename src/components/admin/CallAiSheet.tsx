@@ -38,9 +38,10 @@ export async function callAi<T = { item: Ai }>(action: string, id: number, body?
   return data;
 }
 
-type Props = { callId: number; title: string; onClose: () => void; onOpenLead: (id: number) => void };
+type Nav = { pos: number; total: number; onPrev?: () => void; onNext?: () => void };
+type Props = { callId: number; title: string; onClose: () => void; onOpenLead: (id: number) => void; nav?: Nav };
 
-const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
+const CallAiSheet = ({ callId, title, onClose, onOpenLead, nav }: Props) => {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["call-ai", callId],
@@ -53,6 +54,12 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
   const [withSummary, setWithSummary] = useState(true);
   const [showText, setShowText] = useState(false);
   const ai = data?.item;
+
+  useEffect(() => {
+    setShowText(false);
+    setWithSummary(true);
+    setBusy("");
+  }, [callId]);
 
   useEffect(() => {
     const p: Record<string, boolean> = {};
@@ -99,7 +106,8 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
 
   return (
     <Sheet open onOpenChange={(v) => !v && onClose()}>
-      <SheetContent className="w-full overflow-y-auto sm:max-w-2xl">
+      <SheetContent className="flex h-[100dvh] w-full flex-col gap-0 overflow-hidden overscroll-none p-0 sm:max-w-2xl">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 pb-4">
         <SheetHeader>
           <p className="flex items-center gap-1.5 text-xs uppercase tracking-wider text-muted-foreground"><Icon name="Sparkles" size={13} />ИИ-разбор звонка</p>
           <SheetTitle className="text-lg">{title}</SheetTitle>
@@ -215,6 +223,21 @@ const CallAiSheet = ({ callId, title, onClose, onOpenLead }: Props) => {
             </section>
           </div>
         )}
+        </div>
+        <div className="relative flex shrink-0 items-center gap-2 border-t bg-background px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <button onClick={nav?.onPrev} disabled={!nav?.onPrev} aria-label="Предыдущий звонок"
+            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-secondary text-sm font-medium hover:bg-secondary/70 disabled:opacity-40">
+            <Icon name="ChevronLeft" size={18} /><span className="hidden sm:inline">Предыдущий</span>
+          </button>
+          <button onClick={onClose} className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-foreground text-sm font-medium text-background hover:opacity-90">
+            <Icon name="X" size={18} />Закрыть
+          </button>
+          <button onClick={nav?.onNext} disabled={!nav?.onNext} aria-label="Следующий звонок"
+            className="flex h-11 flex-1 items-center justify-center gap-1.5 rounded-xl bg-secondary text-sm font-medium hover:bg-secondary/70 disabled:opacity-40">
+            <span className="hidden sm:inline">Следующий</span><Icon name="ChevronRight" size={18} />
+          </button>
+          {nav && nav.total > 1 && <span className="absolute bottom-[calc(100%+0.25rem)] left-1/2 -translate-x-1/2 rounded-full bg-background/90 px-2 text-[11px] text-muted-foreground">{nav.pos} из {nav.total}</span>}
+        </div>
       </SheetContent>
     </Sheet>
   );

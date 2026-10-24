@@ -281,10 +281,17 @@ const CallsPage = ({ onOpen }: { onOpen: (resource: string, id: number) => void 
         </div>
       )}
 
-      {aiCall && (
-        <CallAiSheet callId={aiCall.id} title={`${aiCall.phone || "Скрытый номер"} · ${dt(aiCall.started_at)}`} onClose={() => setAiCall(null)}
-          onOpenLead={(id) => { setAiCall(null); onOpen("leads", id); }} />
-      )}
+      {aiCall && (() => {
+        const list = (data?.items || []).filter((c) => c.record_url && c.duration > 0);
+        const i = list.findIndex((c) => c.id === aiCall.id);
+        const prev = i > 0 ? list[i - 1] : null;
+        const next = i >= 0 && i < list.length - 1 ? list[i + 1] : null;
+        return (
+          <CallAiSheet callId={aiCall.id} title={`${aiCall.phone || "Скрытый номер"} · ${dt(aiCall.started_at)}`} onClose={() => setAiCall(null)}
+            onOpenLead={(id) => { setAiCall(null); onOpen("leads", id); }}
+            nav={{ pos: i + 1, total: list.length, onPrev: prev ? () => setAiCall(prev) : undefined, onNext: next ? () => setAiCall(next) : undefined }} />
+        );
+      })()}
     </div>
   );
 };
