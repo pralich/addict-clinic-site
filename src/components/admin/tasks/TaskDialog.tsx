@@ -8,6 +8,7 @@ import { useOptions } from "../useCrm";
 import { Combo, MultiCombo, field, useBillingReload } from "../billing/shared";
 import { ENTITY_LINKS, PRIORITIES, type Task } from "./shared";
 import { Comments, ResultBlock } from "./TaskDiscussion";
+import TaskFiles, { uploadTaskFile } from "./TaskFiles";
 import { fmtMsk, fromMskInput, mskAt, toMskInput } from "@/lib/msk";
 
 const at = (days: number, hour = 10) => toMskInput(mskAt(days, hour));
@@ -36,6 +37,13 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
   const [entityId, setEntityId] = useState<number | null>(src.entity_id ?? null);
   const [busy, setBusy] = useState(false);
 
+  const [pending, setPending] = useState<File[]>([]);
+  const addPending = (list: FileList | null) => {
+    const arr = Array.from(list || []);
+    const big = arr.filter((f) => f.size > 20 * 1024 * 1024);
+    if (big.length) toast.error(`Больше 20 МБ: ${big.map((f) => f.name).join(", ")}`);
+    setPending((p) => [...p, ...arr.filter((f) => f.size <= 20 * 1024 * 1024)]);
+  };
   const people = (opts?.users || []).map((u) => ({ ...u, name: u.id === user?.id ? `${u.name} (я)` : u.name }));
   const link = ENTITY_LINKS.find((l) => l.value === entityType);
   const entityItems = link ? ((opts?.[link.opt] as { id: number; name: string }[]) || []) : [];
@@ -51,7 +59,13 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
         due_at: due ? fromMskInput(due).toISOString() : null,
         entity_type: entityType || null, entity_id: entityType ? entityId : null,
       };
-      await api({ resource: "tasks", id: task?.id }, task ? "PUT" : "POST", body);
+      const r = await api<{ id?: number }>({ resource: "tasks", id: task?.id }, task ? "PUT" : "POST", body);
+      if (!task && r.id && pending.length) {
+        for (const f of pending) {
+          await uploadTaskFile(r.id, f)
+            .catch((err) => toast.error(`«${f.name}»: ${(err as Error).message}`));
+        }
+      }
       toast.success(task ? "Задача обновлена" : "Задача поставлена");
       reload();
       onClose();
@@ -126,10 +140,31 @@ const TaskDialog = ({ task, preset, onClose }: Props) => {
             {link && <Combo value={entityId} onChange={setEntityId} items={entityItems} placeholder={`Выберите: ${link.label.toLowerCase()}`} />}
           </div>
 
+          {!task && (
+            <div className="text-sm">
+              <span className="mb-1 block font-medium">Файлы</span>
+              {pending.length > 0 && (
+                <ul className="mb-2 flex flex-col gap-1">
+                  {pending.map((f, i) => (
+                    <li key={`${f.name}-${i}`} className="flex items-center gap-2 rounded-lg bg-secondary/60 px-3 py-1.5 text-xs">
+                      <Icon name="Paperclip" size={12} className="shrink-0 text-muted-foreground" /><span className="truncate">{f.name}</span>
+                      <button type="button" onClick={() => setPending((p) => p.filter((_, j) => j !== i))} className="ml-auto text-muted-foreground hover:text-primary" aria-label="Убрать"><Icon name="X" size={12} /></button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-full bg-secondary px-3 py-1.5 text-xs font-medium hover:bg-secondary/70">
+                <Icon name="Paperclip" size={13} />Прикрепить файлы
+                <input type="file" multiple hidden onChange={(e) => { addPending(e.target.files); e.target.value = ""; }} />
+              </label>
+            </div>
+          )}
+
           <button disabled={busy} className="inline-flex h-11 items-center justify-center gap-2 rounded-full bg-primary font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60">
             {busy && <Icon name="Loader2" size={16} className="animate-spin" />}{task ? "Сохранить изменения" : "Поставить задачу"}
           </button>
         </form>
+        {task && <div className="border-t pt-4"><TaskFiles taskId={task.id} authorId={task.user_id} /></div>}
         {task && <div className="border-t pt-4"><Comments taskId={task.id} /></div>}
       </DialogContent>
     </Dialog>

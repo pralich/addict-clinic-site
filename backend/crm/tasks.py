@@ -1,3 +1,9 @@
+import base64
+import binascii
+import os
+import re
+import uuid
+from urllib.parse import quote
 from datetime import datetime
 
 from msk import MSK_TODAY, msk
@@ -63,6 +69,7 @@ def list_tasks(cur, t, params, user):
     cur.execute(f"""SELECT a.id, a.entity_type, a.entity_id, a.text, a.details, a.priority, a.due_at, a.done_at, a.created_at,
             a.user_id, u.name AS author_name, a.assignee_id, s.name AS assignee_name, a.result_text,
             (SELECT COUNT(*) FROM {t('crm_task_comments')} c WHERE c.task_id = a.id) AS comments_count,
+            (SELECT COUNT(*) FROM {t('crm_task_files')} tf WHERE tf.task_id = a.id) AS files_count,
             (SELECT COALESCE(json_agg(json_build_object('id', mu.id, 'name', mu.name) ORDER BY mu.name), '[]'::json) FROM {t('crm_task_members')} m JOIN {t('crm_users')} mu ON mu.id = m.user_id WHERE m.task_id = a.id) AS members,
             {_title_sql(t)} AS entity_title
         FROM {t('crm_activities')} a
@@ -172,7 +179,105 @@ def get_task(cur, t, eid):
         item['entity_type'], item['entity_id'] = None, None
     cur.execute(f"""SELECT c.id, c.text, c.created_at, c.user_id, u.name AS user_name FROM {t('crm_task_comments')} c
         LEFT JOIN {t('crm_users')} u ON u.id = c.user_id WHERE c.task_id = %s ORDER BY c.created_at""", (eid,))
-    return 200, {'item': item, 'comments': cur.fetchall()}
+    comments = cur.fetchall()
+    return 200, {'item': item, 'comments': comments, 'files': list_files(cur, t, eid)}
+
+
+MAX_FILE = 20 * 1024 * 1024
+BLOCKED_EXT = ('exe', 'bat', 'cmd', 'com', 'msi', 'scr', 'js', 'vbs', 'ps1', 'sh', 'apk', 'jar', 'html', 'htm', 'svg')
+
+
+def _s3():
+    import boto3
+    return boto3.client('s3', endpoint_url='https://bucket.poehali.dev', aws_access_key_id=os.environ['AWS_ACCESS_KEY_ID'], aws_secret_access_key=os.environ['AWS_SECRET_ACCESS_KEY'])
+
+
+def list_files(cur, t, task_id):
+    cur.execute(f"""SELECT f.id, f.name, f.url, f.size, f.content_type, f.created_at, f.user_id, u.name AS user_name
+        FROM {t('crm_task_files')} f LEFT JOIN {t('crm_users')} u ON u.id = f.user_id WHERE f.task_id = %s ORDER BY f.created_at""", (task_id,))
+    return cur.fetchall()
+
+
+def _decode(data):
+    data = data or ''
+    if ',' in data[:200]:
+        data = data.split(',', 1)[1]
+    try:
+        return base64.b64decode(data)
+    except (ValueError, binascii.Error):
+        return None
+
+
+def upload_chunk(cur, t, eid, body, user):
+    upload_id = str(body.get('upload_id') or '')
+    idx = body.get('index')
+    if not re.fullmatch(r'[a-f0-9]{32}', upload_id) or not isinstance(idx, int) or not 0 <= idx < 20:
+        return 400, {'error': 'Неверная часть файла'}
+    raw = _decode(body.get('file'))
+    if not raw:
+        return 400, {'error': 'Пустая часть файла'}
+    _s3().put_object(Bucket='files', Key=f'tasks/tmp/{eid}/{user["id"]}/{upload_id}/{idx:02d}', Body=raw)
+    return 200, {'ok': True}
+
+
+def add_file(cur, t, eid, body, user):
+    cur.execute(f"SELECT id FROM {t('crm_activities')} WHERE id = %s AND kind = 'task'", (eid,))
+    if not cur.fetchone():
+        return 404, {'error': 'Задача не найдена'}
+    name = re.sub(r'[\\/\x00-\x1f]', '_', _clean(body.get('name'), 200) or 'file')
+    ext = name.rsplit('.', 1)[-1].lower() if '.' in name else ''
+    if ext in BLOCKED_EXT:
+        return 400, {'error': 'Такой тип файла загружать нельзя'}
+    if body.get('upload_id'):
+        upload_id, parts = str(body['upload_id']), body.get('parts')
+        if not re.fullmatch(r'[a-f0-9]{32}', upload_id) or not isinstance(parts, int) or not 0 < parts <= 20:
+            return 400, {'error': 'Неверная загрузка'}
+        s3, prefix, chunks = _s3(), f'tasks/tmp/{eid}/{user["id"]}/{upload_id}/', []
+        for i in range(parts):
+            try:
+                chunks.append(s3.get_object(Bucket='files', Key=f'{prefix}{i:02d}')['Body'].read())
+            except Exception:
+                return 400, {'error': 'Не все части файла загрузились, попробуйте ещё раз'}
+        raw = b''.join(chunks)
+        for i in range(parts):
+            try:
+                s3.delete_object(Bucket='files', Key=f'{prefix}{i:02d}')
+            except Exception as e:
+                print(f'chunk cleanup failed: {e}')
+    else:
+        raw = _decode(body.get('file'))
+        if raw is None:
+            return 400, {'error': 'Файл повреждён'}
+    if not raw:
+        return 400, {'error': 'Пустой файл'}
+    if len(raw) > MAX_FILE:
+        return 400, {'error': 'Файл больше 20 МБ'}
+    ctype = (_clean(body.get('contentType'), 150) or 'application/octet-stream').lower()
+    if 'html' in ctype or 'javascript' in ctype or 'svg' in ctype:
+        ctype = 'application/octet-stream'
+    key = f"tasks/{eid}/{uuid.uuid4().hex}{'.' + ext if ext else ''}"
+    _s3().put_object(Bucket='files', Key=key, Body=raw, ContentType=ctype,
+                     ContentDisposition=f"attachment; filename*=UTF-8''{quote(name)}")
+    url = f"https://cdn.poehali.dev/projects/{os.environ['AWS_ACCESS_KEY_ID']}/bucket/{key}"
+    cur.execute(f"""INSERT INTO {t('crm_task_files')} (task_id, user_id, name, url, s3_key, size, content_type) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (eid, user['id'], name, url, key, len(raw), ctype))
+    cur.execute(f"INSERT INTO {t('crm_task_comments')} (task_id, user_id, text) VALUES (%s, %s, %s)", (eid, user['id'], f'📎 Прикреплён файл: {name}'))
+    return 200, {'ok': True, 'files': list_files(cur, t, eid), 'ping': True}
+
+
+def delete_file(cur, t, fid, user):
+    cur.execute(f"SELECT f.id, f.user_id, f.s3_key, a.user_id AS author_id FROM {t('crm_task_files')} f JOIN {t('crm_activities')} a ON a.id = f.task_id WHERE f.id = %s", (fid,))
+    row = cur.fetchone()
+    if not row:
+        return 404, {'error': 'Файл не найден'}
+    if user['id'] not in (row['user_id'], row['author_id']) and user['role'] != 'admin':
+        return 403, {'error': 'Удалить может тот, кто загрузил файл, автор задачи или администратор'}
+    cur.execute(f"DELETE FROM {t('crm_task_files')} WHERE id = %s", (fid,))
+    try:
+        _s3().delete_object(Bucket='files', Key=row['s3_key'])
+    except Exception as e:
+        print(f'task file s3 delete failed: {e}')
+    return 200, {'ok': True}
 
 
 def add_comment(cur, t, eid, body, user):
@@ -204,6 +309,9 @@ def delete_task(cur, t, eid, user):
         return 404, {'error': 'Задача не найдена'}
     if row['user_id'] != user['id'] and user['role'] != 'admin':
         return 403, {'error': 'Удалить может только автор задачи или администратор'}
+    cur.execute(f"SELECT id FROM {t('crm_task_files')} WHERE task_id = %s", (eid,))
+    for f in cur.fetchall():
+        delete_file(cur, t, f['id'], {'id': 0, 'role': 'admin'})
     cur.execute(f"DELETE FROM {t('crm_task_comments')} WHERE task_id = %s", (eid,))
     cur.execute(f"DELETE FROM {t('crm_task_members')} WHERE task_id = %s", (eid,))
     cur.execute(f"DELETE FROM {t('crm_activities')} WHERE id = %s", (eid,))
@@ -212,6 +320,28 @@ def delete_task(cur, t, eid, user):
 
 def handle_tasks(cur, t, method, params, body, user, eid, resp, ping=None):
     action = params.get('action')
+    if user.get('role') == 'leads_only' and action in ('comments', 'files', 'file_chunk') and eid:
+        tbl = {'comments': 'crm_task_comments', 'files': 'crm_task_files', 'file_chunk': 'crm_task_files'}[action]
+        tid = eid
+        if method == 'DELETE':
+            cur.execute(f"SELECT task_id FROM {t(tbl)} WHERE id = %s", (eid,))
+            tid = (cur.fetchone() or {}).get('task_id')
+        cur.execute(f"SELECT entity_type FROM {t('crm_activities')} WHERE id = %s", (tid,))
+        row = cur.fetchone()
+        if row and row['entity_type'] not in ('leads', NONE):
+            return resp(403, {'error': 'Нет доступа'})
+    if action == 'file_chunk' and method == 'POST' and eid:
+        return resp(*upload_chunk(cur, t, eid, body, user))
+    if action == 'files':
+        if method == 'POST' and eid:
+            code, data = add_file(cur, t, eid, body, user)
+        elif method == 'DELETE' and eid:
+            code, data = delete_file(cur, t, eid, user)
+        else:
+            return resp(400, {'error': 'Неверный запрос'})
+        if data.pop('ping', None) and ping:
+            ping()
+        return resp(code, data)
     if action == 'comments':
         if method == 'POST' and eid:
             code, data = add_comment(cur, t, eid, body, user)

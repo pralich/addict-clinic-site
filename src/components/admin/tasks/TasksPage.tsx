@@ -154,7 +154,8 @@ const TasksPage = ({ onOpen, openTask, onTaskOpened }: { onOpen: (resource: stri
                         <span className={`inline-flex shrink-0 items-center gap-1 ${due.cls}`}><Icon name="Clock" size={12} />{due.label}</span>
                         <span className="inline-flex min-w-0 items-center gap-1"><Icon name="User" size={12} className="shrink-0" /><span className="truncate">{who}</span></span>
                         {!!t.members?.length && <span className="inline-flex shrink-0 items-center gap-0.5"><Icon name="Users" size={12} />+{t.members.length}</span>}
-                        {Number(t.comments_count) > 0 && <span className="ml-auto inline-flex shrink-0 items-center gap-1"><Icon name="MessageSquare" size={12} />{t.comments_count}</span>}
+                        {Number(t.files_count) > 0 && <span className="ml-auto inline-flex shrink-0 items-center gap-1"><Icon name="Paperclip" size={12} />{t.files_count}</span>}
+                        {Number(t.comments_count) > 0 && <span className={`${Number(t.files_count) > 0 ? "" : "ml-auto "}inline-flex shrink-0 items-center gap-1`}><Icon name="MessageSquare" size={12} />{t.comments_count}</span>}
                       </div>
                       {ent && t.entity_id ? (
                         <button onClick={(e) => { e.stopPropagation(); onOpen(t.entity_type!, t.entity_id!); }}
@@ -187,6 +188,7 @@ const TasksPage = ({ onOpen, openTask, onTaskOpened }: { onOpen: (resource: stri
                           </span>
                         )}
                         {t.user_id !== t.assignee_id && t.author_name && <span className="inline-flex items-center gap-1"><Icon name="Send" size={12} />от {t.user_id === user?.id ? "меня" : t.author_name}</span>}
+                        {Number(t.files_count) > 0 && <span className="inline-flex items-center gap-1"><Icon name="Paperclip" size={12} />{t.files_count}</span>}
                         {Number(t.comments_count) > 0 && <span className="inline-flex items-center gap-1"><Icon name="MessageSquare" size={12} />{t.comments_count}</span>}
                         {t.result_text && <span className="inline-flex items-center gap-1 text-emerald-700"><Icon name="ClipboardCheck" size={12} />есть результат</span>}
                       </p>
