@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { Link, useLocation } from "react-router-dom";
 import { LOGO_URL, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 import { TREATMENTS } from "@/lib/treatments";
+import { SERVICES } from "@/lib/services";
 
 type Item = { href: string; label: string; icon: string; hint?: string };
 type Group = { label: string; items?: Item[]; href?: string };
@@ -15,6 +16,13 @@ const MENU: Group[] = [
       ...TREATMENTS.map((t) => ({ href: t.path, label: t.menu, icon: t.icon, hint: t.hint })),
       { href: "#methods", label: "Методы лечения", icon: "Pill", hint: "Детокс, терапия, реабилитация" },
       { href: "#steps", label: "Как обратиться", icon: "Route", hint: "Шаги от звонка до лечения" },
+    ],
+  },
+  {
+    label: "Услуги и цены",
+    items: [
+      ...SERVICES.map((s) => ({ href: s.path, label: s.menu, icon: s.icon, hint: s.hint })),
+      { href: "/uslugi", label: "Все услуги и цены", icon: "Receipt", hint: "Полный прайс-лист" },
     ],
   },
   {
@@ -77,7 +85,7 @@ const Header = () => {
   }, []);
 
   useEffect(() => {
-    if (pathname !== "/") return setActive(pathname.startsWith("/articles") ? "articles" : pathname.startsWith("/shop") ? "shop" : pathname.startsWith("/lechenie") ? pathname : "");
+    if (pathname !== "/") return setActive(pathname.startsWith("/articles") ? "articles" : pathname.startsWith("/shop") ? "shop" : pathname.startsWith("/lechenie") || pathname.startsWith("/uslugi") ? pathname : "");
     const obs = new IntersectionObserver(
       (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
       { rootMargin: "-45% 0px -50% 0px" }

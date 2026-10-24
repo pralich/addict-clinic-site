@@ -7,6 +7,7 @@ export const GOALS = [
   { id: "lead_contacts", title: "Заявка — форма «Контакты»", hint: "Главная страница" },
   { id: "lead_premium", title: "Заявка — PREMIUM", hint: "Страница /premium" },
   { id: "lead_treatment", title: "Заявка — страница лечения", hint: "/lechenie/…" },
+  { id: "lead_service", title: "Заявка — страница услуги", hint: "/uslugi/…" },
   { id: "lead_article", title: "Заявка — форма в статье", hint: "/articles/…" },
   { id: "phone_click", title: "Клик по телефону", hint: "Любая ссылка tel:" },
   { id: "messenger_click", title: "Клик по любому мессенджеру", hint: "WhatsApp, Telegram, MAX" },
@@ -60,6 +61,7 @@ const leadGoal = (form: string): GoalId | null => {
   if (form === "premium") return "lead_premium";
   if (form === "article_cta") return "lead_article";
   if (form.startsWith("treatment_")) return "lead_treatment";
+  if (form.startsWith("service_")) return "lead_service";
   return null;
 };
 

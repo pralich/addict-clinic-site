@@ -1,3 +1,4 @@
+import { SERVICES } from "@/lib/services";
 import { TREATMENTS } from "@/lib/treatments";
 import Icon from "@/components/ui/icon";
 import {
@@ -13,7 +14,7 @@ import { openCookieSettings } from "@/lib/cookie-consent";
 
 const Footer = () => (
   <footer className="border-t border-border bg-background">
-    <div className="mx-auto grid max-w-site gap-8 px-5 py-12 md:grid-cols-2 md:px-16 lg:grid-cols-[1.2fr_1fr_1fr_1fr]">
+    <div className="mx-auto grid max-w-site gap-8 px-5 py-12 md:grid-cols-2 md:px-16 lg:grid-cols-[1.2fr_1fr_1fr_1fr_1fr]">
       <div>
         <Logo />
         <p className="mt-4 max-w-[320px] text-[0.92em] leading-relaxed text-muted-foreground">
@@ -25,6 +26,12 @@ const Footer = () => (
         <a href="/lechenie" className="w-fit font-medium hover:text-primary">Лечение</a>
         {TREATMENTS.map((t) => (
           <a key={t.slug} href={t.path} className="w-fit text-muted-foreground hover:text-foreground story-link">{t.menu}</a>
+        ))}
+      </nav>
+      <nav className="flex flex-col gap-2 text-[0.95em]">
+        <a href="/uslugi" className="w-fit font-medium hover:text-primary">Услуги и цены</a>
+        {SERVICES.map((s) => (
+          <a key={s.slug} href={s.path} className="w-fit text-muted-foreground hover:text-foreground story-link">{s.menu}</a>
         ))}
       </nav>
       <nav className="grid grid-cols-2 content-start gap-2 text-[0.95em]">

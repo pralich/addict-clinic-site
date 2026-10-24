@@ -20,6 +20,8 @@ const Family = lazy(() => import("./pages/Family"));
 const Shop = lazy(() => import("./pages/Shop"));
 const Treatments = lazy(() => import("./pages/Treatments"));
 const TreatmentPage = lazy(() => import("./pages/TreatmentPage"));
+const Services = lazy(() => import("./pages/Services"));
+const ServicePage = lazy(() => import("./pages/ServicePage"));
 const PrivacyPolicy = lazy(() => import("./pages/legal/PrivacyPolicy"));
 const Consent = lazy(() => import("./pages/legal/Consent"));
 const Offer = lazy(() => import("./pages/legal/Offer"));
@@ -48,6 +50,8 @@ const App = () => (
           <Route path="/shop" element={<Shop />} />
           <Route path="/lechenie" element={<Treatments />} />
           <Route path="/lechenie/:slug" element={<TreatmentPage />} />
+          <Route path="/uslugi" element={<Services />} />
+          <Route path="/uslugi/:slug" element={<ServicePage />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           <Route path="/consent" element={<Consent />} />
           <Route path="/offer" element={<Offer />} />
