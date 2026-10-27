@@ -1,12 +1,12 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { Link } from "@/lib/router-compat";
+import { Link } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import Reveal from "@/components/clinic/Reveal";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { sendPublicLead } from "@/lib/crm-api";
 import ConsentCheckbox from "@/components/legal/ConsentCheckbox";
 import { LEGAL_LINKS, ORG } from "@/lib/legal";
-import { SITE_URL, type SeoInput } from "@/lib/seo";
+import { SITE_URL, useSeo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
 const PREMIUM_LD = graph(
@@ -170,15 +170,14 @@ const PremiumForm = () => {
   );
 };
 
-export const SEO: SeoInput = {
-  title: "VIP-лечение зависимостей анонимно — addict.clinic PREMIUM",
-  description: "Премиальная программа лечения зависимостей: абсолютная анонимность с гарантией в договоре, врачи с мировым именем, частная резиденция с люксами, SPA и личным куратором.",
-  path: "/premium",
-  image: "/og-premium.jpg",
-  jsonLd: PREMIUM_LD,
-};
-
 const Premium = () => {
+  useSeo({
+    title: "VIP-лечение зависимостей анонимно — addict.clinic PREMIUM",
+    description: "Премиальная программа лечения зависимостей: абсолютная анонимность с гарантией в договоре, врачи с мировым именем, частная резиденция с люксами, SPA и личным куратором.",
+    path: "/premium",
+    image: "/og-premium.jpg",
+    jsonLd: PREMIUM_LD,
+  });
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);

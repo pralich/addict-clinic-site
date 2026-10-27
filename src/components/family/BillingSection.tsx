@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "@/lib/router-compat";
+import { useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { useToast } from "@/hooks/use-toast";
 import { familyApi, fmtDateTime, fmtNum, fmtRub, type BillingOrder } from "@/lib/family-api";

@@ -59,27 +59,3 @@ export const useSeo = ({ title, description, path, image = "/og-image.jpg?v=3", 
     return () => document.getElementById("page-jsonld")?.remove();
   }, [title, description, path, image, noindex, jsonLd]);
 };
-
-export type SeoInput = Seo;
-
-// Те же теги, что ставит useSeo, но для head() маршрута: попадают в HTML ещё на сервере.
-export const seoHead = ({ title, description, path, image = "/og-image.jpg?v=3", noindex, jsonLd }: Seo) => {
-  const url = SITE_URL + path;
-  const img = image.startsWith("http") ? image : SITE_URL + image;
-  return {
-    meta: [
-      { title },
-      { name: "description", content: description },
-      { name: "robots", content: noindex ? "noindex, nofollow" : "index, follow, max-image-preview:large" },
-      { property: "og:title", content: title },
-      { property: "og:description", content: description },
-      { property: "og:url", content: url },
-      { property: "og:image", content: img },
-      { name: "twitter:title", content: title },
-      { name: "twitter:description", content: description },
-      { name: "twitter:image", content: img },
-    ],
-    links: [{ rel: "canonical", href: url }],
-    scripts: jsonLd ? [{ type: "application/ld+json", children: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }] : [],
-  };
-};

@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, useLocation } from "@/lib/router-compat";
+import { Link, useLocation } from "react-router-dom";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import Icon from "@/components/ui/icon";

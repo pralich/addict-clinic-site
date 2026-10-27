@@ -1,0 +1,2 @@
+ALTER TABLE t_p15395438_addict_clinic_site.family_users ADD COLUMN IF NOT EXISTS trial_ends_at TIMESTAMP NULL;
+UPDATE t_p15395438_addict_clinic_site.family_users SET trial_ends_at = NOW() + INTERVAL '3 days' WHERE trial_ends_at IS NULL;

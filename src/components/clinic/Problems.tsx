@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link } from "@/lib/router-compat";
+import { Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { fetchArticles } from "@/lib/articles";
 import Icon from "@/components/ui/icon";

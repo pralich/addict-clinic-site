@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { Link, useLocation } from "@/lib/router-compat";
+import { Link, useLocation } from "react-router-dom";
 import { LOGO_URL, PHONE_DISPLAY, PHONE_HREF } from "./contacts";
 import { TREATMENTS } from "@/lib/treatments";
 import { SERVICES } from "@/lib/services";

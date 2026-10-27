@@ -1,0 +1,1 @@
+UPDATE t_p15395438_addict_clinic_site.crm_leads SET archived_at = NOW(), status = 'rejected' WHERE id = 3 AND contact = '+70000000001';

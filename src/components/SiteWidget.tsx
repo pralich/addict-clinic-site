@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useLocation } from "@/lib/router-compat";
+import { useLocation } from "react-router-dom";
 
 const SRC = "https://xn--b1aeggcy5bi.xn--p1ai/w.js";
 const TOKEN = "wg_0b64aa04c7526147b140453b";

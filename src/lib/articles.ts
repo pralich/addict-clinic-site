@@ -57,8 +57,8 @@ async function req<T>(params: Record<string, string | number | undefined>, metho
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && v !== "" && qs.set(k, String(v)));
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = auth ? getToken() : null;
-  if (token) headers["X-Auth-Token"] = token;
+  const token = getToken();
+  if (auth && token) headers["X-Auth-Token"] = token;
   const res = await fetch(`${URL}?${qs}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || "Ошибка запроса");
@@ -67,8 +67,6 @@ async function req<T>(params: Record<string, string | number | undefined>, metho
 
 export const fetchArticles = (category?: string) => req<{ items: Article[] }>({ category });
 export const fetchArticle = (slug: string) => req<{ item: Article; related: Article[] }>({ slug });
-// Для загрузки страницы на сервере: без учёта просмотра (его считает запрос из браузера).
-export const fetchArticleForRender = (slug: string) => req<{ item: Article; related: Article[] }>({ slug, prerender: 1 });
 
 export const adminArticles = {
   list: (search?: string, status?: string) => req<{ items: Article[] }>({ action: "admin", search, status }, "GET", undefined, true),

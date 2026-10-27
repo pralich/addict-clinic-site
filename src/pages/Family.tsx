@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "@/lib/router-compat";
+import { Link, useSearchParams } from "react-router-dom";
 import Icon from "@/components/ui/icon";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { LOGO_URL, PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
@@ -14,7 +14,7 @@ import TrialBanner from "@/components/family/TrialBanner";
 import PushCard from "@/components/family/PushCard";
 import FamilyInstall from "@/components/family/FamilyInstall";
 import { RELATIONS, fmtNum } from "@/lib/family-api";
-import type { SeoInput } from "@/lib/seo";
+import { useSeo } from "@/lib/seo";
 import Splash from "@/components/admin/Splash";
 
 const NAV = [
@@ -179,15 +179,14 @@ const FamilySplash = () => {
   );
 };
 
-export const SEO: SeoInput = {
-  title: "Кабинет для родственников зависимых — addict.clinic",
-  description: "Бесплатный личный кабинет для близких зависимых: вопросы психологу, группы поддержки и вебинары, ИИ-психолог для подготовки разговора о лечении.",
-  path: "/family",
-  image: "/og-family.jpg?v=1",
-  noindex: true,
-};
-
 const Family = () => {
+  useSeo({
+    title: "Кабинет для родственников зависимых — addict.clinic",
+    description: "Бесплатный личный кабинет для близких зависимых: вопросы психологу, группы поддержки и вебинары, ИИ-психолог для подготовки разговора о лечении.",
+    path: "/family",
+    image: "/og-family.jpg?v=1",
+    noindex: true,
+  });
   return (
     <FamilyAuthProvider>
       <Shell />
