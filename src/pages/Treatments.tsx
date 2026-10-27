@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { TREATMENTS } from "@/lib/treatments";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type SeoInput } from "@/lib/seo";
 import { clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
 const LD = graph(
@@ -26,13 +26,14 @@ const LD = graph(
   }),
 );
 
+export const SEO: SeoInput = {
+  title: "Лечение зависимостей в Москве анонимно 24/7 — addict.clinic",
+  description: "Анонимное лечение наркомании, алкоголизма, игромании, игровой зависимости и РПП в Москве. Выезд врача 24/7, стационар, реабилитация, психотерапия. Звоните: 8-800-222-11-25.",
+  path: "/lechenie",
+  jsonLd: LD,
+};
+
 const Treatments = () => {
-  useSeo({
-    title: "Лечение зависимостей в Москве анонимно 24/7 — addict.clinic",
-    description: "Анонимное лечение наркомании, алкоголизма, игромании, игровой зависимости и РПП в Москве. Выезд врача 24/7, стационар, реабилитация, психотерапия. Звоните: 8-800-222-11-25.",
-    path: "/lechenie",
-    jsonLd: LD,
-  });
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />

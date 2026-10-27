@@ -1,6 +1,0 @@
-ALTER TABLE t_p15395438_addict_clinic_site.crm_deals ADD COLUMN IF NOT EXISTS check_out_date DATE;
-ALTER TABLE t_p15395438_addict_clinic_site.crm_clients ADD COLUMN IF NOT EXISTS messenger VARCHAR(200), ADD COLUMN IF NOT EXISTS address VARCHAR(500), ADD COLUMN IF NOT EXISTS contact_time VARCHAR(200);
-ALTER TABLE t_p15395438_addict_clinic_site.crm_leads ADD COLUMN IF NOT EXISTS rep_messenger VARCHAR(200), ADD COLUMN IF NOT EXISTS rep_note TEXT;
-ALTER TABLE t_p15395438_addict_clinic_site.crm_deals ADD COLUMN IF NOT EXISTS rep_messenger VARCHAR(200), ADD COLUMN IF NOT EXISTS rep_note TEXT;
-ALTER TABLE t_p15395438_addict_clinic_site.crm_clients ADD COLUMN IF NOT EXISTS rep_messenger VARCHAR(200), ADD COLUMN IF NOT EXISTS rep_note TEXT;
-UPDATE t_p15395438_addict_clinic_site.crm_deals SET check_out_date = (check_in_date + make_interval(months => FLOOR(treatment_months)::int, days => ROUND((treatment_months - FLOOR(treatment_months)) * 30)::int))::date WHERE check_in_date IS NOT NULL AND treatment_months IS NOT NULL AND check_out_date IS NULL;

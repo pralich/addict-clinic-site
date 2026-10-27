@@ -1,1 +1,0 @@
-UPDATE t_p15395438_addict_clinic_site.site_visits SET last_seen = NOW() - INTERVAL '40 days', started_at = NOW() - INTERVAL '40 days' WHERE session_key IN ('test-session-1', 's-check-2')

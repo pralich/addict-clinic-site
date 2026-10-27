@@ -1,2 +1,0 @@
-ALTER TABLE t_p15395438_addict_clinic_site.crm_invoices ADD COLUMN IF NOT EXISTS period_date DATE;
-CREATE INDEX IF NOT EXISTS idx_crm_invoices_deal_period ON t_p15395438_addict_clinic_site.crm_invoices(deal_id, period_date);

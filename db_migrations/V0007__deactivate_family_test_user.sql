@@ -1,3 +1,0 @@
-UPDATE family_users SET is_active = FALSE, name = 'Тестовый аккаунт (удалить)' WHERE email LIKE '%@test.local';
-UPDATE family_sessions SET expires_at = NOW() WHERE user_id IN (SELECT id FROM family_users WHERE email LIKE '%@test.local');
-UPDATE family_questions SET status = 'answered', answer = 'Тестовый вопрос, проверка системы' WHERE user_id IN (SELECT id FROM family_users WHERE email LIKE '%@test.local');

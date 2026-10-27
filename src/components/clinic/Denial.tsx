@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Reveal from "./Reveal";
 import { PHONE_DISPLAY, PHONE_HREF } from "./contacts";
