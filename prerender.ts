@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { TREATMENTS, ogImage } from "./src/lib/treatments";
 import { MED_LICENSE } from "./src/lib/legal";
+import { SERVICES } from "./src/lib/services";
 import { HOME_SEO_INTRO, HOME_SEO_PROGRAMS_H2, HOME_SEO_SECTIONS, parseLinks } from "./src/lib/home-seo";
 
 const SITE = "https://addict.clinic";
@@ -25,7 +26,7 @@ const a = (href: string, text: string) => `<a href="${esc(href)}">${esc(text)}</
 const iso = (d?: string) => (d ? new Date(d.endsWith("Z") ? d : `${d}Z`).toISOString() : undefined);
 
 const NAV = `<nav aria-label="Основное меню">${[
-  a("/", "Главная"), a("/lechenie", "Лечение"), ...TREATMENTS.map((t) => a(t.path, t.menu)), a("/premium", "PREMIUM"), a("/articles", "Статьи"), a("/shop", "Магазин"),
+  a("/", "Главная"), a("/lechenie", "Лечение"), ...TREATMENTS.map((t) => a(t.path, t.menu)), a("/uslugi", "Услуги и цены"), ...SERVICES.map((s) => a(s.path, s.menu)), a("/premium", "PREMIUM"), a("/articles", "Статьи"), a("/shop", "Магазин"),
 ].join(" · ")}</nav>`;
 const FOOT = `<footer><p>Анонимная помощь 24/7: <a href="${PHONE_HREF}">${PHONE}</a>. Москва, Ленинградский проспект, 58.</p><p>${[
   a("/privacy", "Политика конфиденциальности"), a("/consent", "Согласие на обработку данных"), a("/offer", "Оферта"), a("/cookies", "Cookie"), a("/requisites", "Реквизиты"),
@@ -149,6 +150,42 @@ const staticPages = (articles: Article[]): Page[] => [
       `<ol>${t.stages.map((s) => `<li><strong>${esc(s.title)}</strong>: ${esc(s.text)}</li>`).join("")}</ol>`,
       "<h2>Методы</h2>", ul(t.methods),
       faq(t.faq),
+    ].join(""),
+  })),
+  {
+    path: "/uslugi",
+    title: "Услуги и цены на лечение зависимостей в Москве — addict.clinic",
+    description: "Цены на услуги addict.clinic: выезд нарколога, стационар, реабилитационный центр, психотерапия, мотивация на лечение и поддержка родственников. Анонимно 24/7. Звоните: 8-800-222-11-25.",
+    h1: "Услуги и цены",
+    crumbs: [["Услуги и цены", "/uslugi"]],
+    body: p("Полный путь — от первого звонка и мотивации до реабилитации и поддержки семьи. Анонимно, без постановки на учёт.") +
+      SERVICES.map((s) => `<h2>${a(s.path, s.menu)}</h2><p><strong>${esc(s.from)}</strong> · ${esc(s.hint)}</p>${p(s.lead)}`).join(""),
+  },
+  ...SERVICES.map((s): Page => ({
+    path: s.path,
+    title: s.title,
+    description: s.description,
+    image: s.image,
+    h1: s.h1,
+    crumbs: [["Услуги и цены", "/uslugi"], [s.menu, s.path]],
+    ld: [{
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: s.faq.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    }],
+    body: [
+      p(s.lead),
+      `<img src="${esc(s.image)}" alt="${esc(s.h1)}" width="1360" height="583">`,
+      `<ul>${s.facts.map((f) => `<li><strong>${esc(f.value)}</strong> — ${esc(f.label)}</li>`).join("")}</ul>`,
+      "<h2>Когда нужна эта помощь</h2>", ul(s.forWhom),
+      "<h2>Что входит</h2>", s.includes.map((x) => `<h3>${esc(x.title)}</h3>${p(x.text)}`).join(""),
+      `<h2>${esc(s.menu)}: цены</h2>`,
+      s.prices.map((g) => `<h3>${esc(g.title)}</h3><ul>${g.items.map((i) => `<li>${esc(i.name)}${i.note ? ` (${esc(i.note)})` : ""} — <strong>${esc(i.price)}</strong>${i.unit ? ` за ${esc(i.unit)}` : ""}</li>`).join("")}</ul>`).join(""),
+      p("Цены носят информационный характер и не являются публичной офертой."),
+      "<h2>Как это проходит</h2>", `<ol>${s.stages.map((x) => `<li><strong>${esc(x.title)}</strong> — ${esc(x.text)}</li>`).join("")}</ol>`,
+      s.cta ? `<p>${a(s.cta.to, s.cta.title)}</p>` : "",
+      faq(s.faq),
+      `<h2>Другие услуги</h2><ul>${SERVICES.filter((o) => o.slug !== s.slug).map((o) => `<li>${a(o.path, o.menu)} — ${esc(o.from)}</li>`).join("")}</ul>`,
     ].join(""),
   })),
   {
