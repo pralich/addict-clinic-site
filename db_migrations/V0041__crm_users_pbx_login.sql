@@ -1,1 +1,0 @@
-ALTER TABLE t_p15395438_addict_clinic_site.crm_users ADD COLUMN IF NOT EXISTS pbx_login VARCHAR(100);

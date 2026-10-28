@@ -57,7 +57,7 @@ async function req<T>(params: Record<string, string | number | undefined>, metho
   const qs = new URLSearchParams();
   Object.entries(params).forEach(([k, v]) => v !== undefined && v !== "" && qs.set(k, String(v)));
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  const token = getToken();
+  const token = auth ? getToken() : null;
   if (auth && token) headers["X-Auth-Token"] = token;
   const res = await fetch(`${URL}?${qs}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   const data = await res.json().catch(() => ({}));
@@ -67,6 +67,18 @@ async function req<T>(params: Record<string, string | number | undefined>, metho
 
 export const fetchArticles = (category?: string) => req<{ items: Article[] }>({ category });
 export const fetchArticle = (slug: string) => req<{ item: Article; related: Article[] }>({ slug });
+
+// Для loader страницы статьи: отличает «статьи нет» (404) от сбоя сети.
+export const fetchArticleForPage = async (slug: string): Promise<{ missing: boolean; data: { item: Article; related: Article[] } | null }> => {
+  try {
+    const res = await fetch(`${URL}?${new URLSearchParams({ slug })}`, { headers: { "Content-Type": "application/json" } });
+    if (res.status === 404) return { missing: true, data: null };
+    if (!res.ok) return { missing: false, data: null };
+    return { missing: false, data: (await res.json()) as { item: Article; related: Article[] } };
+  } catch {
+    return { missing: false, data: null };
+  }
+};
 
 export const adminArticles = {
   list: (search?: string, status?: string) => req<{ items: Article[] }>({ action: "admin", search, status }, "GET", undefined, true),

@@ -16,7 +16,7 @@ import Contacts from "@/components/clinic/Contacts";
 import SeoText from "@/components/clinic/SeoText";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_HREF } from "@/components/clinic/contacts";
-import { useSeo } from "@/lib/seo";
+import type { Seo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, conditionNodes, faqNode, graph, howToNode, logoNode, orgNode, physicianNodes, websiteNode, webPage } from "@/lib/schema";
 
 const HOME_LD = graph(
@@ -36,13 +36,14 @@ const HOME_LD = graph(
   { "@type": "ItemList", name: "С чем помогаем", itemListElement: conditionNodes.map((c, i) => ({ "@type": "ListItem", position: i + 1, item: c })) },
 );
 
+export const SEO: Seo = {
+  title: "Анонимное лечение зависимостей в Москве 24/7 — addict.clinic",
+  description: "Анонимное лечение алкоголизма, наркомании, лекарственной зависимости и игромании. Срочный выезд нарколога 24/7, без постановки на учёт. Бесплатная консультация: 8-800-222-11-25.",
+  path: "/",
+  jsonLd: HOME_LD,
+};
+
 const Index = () => {
-  useSeo({
-    title: "Анонимное лечение зависимостей в Москве 24/7 — addict.clinic",
-    description: "Анонимное лечение алкоголизма, наркомании, лекарственной зависимости и игромании. Срочный выезд нарколога 24/7, без постановки на учёт. Бесплатная консультация: 8-800-222-11-25.",
-    path: "/",
-    jsonLd: HOME_LD,
-  });
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />

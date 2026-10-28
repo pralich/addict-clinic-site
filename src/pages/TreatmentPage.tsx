@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Header from "@/components/clinic/Header";
@@ -11,7 +11,7 @@ import ArticleCard from "@/components/articles/ArticleCard";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { fetchArticles } from "@/lib/articles";
 import { getTreatment, ogImage, TREATMENTS, type Treatment } from "@/lib/treatments";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 import NotFound from "./NotFound";
 
@@ -74,22 +74,25 @@ const Section = ({ label, title, children, id }: { label: string; title: string;
   </section>
 );
 
-const TreatmentPage = () => {
-  const { slug = "" } = useParams();
+export const treatmentSeo = (slug: string): Seo => {
   const t = getTreatment(slug);
-  const ld = useMemo(() => (t ? buildLd(t) : undefined), [t]);
-  const { data } = useQuery({ queryKey: ["articles"], queryFn: () => fetchArticles(), enabled: !!t });
-  const articles = useMemo(() => (data?.items ?? []).filter((a) => a.category === t?.category).slice(0, 3), [data, t]);
-
-  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
-  useSeo({
+  return {
     title: t?.title || "Страница не найдена — addict.clinic",
     description: t?.description || "",
     path: t?.path || `/lechenie/${slug}`,
     image: t ? ogImage(t) : undefined,
     noindex: !t,
-    jsonLd: ld,
-  });
+    jsonLd: t ? buildLd(t) : undefined,
+  };
+};
+
+const TreatmentPage = () => {
+  const { slug = "" } = useParams();
+  const t = getTreatment(slug);
+  const { data } = useQuery({ queryKey: ["articles"], queryFn: () => fetchArticles(), enabled: !!t });
+  const articles = useMemo(() => (data?.items ?? []).filter((a) => a.category === t?.category).slice(0, 3), [data, t]);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 
   if (!t) return <NotFound />;
   const others = TREATMENTS.filter((x) => x.slug !== t.slug);

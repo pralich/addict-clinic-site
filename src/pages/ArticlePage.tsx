@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import ArticleContent, { slugifyHeading } from "@/components/articles/ArticleContent";
 import ArticleCta from "@/components/articles/ArticleCta";
 import ArticleCard from "@/components/articles/ArticleCard";
-import { CATEGORIES, fetchArticle, readingTime } from "@/lib/articles";
+import { CATEGORIES, fetchArticle, readingTime, type Article } from "@/lib/articles";
 import { PHONE_HREF } from "@/components/clinic/contacts";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, isoDate, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 import { fmtMskDate } from "@/lib/msk";
 
@@ -21,28 +21,11 @@ const splitContent = (content: string): [string, string] => {
   return [lines.slice(0, mid).join("\n"), lines.slice(mid).join("\n")];
 };
 
-const ArticlePage = () => {
-  const { slug = "" } = useParams();
-  const { data, isLoading, isError } = useQuery({ queryKey: ["article", slug], queryFn: () => fetchArticle(slug), retry: false });
-  const a = data?.item;
-  const [progress, setProgress] = useState(0);
+const tocOf = (a?: Article) => (a?.content || "").split("\n").filter((l) => l.startsWith("## ")).map((l) => l.slice(3).trim());
 
-  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
-  useEffect(() => {
-    const on = () => {
-      const h = document.documentElement;
-      setProgress(Math.min(100, (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight)) * 100));
-    };
-    window.addEventListener("scroll", on, { passive: true });
-    return () => window.removeEventListener("scroll", on);
-  }, []);
-
-  const toc = useMemo(() => (a?.content || "").split("\n").filter((l) => l.startsWith("## ")).map((l) => l.slice(3).trim()), [a]);
-  const [first, second] = useMemo(() => splitContent(a?.content || ""), [a]);
-  const cat = a ? CATEGORIES[a.category] : undefined;
-
-  const jsonLd = useMemo(() => {
-    if (!a) return undefined;
+const buildLd = (a: Article) => {
+    const cat = CATEGORIES[a.category] as (typeof CATEGORIES)[string] | undefined;
+    const toc = tocOf(a);
     const url = `${SITE_URL}/articles/${a.slug}`;
     const text = (a.content || "").replace(/[#*_>`[\]()!-]/g, " ");
     const words = text.split(/\s+/).filter(Boolean).length;
@@ -99,16 +82,43 @@ const ArticlePage = () => {
         copyrightYear: (a.published_at || "").slice(0, 4) || undefined,
       },
     );
-  }, [a, cat, toc]);
+};
 
-  useSeo({
-    title: a ? a.meta_title || `${a.title} — addict.clinic` : isError ? "Статья не найдена — addict.clinic" : "Статьи — addict.clinic",
-    description: a?.meta_description || a?.excerpt || "Статьи врачей addict.clinic о зависимостях и их лечении.",
-    path: `/articles/${slug}`,
-    image: a?.cover_url || "/og-image.jpg?v=3",
-    noindex: isError,
-    jsonLd,
+export const articleSeo = (slug: string, a?: Article, isError = false): Seo => ({
+  title: a ? a.meta_title || `${a.title} — addict.clinic` : isError ? "Статья не найдена — addict.clinic" : "Статьи — addict.clinic",
+  description: a?.meta_description || a?.excerpt || "Статьи врачей addict.clinic о зависимостях и их лечении.",
+  path: `/articles/${slug}`,
+  image: a?.cover_url || "/og-image.jpg?v=3",
+  noindex: isError,
+  jsonLd: a ? buildLd(a) : undefined,
+});
+
+type ArticleData = { item: Article; related: Article[] };
+
+const ArticlePage = ({ initial }: { initial?: ArticleData | null }) => {
+  const { slug = "" } = useParams();
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["article", slug],
+    queryFn: () => fetchArticle(slug),
+    retry: false,
+    initialData: initial && initial.item.slug === slug ? initial : undefined,
   });
+  const a = data?.item;
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
+  useEffect(() => {
+    const on = () => {
+      const h = document.documentElement;
+      setProgress(Math.min(100, (h.scrollTop / Math.max(1, h.scrollHeight - h.clientHeight)) * 100));
+    };
+    window.addEventListener("scroll", on, { passive: true });
+    return () => window.removeEventListener("scroll", on);
+  }, []);
+
+  const toc = useMemo(() => tocOf(a), [a]);
+  const [first, second] = useMemo(() => splitContent(a?.content || ""), [a]);
+  const cat = a ? CATEGORIES[a.category] : undefined;
 
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">

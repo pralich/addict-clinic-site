@@ -1,10 +1,10 @@
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { SERVICES } from "@/lib/services";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 
 const LD = graph(
@@ -26,13 +26,14 @@ const LD = graph(
   }),
 );
 
+export const SEO: Seo = {
+  title: "Услуги и цены на лечение зависимостей в Москве — addict.clinic",
+  description: "Цены на услуги addict.clinic: выезд нарколога, стационар, реабилитационный центр, психотерапия, мотивация на лечение и поддержка родственников. Анонимно 24/7. Звоните: 8-800-222-11-25.",
+  path: "/uslugi",
+  jsonLd: LD,
+};
+
 const Services = () => {
-  useSeo({
-    title: "Услуги и цены на лечение зависимостей в Москве — addict.clinic",
-    description: "Цены на услуги addict.clinic: выезд нарколога, стационар, реабилитационный центр, психотерапия, мотивация на лечение и поддержка родственников. Анонимно 24/7. Звоните: 8-800-222-11-25.",
-    path: "/uslugi",
-    jsonLd: LD,
-  });
   return (
     <div className="min-h-screen overflow-x-clip bg-background text-foreground">
       <Header />

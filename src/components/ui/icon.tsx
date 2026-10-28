@@ -1,5 +1,5 @@
 import React from 'react';
-import * as LucideIcons from 'virtual:icons';
+import * as LucideIcons from 'lucide-react';
 import { LucideProps } from 'lucide-react';
 
 interface IconProps extends LucideProps {

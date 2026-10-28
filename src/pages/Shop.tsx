@@ -1,19 +1,68 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import ProductDialog from "@/components/shop/ProductDialog";
 import CartSheet from "@/components/shop/CartSheet";
 import { fetchOrder, fetchProducts, rub, SHOP_CATEGORIES, useCart, type Product, type ShopCategory } from "@/lib/shop";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 import { reachGoalOnce } from "@/lib/goals";
 
+type ShopData = Awaited<ReturnType<typeof fetchProducts>>;
+
 type Sort = "popular" | "cheap" | "expensive";
 
-const Shop = () => {
+export const shopSeo = (all: Product[], category: ShopCategory | ""): Seo => ({
+  title: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic — мерч, подарочные сертификаты, литература",
+  description: "Подарочные сертификаты на консультации психолога, книги и рабочие тетради для семей, мерч клиники. Анонимная упаковка, доставка по России.",
+  image: "/og-shop.jpg?v=1",
+  path: category ? `/shop?category=${category}` : "/shop",
+  jsonLd: graph(
+    clinicNode,
+    logoNode,
+    websiteNode,
+    webPage({
+      type: "CollectionPage",
+      path: category ? `/shop?category=${category}` : "/shop",
+      name: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic",
+      crumbs: [["Магазин", "/shop"], ...(category ? [[SHOP_CATEGORIES[category].label, `/shop?category=${category}`] as [string, string]] : [])],
+      extra: {
+        mainEntity: {
+          "@type": "ItemList",
+          numberOfItems: all.length,
+          itemListElement: all.map((p, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            item: {
+              "@type": "Product",
+              "@id": `${SITE_URL}/shop#product-${p.id}`,
+              name: p.title,
+              image: p.image_url || undefined,
+              description: p.subtitle || undefined,
+              category: SHOP_CATEGORIES[p.category]?.label,
+              brand: { "@type": "Brand", name: "addict.clinic" },
+              offers: {
+                "@type": "Offer",
+                url: `${SITE_URL}/shop`,
+                price: p.price,
+                priceCurrency: "RUB",
+                availability: "https://schema.org/InStock",
+                itemCondition: "https://schema.org/NewCondition",
+                seller: { "@id": ORG_ID },
+              },
+            },
+          })),
+        },
+      },
+    }),
+    orgNode,
+  ),
+});
+
+const Shop = ({ initial }: { initial?: ShopData | null }) => {
   const [params, setParams] = useSearchParams();
   const category = (params.get("category") || "") as ShopCategory | "";
   const orderNumber = params.get("order");
@@ -21,7 +70,7 @@ const Shop = () => {
   const [selected, setSelected] = useState<Product | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const { count, clear } = useCart();
-  const { data, isLoading } = useQuery({ queryKey: ["shop"], queryFn: fetchProducts });
+  const { data, isLoading } = useQuery({ queryKey: ["shop"], queryFn: fetchProducts, initialData: initial ?? undefined });
   const all = useMemo(() => data?.items ?? [], [data]);
 
   const { data: order } = useQuery({ queryKey: ["shop-order", orderNumber], queryFn: () => fetchOrder(orderNumber!), enabled: !!orderNumber, retry: false });
@@ -43,53 +92,6 @@ const Shop = () => {
   }, [all, category, sort]);
 
   const counts = useMemo(() => all.reduce<Record<string, number>>((acc, p) => ((acc[p.category] = (acc[p.category] || 0) + 1), acc), {}), [all]);
-
-  useSeo({
-    title: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic — мерч, подарочные сертификаты, литература",
-    description: "Подарочные сертификаты на консультации психолога, книги и рабочие тетради для семей, мерч клиники. Анонимная упаковка, доставка по России.",
-    image: "/og-shop.jpg?v=1",
-    path: category ? `/shop?category=${category}` : "/shop",
-    jsonLd: graph(
-      clinicNode,
-      logoNode,
-      websiteNode,
-      webPage({
-        type: "CollectionPage",
-        path: category ? `/shop?category=${category}` : "/shop",
-        name: category ? `${SHOP_CATEGORIES[category].label} — магазин addict.clinic` : "Магазин addict.clinic",
-        crumbs: [["Магазин", "/shop"], ...(category ? [[SHOP_CATEGORIES[category].label, `/shop?category=${category}`] as [string, string]] : [])],
-        extra: {
-          mainEntity: {
-            "@type": "ItemList",
-            numberOfItems: all.length,
-            itemListElement: all.map((p, i) => ({
-              "@type": "ListItem",
-              position: i + 1,
-              item: {
-                "@type": "Product",
-                "@id": `${SITE_URL}/shop#product-${p.id}`,
-                name: p.title,
-                image: p.image_url || undefined,
-                description: p.subtitle || undefined,
-                category: SHOP_CATEGORIES[p.category]?.label,
-                brand: { "@type": "Brand", name: "addict.clinic" },
-                offers: {
-                  "@type": "Offer",
-                  url: `${SITE_URL}/shop`,
-                  price: p.price,
-                  priceCurrency: "RUB",
-                  availability: "https://schema.org/InStock",
-                  itemCondition: "https://schema.org/NewCondition",
-                  seller: { "@id": ORG_ID },
-                },
-              },
-            })),
-          },
-        },
-      }),
-      orgNode,
-    ),
-  });
 
   const setCategory = (c: string) => setParams(c ? { category: c } : {});
 

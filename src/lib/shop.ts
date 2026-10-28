@@ -64,10 +64,11 @@ const read = (): CartLine[] => {
 };
 
 export const useCart = () => {
-  const [lines, setLines] = useState<CartLine[]>(read);
+  const [lines, setLines] = useState<CartLine[]>([]);
 
   useEffect(() => {
     const sync = () => setLines(read());
+    sync();
     window.addEventListener("shop-cart", sync);
     window.addEventListener("storage", sync);
     return () => {

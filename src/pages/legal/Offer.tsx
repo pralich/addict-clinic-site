@@ -1,10 +1,11 @@
 import LegalLayout from "@/components/legal/LegalLayout";
 import { ORG } from "@/lib/legal";
-import { useSeo } from "@/lib/seo";
+import type { Seo } from "@/lib/seo";
 import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
+export const SEO: Seo = { title: "Публичная оферта — addict.clinic", description: `Публичная оферта ${ORG.shortName}: продажа товаров, подарочных сертификатов и доступ к сервисам кабинета для близких на сайте ${ORG.site}.`, path: "/offer" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/offer", name: "Публичная оферта", crumbs: [["Публичная оферта", "/offer"]], extra: { about: { "@id": ORG_ID } } })) };
+
 const Offer = () => {
-  useSeo({ title: "Публичная оферта — addict.clinic", description: `Публичная оферта ${ORG.shortName}: продажа товаров, подарочных сертификатов и доступ к сервисам кабинета для близких на сайте ${ORG.site}.`, path: "/offer" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/offer", name: "Публичная оферта", crumbs: [["Публичная оферта", "/offer"]], extra: { about: { "@id": ORG_ID } } })) });
   return (
     <LegalLayout
       title="Публичная оферта"

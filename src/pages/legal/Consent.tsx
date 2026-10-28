@@ -1,10 +1,11 @@
 import LegalLayout from "@/components/legal/LegalLayout";
 import { ORG } from "@/lib/legal";
-import { useSeo } from "@/lib/seo";
+import type { Seo } from "@/lib/seo";
 import { clinicNode, graph, logoNode, ORG_ID, orgNode, websiteNode, webPage } from "@/lib/schema";
 
+export const SEO: Seo = { title: "Согласие на обработку персональных данных — addict.clinic", description: `Текст согласия на обработку персональных данных, включая сведения о здоровье, для ${ORG.shortName}.`, path: "/consent" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/consent", name: "Согласие на обработку персональных данных", crumbs: [["Согласие на обработку персональных данных", "/consent"]], extra: { about: { "@id": ORG_ID } } })) };
+
 const Consent = () => {
-  useSeo({ title: "Согласие на обработку персональных данных — addict.clinic", description: `Текст согласия на обработку персональных данных, включая сведения о здоровье, для ${ORG.shortName}.`, path: "/consent" , jsonLd: graph(clinicNode, logoNode, websiteNode, orgNode, webPage({ type: "WebPage", path: "/consent", name: "Согласие на обработку персональных данных", crumbs: [["Согласие на обработку персональных данных", "/consent"]], extra: { about: { "@id": ORG_ID } } })) });
   return (
     <LegalLayout
       title="Согласие на обработку персональных данных"

@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+import { Link } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { sendPublicLead } from "@/lib/crm-api";

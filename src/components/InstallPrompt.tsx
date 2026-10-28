@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: "accepted" | "dismissed" }> };
@@ -46,7 +46,6 @@ const InstallPrompt = () => {
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
   const [open, setOpen] = useState(false);
   const [guide, setGuide] = useState(false);
-  const os = platform();
 
   useEffect(() => {
     if (isStandalone() || snoozed()) return;
@@ -69,6 +68,8 @@ const InstallPrompt = () => {
   }, []);
 
   if (!open || /^\/(admin|partner)/.test(pathname)) return null;
+  // Окно показывается только в браузере (open ставится в useEffect), здесь navigator уже доступен.
+  const os = platform();
 
   const close = () => {
     localStorage.setItem(KEY, String(Date.now()));

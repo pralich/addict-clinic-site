@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "@/lib/router-compat";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
@@ -33,7 +33,7 @@ import { pingCrmNotify } from "@/lib/crm-push";
 import { useCallAiQueue } from "@/lib/call-ai";
 import { useCallsAutoSync } from "@/lib/calls-sync";
 import { pingBroadcastTick } from "@/lib/broadcast-api";
-import { useSeo } from "@/lib/seo";
+import type { Seo } from "@/lib/seo";
 
 type NavItem = { id: string; label: string; icon: string; admin?: boolean; staff?: boolean };
 
@@ -300,8 +300,9 @@ const AdminSplash = () => {
   );
 };
 
+export const SEO: Seo = { title: "CRM — addict.clinic", description: "Панель управления", path: "/admin", noindex: true };
+
 const Admin = () => {
-  useSeo({ title: "CRM — addict.clinic", description: "Панель управления", path: "/admin", noindex: true });
   return (
     <AuthProvider>
       <Shell />

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams } from "@/lib/router-compat";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import Icon from "@/components/ui/icon";
@@ -11,7 +11,7 @@ import PartnerLeads from "@/components/partner/PartnerLeads";
 import PartnerDeals from "@/components/partner/PartnerDeals";
 import PartnerPatients from "@/components/partner/PartnerPatients";
 import { getPartnerToken, partnerApi, setPartnerToken, type PartnerUser } from "@/lib/partner-api";
-import { useSeo } from "@/lib/seo";
+import type { Seo } from "@/lib/seo";
 
 const NAV = [
   { id: "home", label: "Обзор", icon: "LayoutDashboard" },
@@ -82,8 +82,9 @@ const PasswordDialog = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+export const SEO: Seo = { title: "Кабинет партнёра — addict.clinic", description: "Кабинет клиник-партнёров addict.clinic", path: "/partner", noindex: true };
+
 const Partner = () => {
-  useSeo({ title: "Кабинет партнёра — addict.clinic", description: "Кабинет клиник-партнёров addict.clinic", path: "/partner", noindex: true });
   const [user, setUser] = useState<PartnerUser | null>(null);
   const [loading, setLoading] = useState(!!getPartnerToken());
   const [params, setParams] = useSearchParams();

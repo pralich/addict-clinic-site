@@ -1,1 +1,0 @@
-INSERT INTO t_p15395438_addict_clinic_site.crm_api_keys (name, key_hash, key_prefix, is_active) VALUES ('Проверка API (служебный)', '2b0b73c880cbbfccd5464cf2a8a1fc13c053f9793aa54402cb0068ab1772cfa8', 'ac_test_', TRUE);

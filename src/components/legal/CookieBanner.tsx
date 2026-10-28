@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import { Switch } from "@/components/ui/switch";
 import { applyCookieChoice, getCookieChoice, saveCookieChoice } from "@/lib/cookie-consent";

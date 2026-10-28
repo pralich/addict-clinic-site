@@ -1,14 +1,60 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import Header from "@/components/clinic/Header";
 import Footer from "@/components/clinic/Footer";
 import ArticleCard from "@/components/articles/ArticleCard";
 import ArticleCta from "@/components/articles/ArticleCta";
-import { CATEGORIES, fetchArticles } from "@/lib/articles";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { CATEGORIES, fetchArticles, type Article } from "@/lib/articles";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, isoDate, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
+
+export const articlesSeo = (all: Article[], category: string): Seo => {
+  const catLabel = CATEGORIES[category]?.label;
+  const listed = all.filter((a) => !category || a.category === category);
+  const jsonLd = graph(
+    clinicNode,
+    logoNode,
+    websiteNode,
+    webPage({
+      type: "CollectionPage",
+      path: category ? `/articles?category=${category}` : "/articles",
+      name: catLabel ? `${catLabel}: статьи о лечении и помощи` : "Статьи о зависимостях и их лечении",
+      description: "Полезные материалы врачей addict.clinic о зависимостях, лечении и помощи близким.",
+      crumbs: [["Статьи", "/articles"], ...(catLabel ? [[catLabel, `/articles?category=${category}`] as [string, string]] : [])],
+      extra: {
+        about: catLabel ? { "@type": "MedicalCondition", name: catLabel } : undefined,
+        mainEntity: {
+          "@type": "ItemList",
+          numberOfItems: listed.length,
+          itemListElement: listed.map((a, i) => ({
+            "@type": "ListItem",
+            position: i + 1,
+            item: {
+              "@type": "Article",
+              "@id": `${SITE_URL}/articles/${a.slug}#article`,
+              url: `${SITE_URL}/articles/${a.slug}`,
+              headline: a.title,
+              description: a.excerpt || undefined,
+              image: a.cover_url || undefined,
+              datePublished: isoDate(a.published_at),
+              author: a.author ? { "@type": "Person", name: a.author } : { "@id": CLINIC_ID },
+              publisher: { "@id": CLINIC_ID },
+            },
+          })),
+        },
+      },
+    }),
+  );
+
+  return {
+    title: catLabel ? `${catLabel}: статьи о лечении и помощи — addict.clinic` : "Статьи о зависимостях и их лечении — addict.clinic",
+    description: "Полезные материалы врачей addict.clinic: признаки зависимостей, как помочь близкому, вывод из запоя, лечение наркомании, игромании, РПП и депрессии. Анонимная помощь 24/7.",
+    path: category ? `/articles?category=${category}` : "/articles",
+    jsonLd,
+  };
+};
 
 const Articles = () => {
   const [params, setParams] = useSearchParams();
@@ -22,52 +68,6 @@ const Articles = () => {
   );
 
   const catLabel = CATEGORIES[category]?.label;
-  const listed = useMemo(() => all.filter((a) => !category || a.category === category), [all, category]);
-  const jsonLd = useMemo(
-    () =>
-      graph(
-        clinicNode,
-        logoNode,
-        websiteNode,
-        webPage({
-          type: "CollectionPage",
-          path: category ? `/articles?category=${category}` : "/articles",
-          name: catLabel ? `${catLabel}: статьи о лечении и помощи` : "Статьи о зависимостях и их лечении",
-          description: "Полезные материалы врачей addict.clinic о зависимостях, лечении и помощи близким.",
-          crumbs: [["Статьи", "/articles"], ...(catLabel ? [[catLabel, `/articles?category=${category}`] as [string, string]] : [])],
-          extra: {
-            about: catLabel ? { "@type": "MedicalCondition", name: catLabel } : undefined,
-            mainEntity: {
-              "@type": "ItemList",
-              numberOfItems: listed.length,
-              itemListElement: listed.map((a, i) => ({
-                "@type": "ListItem",
-                position: i + 1,
-                item: {
-                  "@type": "Article",
-                  "@id": `${SITE_URL}/articles/${a.slug}#article`,
-                  url: `${SITE_URL}/articles/${a.slug}`,
-                  headline: a.title,
-                  description: a.excerpt || undefined,
-                  image: a.cover_url || undefined,
-                  datePublished: isoDate(a.published_at),
-                  author: a.author ? { "@type": "Person", name: a.author } : { "@id": CLINIC_ID },
-                  publisher: { "@id": CLINIC_ID },
-                },
-              })),
-            },
-          },
-        }),
-      ),
-    [listed, category, catLabel],
-  );
-
-  useSeo({
-    title: catLabel ? `${catLabel}: статьи о лечении и помощи — addict.clinic` : "Статьи о зависимостях и их лечении — addict.clinic",
-    description: "Полезные материалы врачей addict.clinic: признаки зависимостей, как помочь близкому, вывод из запоя, лечение наркомании, игромании, РПП и депрессии. Анонимная помощь 24/7.",
-    path: category ? `/articles?category=${category}` : "/articles",
-    jsonLd,
-  });
 
   const counts = useMemo(() => all.reduce<Record<string, number>>((acc, a) => ((acc[a.category] = (acc[a.category] || 0) + 1), acc), {}), [all]);
 

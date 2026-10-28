@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect } from "react";
+import { Link, useParams } from "@/lib/router-compat";
 import Icon from "@/components/ui/icon";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Header from "@/components/clinic/Header";
@@ -8,7 +8,7 @@ import TreatmentLeadForm from "@/components/treatment/TreatmentLeadForm";
 import PriceTable from "@/components/services/PriceTable";
 import { PHONE_DISPLAY, PHONE_HREF } from "@/components/clinic/contacts";
 import { getService, SERVICES, type Service } from "@/lib/services";
-import { SITE_URL, useSeo } from "@/lib/seo";
+import { SITE_URL, type Seo } from "@/lib/seo";
 import { CLINIC_ID, clinicNode, graph, logoNode, websiteNode, webPage } from "@/lib/schema";
 import NotFound from "./NotFound";
 
@@ -55,19 +55,22 @@ const Section = ({ label, title, children, id }: { label: string; title: string;
   </section>
 );
 
-const ServicePage = () => {
-  const { slug = "" } = useParams();
+export const serviceSeo = (slug: string): Seo => {
   const s = getService(slug);
-  const ld = useMemo(() => (s ? buildLd(s) : undefined), [s]);
-
-  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
-  useSeo({
+  return {
     title: s?.title || "Страница не найдена — addict.clinic",
     description: s?.description || "",
     path: s?.path || `/uslugi/${slug}`,
     noindex: !s,
-    jsonLd: ld,
-  });
+    jsonLd: s ? buildLd(s) : undefined,
+  };
+};
+
+const ServicePage = () => {
+  const { slug = "" } = useParams();
+  const s = getService(slug);
+
+  useEffect(() => { window.scrollTo(0, 0); }, [slug]);
 
   if (!s) return <NotFound />;
   const others = SERVICES.filter((x) => x.slug !== s.slug);
