@@ -1,3 +1,4 @@
+import type { EntityCall } from "./EntityCalls";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/crm-api";
 import { toast } from "sonner";
@@ -24,7 +25,7 @@ export const useList = (resource: string, params: Record<string, string | undefi
   });
 
 export const useItem = (resource: string, id: number | null) =>
-  useQuery<{ item: any; activities: any[]; related: Record<string, any[]>; refs?: Record<string, any> }>({
+  useQuery<{ item: any; activities: any[]; related: Record<string, any[]>; refs?: Record<string, any>; calls?: EntityCall[] }>({
     queryKey: ["crm", resource, "item", id],
     queryFn: () => api({ resource, id: id! }),
     enabled: !!id,

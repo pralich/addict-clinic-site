@@ -5,7 +5,7 @@ const URL_ = (func2url as Record<string, string>)["crm-push"];
 const SCOPE = "/admin";
 
 export type CrmPushState = "unsupported" | "ios-install" | "denied" | "off" | "on";
-export type CrmPushPrefs = { notify_leads: boolean; notify_orders: boolean; notify_tasks: boolean };
+export type CrmPushPrefs = { notify_leads: boolean; notify_orders: boolean; notify_tasks: boolean; notify_calls: boolean };
 
 export const pingCrmNotify = () => fetch(`${URL_}?action=notify`).catch(() => null);
 
@@ -44,7 +44,7 @@ const currentSub = async () => {
 };
 
 export const crmPushState = async (): Promise<{ state: CrmPushState; prefs: CrmPushPrefs }> => {
-  const prefs = { notify_leads: true, notify_orders: true, notify_tasks: true };
+  const prefs = { notify_leads: true, notify_orders: true, notify_tasks: true, notify_calls: true };
   const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
   if (!supported) return { state: isIos() && !isStandalone() ? "ios-install" : "unsupported", prefs };
   if (Notification.permission === "denied") return { state: "denied", prefs };
@@ -52,7 +52,7 @@ export const crmPushState = async (): Promise<{ state: CrmPushState; prefs: CrmP
   if (!sub || Notification.permission !== "granted") return { state: "off", prefs };
   const r = await api("status", undefined, `&endpoint=${encodeURIComponent(sub.endpoint)}`).catch(() => null);
   if (!r?.subscribed) return { state: "off", prefs };
-  return { state: "on", prefs: { notify_leads: r.notify_leads, notify_orders: r.notify_orders, notify_tasks: r.notify_tasks ?? true } };
+  return { state: "on", prefs: { notify_leads: r.notify_leads, notify_orders: r.notify_orders, notify_tasks: r.notify_tasks ?? true, notify_calls: r.notify_calls ?? true } };
 };
 
 export const enableCrmPush = async () => {

@@ -7,6 +7,7 @@ import StatusBadge from "./StatusBadge";
 import EntityForm from "./EntityForm";
 import LeadAttribution from "./LeadAttribution";
 import ActivityPanel from "./ActivityPanel";
+import EntityCalls from "./EntityCalls";
 import ContactPerson, { ContactInfo } from "./ContactPerson";
 import CallButton from "./CallButton";
 import BillingBlock from "./billing/BillingBlock";
@@ -224,6 +225,7 @@ const EntityDrawer = ({ resource, id, onClose, onOpen }: Props) => {
           </div>
           <div className="flex flex-col gap-5 bg-secondary/30 px-5 py-6 lg:h-full lg:overflow-y-auto lg:px-6">
             <p className="font-heading text-lg font-semibold lg:pr-8">Активность</p>
+            {data?.calls?.length ? <EntityCalls calls={data.calls} /> : null}
             <ActivityPanel resource={resource} id={id!} activities={data?.activities ?? []} />
           </div>
           </div>

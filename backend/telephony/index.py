@@ -186,7 +186,7 @@ def handle_history(cur, d):
     target = ('clients', client['id']) if client else (('leads', lead['id']) if lead else None)
     if target:
         log_activity(cur, target[0], target[1], text, 'call', direction, result, dur_min)
-    return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, 'lead_pending': bool(lead_state), '_record': (call_id, link, callid) if (link and duration > 0) else None})
+    return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, 'lead_pending': bool(lead_state), 'missed': status == 'missed', '_record': (call_id, link, callid) if (link and duration > 0) else None})
 
 
 def handle_event(cur, d):
@@ -261,7 +261,7 @@ def handle_sync(conn, cur, user, d):
     rows = data if isinstance(data, list) else (data.get('data') or data.get('items') or data.get('history') or []) if isinstance(data, dict) else []
     out_log(200, {'count': len(rows), 'sample': rows[:3]})
 
-    added, leads, skipped, pending = 0, 0, 0, 0
+    added, leads, skipped, pending, missed = 0, 0, 0, 0, 0
     partial = False
     for r in rows:
         if time.time() - started > 3.5:
@@ -298,7 +298,9 @@ def handle_sync(conn, cur, user, d):
             leads += 1
         if out.get('lead_pending'):
             pending += 1
-    if leads:
+        if out.get('missed'):
+            missed += 1
+    if leads or missed:
         ping_push()
     if added:
         ping_call_ai()
@@ -369,7 +371,7 @@ def handler(event: dict, context) -> dict:
             r = handle_history(cur, d)
             conn.commit()
             out = json.loads(r['body'])
-            if out.get('lead_created'):
+            if out.get('lead_created') or out.pop('missed', False):
                 ping_push()
             rec = out.pop('_record', None)
             if rec:

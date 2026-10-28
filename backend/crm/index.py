@@ -12,7 +12,7 @@ from finance import handle_finance
 from billing import handle_billing
 from schedule import attach_plans
 from tasks import handle_tasks
-from calls import handle_calls, handle_live_calls, handle_make_call
+from calls import handle_calls, handle_live_calls, handle_make_call, entity_calls
 from reqlogs import handle_request_logs
 from analytics import handle_analytics
 from msk import MSK_TODAY, MSK_TODAY_START, msk, msk_today
@@ -388,7 +388,7 @@ def handle_in_treatment(cur, params):
     return resp(200, {'date': day, 'items': items, 'upcoming': upcoming, 'no_dates': no_dates})
 
 
-def get_entity(cur, name, eid):
+def get_entity(cur, name, eid, user=None):
     cfg = ENTITIES[name]
     if name == 'partners':
         q(cur, f"SELECT * FROM {t(cfg['table'])} WHERE id = %s", (eid,))
@@ -421,7 +421,8 @@ def get_entity(cur, name, eid):
     if name == 'partners':
         q(cur, f"SELECT id, full_name, status, created_at FROM {t('crm_clients')} WHERE partner_id = %s AND archived_at IS NULL AND trashed_at IS NULL ORDER BY created_at DESC", (eid,))
         related['clients'] = cur.fetchall()
-    return resp(200, {'item': item, 'activities': activities, 'related': related, 'refs': refs})
+    calls = entity_calls(cur, t, name, item) if name in ('clients', 'leads', 'deals') and not is_leads_only(user) else []
+    return resp(200, {'item': item, 'activities': activities, 'related': related, 'refs': refs, 'calls': calls})
 
 
 def prepare(cfg, body, partial):
@@ -849,7 +850,7 @@ def handler(event: dict, context) -> dict:
             if resource == 'leads' and action == 'convert' and eid:
                 return convert_lead(cur, eid, body, user)
             if method == 'GET':
-                return get_entity(cur, resource, eid) if eid else list_entity(cur, resource, params, user)
+                return get_entity(cur, resource, eid, user) if eid else list_entity(cur, resource, params, user)
             if method == 'POST':
                 if action == 'restore' and eid:
                     return archive_entity(cur, resource, eid, user, restore=True)

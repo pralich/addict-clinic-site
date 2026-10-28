@@ -15,7 +15,7 @@ const HINT: Record<CrmPushState, string> = {
 
 const PushSettings = ({ variant = "sidebar" }: { variant?: "sidebar" | "icon" }) => {
   const [state, setState] = useState<CrmPushState | null>(null);
-  const [prefs, setPrefs] = useState<CrmPushPrefs>({ notify_leads: true, notify_orders: true, notify_tasks: true });
+  const [prefs, setPrefs] = useState<CrmPushPrefs>({ notify_leads: true, notify_orders: true, notify_tasks: true, notify_calls: true });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -97,6 +97,7 @@ const PushSettings = ({ variant = "sidebar" }: { variant?: "sidebar" | "icon" })
           <div className="flex flex-col gap-1 p-2">
             {[
               { k: "notify_leads" as const, icon: "Inbox", t: "Новые лиды", d: "Заявки с сайта" },
+              { k: "notify_calls" as const, icon: "PhoneMissed", t: "Пропущенные звонки", d: "Со ссылкой на карточку клиента" },
               { k: "notify_orders" as const, icon: "ShoppingBag", t: "Оплаченные заказы", d: "Покупки в магазине" },
               { k: "notify_tasks" as const, icon: "ListTodo", t: "Мои задачи", d: "Новые задачи, сроки и комментарии" },
             ].map((r) => (

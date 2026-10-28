@@ -135,3 +135,42 @@ def handle_calls(cur, t, params, resp):
         FROM {t('crm_calls')}""")
     stats = cur.fetchone()
     return resp(200, {'items': rows[:per], 'has_more': len(rows) > per, 'page': page, 'stats': stats})
+
+def entity_calls(cur, t, name, item):
+    """Звонки с расшифровкой, резюме и рекомендацией — только для самой значимой карточки обращения (сделка > лид > контакт)"""
+    if name == 'clients':
+        cond, args = '(c.client_id = %s OR l.client_id = %s)', [item['id'], item['id']]
+    elif name == 'leads':
+        cond, args = 'c.lead_id = %s', [item['id']]
+    elif name == 'deals':
+        parts, args = [], []
+        if item.get('lead_id'):
+            parts.append('c.lead_id = %s')
+            args.append(item['lead_id'])
+        if item.get('client_id'):
+            parts.append('(c.client_id = %s OR l.client_id = %s)')
+            args += [item['client_id'], item['client_id']]
+        if not parts:
+            return []
+        cond = '(' + ' OR '.join(parts) + ')'
+    else:
+        return []
+    cur.execute(f"""SELECT * FROM (
+        SELECT c.id, c.direction, c.status, c.phone, c.pbx_user, c.started_at, c.duration,
+            COALESCE(c.record_url, c.record_source_url) AS record_url, c.transcript, c.ai_summary, c.ai_callback, c.ai_status,
+            CASE WHEN dl.id IS NOT NULL THEN 'deals'
+                 WHEN l.id IS NOT NULL AND l.archived_at IS NULL AND l.trashed_at IS NULL THEN 'leads'
+                 ELSE 'clients' END AS top_type,
+            CASE WHEN dl.id IS NOT NULL THEN dl.id
+                 WHEN l.id IS NOT NULL AND l.archived_at IS NULL AND l.trashed_at IS NULL THEN l.id
+                 ELSE COALESCE(c.client_id, l.client_id) END AS top_id
+        FROM {t('crm_calls')} c
+        LEFT JOIN {t('crm_leads')} l ON l.id = c.lead_id
+        LEFT JOIN LATERAL (SELECT d.id FROM {t('crm_deals')} d
+            WHERE d.archived_at IS NULL AND d.trashed_at IS NULL
+              AND (d.lead_id = c.lead_id OR d.client_id = COALESCE(c.client_id, l.client_id))
+            ORDER BY (d.lead_id IS NOT DISTINCT FROM c.lead_id) DESC, d.created_at DESC LIMIT 1) dl ON TRUE
+        WHERE {cond}) x
+        WHERE x.top_type = %s AND x.top_id = %s
+        ORDER BY x.started_at DESC NULLS LAST, x.id DESC LIMIT 30""", args + [name, item['id']])
+    return cur.fetchall()
