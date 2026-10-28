@@ -268,6 +268,13 @@ def task_details(c):
 
 
 def create_callback_task(cur, c, lead_id, name, user):
+    if c.get('callback_task_id'):
+        cur.execute(f"""UPDATE {t('crm_activities')} SET entity_type = 'leads', entity_id = %s, updated_at = NOW()
+            WHERE id = %s AND entity_type = 'none' AND done_at IS NULL RETURNING id, assignee_id""", (lead_id, c['callback_task_id']))
+        moved = cur.fetchone()
+        if moved:
+            cur.execute(f"UPDATE {t('crm_leads')} SET manager_id = COALESCE(manager_id, %s) WHERE id = %s", (moved['assignee_id'], lead_id))
+            return moved['id']
     assignee = pick_assignee(cur, c, user)
     if not assignee:
         return None

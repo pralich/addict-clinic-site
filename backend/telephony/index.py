@@ -8,7 +8,7 @@ import hashlib
 import time
 from urllib.error import HTTPError
 from urllib.parse import urlencode
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import parse_qs
 from urllib.request import Request, urlopen
 
@@ -142,6 +142,76 @@ def log_activity(cur, entity_type, entity_id, text, kind='system', direction=Non
         (entity_type, entity_id, kind, text, datetime.utcnow() if kind == 'call' else None, result, direction, duration))
 
 
+def top_card(cur, call_id):
+    cur.execute(f"""SELECT c.id, c.phone, c.pbx_user, c.started_at,
+            dl.id AS deal_id, dl.title AS deal_title, dl.manager_id AS deal_manager,
+            CASE WHEN l.archived_at IS NULL AND l.trashed_at IS NULL THEN l.id END AS lead_id, l.name AS lead_name, l.manager_id AS lead_manager,
+            cl.id AS client_id, cl.full_name AS client_name, cl.manager_id AS client_manager
+        FROM {t('crm_calls')} c
+        LEFT JOIN {t('crm_leads')} l ON l.id = c.lead_id
+        LEFT JOIN {t('crm_clients')} cl ON cl.id = COALESCE(c.client_id, l.client_id)
+        LEFT JOIN LATERAL (SELECT d.id, d.title, d.manager_id FROM {t('crm_deals')} d
+            WHERE d.archived_at IS NULL AND d.trashed_at IS NULL
+              AND (d.lead_id = c.lead_id OR d.client_id = COALESCE(c.client_id, l.client_id))
+            ORDER BY (d.lead_id IS NOT DISTINCT FROM c.lead_id) DESC, d.created_at DESC LIMIT 1) dl ON TRUE
+        WHERE c.id = %s""", (call_id,))
+    r = cur.fetchone()
+    if r['deal_id']:
+        return r, 'deals', r['deal_id'], r['deal_title'], r['deal_manager']
+    if r['lead_id']:
+        return r, 'leads', r['lead_id'], r['lead_name'], r['lead_manager']
+    if r['client_id']:
+        return r, 'clients', r['client_id'], r['client_name'], r['client_manager']
+    return r, 'none', None, None, None
+
+
+def pick_manager(cur, manager_id, pbx_user):
+    if manager_id:
+        cur.execute(f"SELECT id FROM {t('crm_users')} WHERE id = %s AND is_active AND role <> 'leads_only'", (manager_id,))
+        if cur.fetchone():
+            return manager_id
+    if pbx_user:
+        cur.execute(f"SELECT id FROM {t('crm_users')} WHERE is_active AND role <> 'leads_only' AND LOWER(pbx_login) = LOWER(%s) ORDER BY id LIMIT 1", (pbx_user,))
+        r = cur.fetchone()
+        if r:
+            return r['id']
+    cur.execute(f"SELECT id FROM {t('crm_users')} WHERE is_active AND role IN ('manager', 'admin') ORDER BY (role = 'manager') DESC, id LIMIT 1")
+    r = cur.fetchone()
+    return r['id'] if r else None
+
+
+MISSED_TIPS = 'О чём поговорить:\n• Представьтесь и скажите, что видите пропущенный звонок\n• Спросите, удобно ли говорить, и чем можете помочь\n• Уточните, кому нужна помощь — самому человеку или близкому'
+
+
+def create_missed_task(cur, call_id):
+    """Срочная задача «Перезвонить» в самой значимой карточке (сделка > лид > контакт) на ответственного менеджера"""
+    c, etype, eid, title, manager = top_card(cur, call_id)
+    assignee = pick_manager(cur, manager, c['pbx_user'])
+    if not assignee:
+        return None
+    when = (c['started_at'] + timedelta(hours=3)).strftime('%d.%m %H:%M') if c['started_at'] else ''
+    phone = c['phone'] or 'скрытый номер'
+    if eid:
+        cur.execute(f"""SELECT id, details FROM {t('crm_activities')} WHERE kind = 'task' AND done_at IS NULL
+            AND entity_type = %s AND entity_id = %s AND text LIKE 'Перезвонить по пропущенному%%' ORDER BY id DESC LIMIT 1""", (etype, eid))
+        open_task = cur.fetchone()
+        if open_task:
+            note = f"Ещё один пропущенный звонок: {when}, {phone}"
+            cur.execute(f"""UPDATE {t('crm_activities')} SET details = LEFT(COALESCE(details, '') || E'\n\n' || %s, 5000), priority = 'high',
+                due_at = LEAST(COALESCE(due_at, NOW() + INTERVAL '15 minutes'), NOW() + INTERVAL '15 minutes'), due_notified_at = NULL, updated_at = NOW() WHERE id = %s""",
+                        (note, open_task['id']))
+            cur.execute(f"UPDATE {t('crm_calls')} SET callback_task_id = %s WHERE id = %s", (open_task['id'], call_id))
+            return open_task['id']
+    text = f"Перезвонить по пропущенному: {title or phone}"[:500]
+    details = f"Пропущенный звонок {when} с номера {phone}.\n\n{MISSED_TIPS}"
+    cur.execute(f"""INSERT INTO {t('crm_activities')} (kind, user_id, entity_type, entity_id, text, details, priority, due_at, assignee_id)
+        VALUES ('task', NULL, %s, %s, %s, %s, 'high', NOW() + INTERVAL '15 minutes', %s) RETURNING id""",
+                (etype, eid or 0, text, details, assignee))
+    task_id = cur.fetchone()['id']
+    cur.execute(f"UPDATE {t('crm_calls')} SET callback_task_id = %s WHERE id = %s", (task_id, call_id))
+    return task_id
+
+
 def handle_history(cur, d):
     callid = (d.get('callid') or '')[:150]
     if not callid:
@@ -186,6 +256,8 @@ def handle_history(cur, d):
     target = ('clients', client['id']) if client else (('leads', lead['id']) if lead else None)
     if target:
         log_activity(cur, target[0], target[1], text, 'call', direction, result, dur_min)
+    if status == 'missed':
+        create_missed_task(cur, call_id)
     return resp(200, {'ok': True, 'id': call_id, 'lead_id': lead['id'] if lead else None, 'lead_created': lead_created, 'lead_pending': bool(lead_state), 'missed': status == 'missed', '_record': (call_id, link, callid) if (link and duration > 0) else None})
 
 
