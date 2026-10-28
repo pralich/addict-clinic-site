@@ -30,6 +30,10 @@ CORS = {
     'Access-Control-Max-Age': '86400',
 }
 
+PROJECT_SQL = """CASE WHEN e.project IN ('reba', 'addict') THEN e.project
+    WHEN concat_ws(' ', e.source, e.page_url, e.landing_url, e.referrer, e.utm_source, e.form) ~* '((реба|РЕБА|Реба)\\.(рф|РФ)|xn--80abl7b|reba\\.rf)' THEN 'reba'
+    ELSE 'addict' END"""
+
 ENTITIES = {
     'clients': {
         'table': 'crm_clients',
@@ -49,7 +53,7 @@ ENTITIES = {
     },
     'leads': {
         'table': 'crm_leads',
-        'fields': ['name', 'contact', 'topic', 'message', 'source', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags'],
+        'fields': ['name', 'contact', 'topic', 'message', 'source', 'project', 'status', 'manager_id', 'partner_id', 'client_id', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags'],
         'required': ['contact'],
         'search': ['name', 'contact', 'topic', 'message', 'utm_campaign', 'page_url', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'status',
@@ -328,6 +332,9 @@ def list_entity(cur, name, params, user=None):
     if params.get('channel') and name == 'leads':
         where.append('e.channel = %s')
         args.append(params['channel'])
+    if params.get('project') in ('reba', 'addict') and name == 'leads':
+        where.append(f'{PROJECT_SQL} = %s')
+        args.append(params['project'])
     if params.get('client_id') and name in ('deals', 'leads'):
         where.append('e.client_id = %s')
         args.append(int(params['client_id']))
@@ -339,6 +346,8 @@ def list_entity(cur, name, params, user=None):
     if name in ('leads', 'deals'):
         joins += f' LEFT JOIN {t("crm_clients")} cc ON cc.id = e.client_id'
         extra += ', cc.full_name AS client_name'
+    if name == 'leads':
+        extra += f', {PROJECT_SQL} AS project_key'
     if name == 'clients':
         extra += f", (SELECT COUNT(*) FROM {t('crm_deals')} d WHERE d.client_id = e.id AND d.archived_at IS NULL) AS deals_count, (SELECT COALESCE(SUM(amount),0) FROM {t('crm_deals')} d WHERE d.client_id = e.id AND d.stage = 'won') AS revenue"
     if name == 'partners':
@@ -393,7 +402,8 @@ def get_entity(cur, name, eid, user=None):
     if name == 'partners':
         q(cur, f"SELECT * FROM {t(cfg['table'])} WHERE id = %s", (eid,))
     else:
-        q(cur, f"SELECT e.*, mu.name AS manager_name FROM {t(cfg['table'])} e LEFT JOIN {t('crm_users')} mu ON mu.id = e.manager_id WHERE e.id = %s", (eid,))
+        pk = f', {PROJECT_SQL} AS project_key' if name == 'leads' else ''
+        q(cur, f"SELECT e.*, mu.name AS manager_name{pk} FROM {t(cfg['table'])} e LEFT JOIN {t('crm_users')} mu ON mu.id = e.manager_id WHERE e.id = %s", (eid,))
     item = cur.fetchone()
     if not item:
         return resp(404, {'error': 'Не найдено'})
@@ -436,6 +446,8 @@ def prepare(cfg, body, partial):
                 v = float(v or 0)
             if f in ('commission_value', 'payment_amount'):
                 v = round(float(v), 2) if v not in (None, '') else None
+            if f == 'project' and v not in ('reba', 'addict'):
+                v = None
             if f == 'commission_type' and v not in ('percent', 'fixed'):
                 v = None
             if f == 'payment_schedule' and v not in ('once', 'weekly', 'biweekly', 'monthly'):

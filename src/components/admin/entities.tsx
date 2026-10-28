@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { Field } from "./EntityForm";
 import StatusBadge from "./StatusBadge";
 import { TagList } from "./Tags";
+import ProjectBadge, { PROJECTS } from "./ProjectBadge";
 import { fmtMskDate, mskDateKey } from "@/lib/msk";
 import {
   CHANNELS, CLIENT_STATUS, PAYMENT_SCHEDULES, commissionText, daysUntil, dueTone, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
@@ -83,6 +84,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     filters: ["manager", "partner"],
     columns: [
       { key: "name", label: "Имя", render: (r) => <span className="font-medium">{r.name || "Аноним"}</span> },
+      { key: "project_key", label: "Проект", render: (r) => <ProjectBadge row={r} /> },
       tagsCol,
       { key: "contact", label: "Контакт" },
       { key: "topic", label: "Тема" },
@@ -98,6 +100,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "topic", label: "Тема обращения" },
       { name: "status", label: "Статус", type: "select", options: toOptions(LEAD_STATUS), required: true },
       { name: "source", label: "Источник", type: "select", options: toOptions(SOURCES), required: true },
+      { name: "project", label: "Проект-источник", type: "select", options: toOptions(PROJECTS) },
       { name: "manager_id", label: "Ответственный", type: "ref", ref: "users" },
       { name: "partner_id", label: "Партнёр", type: "ref", ref: "partners" },
       { name: "client_id", label: "Клиент", type: "ref", ref: "clients" },
@@ -107,6 +110,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
     details: [
       { key: "contact", label: "Контакт" },
       { key: "topic", label: "Тема" },
+      { key: "project_key", label: "Проект-источник", render: (r) => <ProjectBadge row={r} /> },
       { key: "source", label: "Источник", render: sourceLabel },
       { key: "message", label: "Сообщение" },
       { key: "created_at", label: "Создан", render: (r) => fmtDate(r.created_at, true) },

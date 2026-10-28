@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import ProjectBadge, { PROJECTS } from "./ProjectBadge";
 import TrashDialog from "./TrashDialog";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TAG_DOT, TAG_GROUPS, TagList } from "./Tags";
@@ -28,6 +29,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
   const [manager, setManager] = useState(ALL);
   const [partner, setPartner] = useState(ALL);
   const [tag, setTag] = useState(ALL);
+  const [project, setProject] = useState(ALL);
   const [archived, setArchived] = useState(false);
   const [view, setView] = useState<"table" | "board">(resource === "deals" ? "board" : "table");
   const [creating, setCreating] = useState(false);
@@ -42,6 +44,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
     manager_id: manager === ALL ? undefined : manager,
     partner_id: partner === ALL ? undefined : partner,
     tag: tag === ALL ? undefined : tag,
+    project: resource === "leads" && project !== ALL ? project : undefined,
     archived: archived ? "1" : undefined,
   };
   const { data, isLoading } = useList(resource, params);
@@ -79,7 +82,7 @@ const EntityPage = ({ resource, onOpen }: Props) => {
 
   const exportCsv = () => {
     const cols = def.columns;
-    const rows = [cols.map((c) => c.label), ...items.map((r) => cols.map((c) => String(r[c.key] ?? "")))];
+    const rows = [cols.map((c) => c.label), ...items.map((r) => cols.map((c) => String((c.key === "project_key" ? PROJECTS[r[c.key]] : r[c.key]) ?? "")))];
     const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(";")).join("\n");
     const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
@@ -131,6 +134,10 @@ const EntityPage = ({ resource, onOpen }: Props) => {
           <FilterSelect value={partner} onChange={setPartner} placeholder="Все партнёры"
             items={(opts?.partners || []).map((u) => ({ value: String(u.id), label: u.name }))} />
         )}
+        {resource === "leads" && (
+          <FilterSelect value={project} onChange={setProject} placeholder="Все проекты"
+            items={Object.entries(PROJECTS).map(([value, label]) => ({ value, label }))} />
+        )}
         <TagFilter value={tag} onChange={setTag} tags={opts?.tags || []} />
         <Button variant={archived ? "default" : "outline"} size="sm" className="h-10" onClick={() => setArchived(!archived)}>
           <Icon name="Archive" size={14} className="mr-1.5" />Архив
@@ -171,7 +178,10 @@ const EntityPage = ({ resource, onOpen }: Props) => {
                         onClick={() => onOpen(resource, i.id)}
                         className="cursor-grab rounded-lg border bg-card p-3 text-left text-sm shadow-sm transition-shadow hover:shadow-md active:cursor-grabbing"
                       >
-                        <p className="font-medium leading-snug">{i[def.titleKey] || "Аноним"}</p>
+                        <p className="flex items-start gap-2 font-medium leading-snug">
+                          {resource === "leads" && <span className="mt-px"><ProjectBadge row={i} withLabel={false} size={18} /></span>}
+                          <span className="min-w-0">{i[def.titleKey] || "Аноним"}</span>
+                        </p>
                         {resource === "deals" ? (
                           <>
                             <p className="mt-1 text-xs text-muted-foreground">{i.client_name || "Без клиента"}</p>

@@ -306,6 +306,7 @@ def create_lead(cur, body, api_key):
         'partner_id': ref(cur, 'crm_partners', 'partner_id', body.get('partner_id')),
         'client_id': ref(cur, 'crm_clients', 'client_id', body.get('client_id'), 'AND trashed_at IS NULL'),
         'external_id': external_id,
+        'project': 'reba' if 'реба' in (api_key.get('name') or '').lower() or 'reba' in (api_key.get('name') or '').lower() else None,
         'channel': channel,
         **attr,
         **rep(body),

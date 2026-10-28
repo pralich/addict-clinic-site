@@ -1,0 +1,2 @@
+ALTER TABLE crm_leads ADD COLUMN IF NOT EXISTS project VARCHAR(20);
+UPDATE crm_leads l SET project = 'reba' WHERE EXISTS (SELECT 1 FROM crm_activities a WHERE a.entity_type = 'leads' AND a.entity_id = l.id AND a.text LIKE '%(API: РЕБА.РФ)%');
