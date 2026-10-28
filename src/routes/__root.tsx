@@ -6,7 +6,7 @@ import {TooltipProvider} from "@/components/ui/tooltip";
 import InstallPrompt from "@/components/InstallPrompt";
 import SiteWidget from "@/components/SiteWidget";
 import CookieBanner from "@/components/legal/CookieBanner";
-import NotFound from "@/pages/NotFound";
+import PageNotFound from "@/components/PageNotFound";
 import {captureAttribution} from "@/lib/attribution";
 import {initVisitTracker} from "@/lib/visit-tracker";
 import {initGoalClicks} from "@/lib/goals";
@@ -75,15 +75,20 @@ const BOOT_CSS = `#boot-splash { display: none; }
 #boot-splash img { width: 80px; height: 80px; border-radius: 22px; box-shadow: 0 20px 60px -10px rgba(224,43,47,.6); }
 @keyframes bs-spin { to { transform: rotate(360deg); } }`;
 
+const NF_TITLE = "Страница не найдена — addict.clinic";
+const NF_DESCRIPTION = "Такой страницы нет на сайте addict.clinic. Перейдите к разделам лечения, услуг или статей.";
+
 export const Route = createRootRoute({
-    head: () => ({
+    head: ({match}) => {
+        const nf = Boolean(match._notFound);
+        return {
         meta: [
             {charSet: "utf-8"},
             {name: "viewport", content: "width=device-width, initial-scale=1.0"},
-            {title: TITLE},
-            {name: "description", content: DESCRIPTION},
+            {title: nf ? NF_TITLE : TITLE},
+            {name: "description", content: nf ? NF_DESCRIPTION : DESCRIPTION},
             {name: "keywords", content: "лечение зависимостей, анонимное лечение алкоголизма, лечение наркомании, вывод из запоя, нарколог на дом, игромания лечение, реабилитация, наркологическая клиника Москва"},
-            {name: "robots", content: "index, follow, max-image-preview:large"},
+            {name: "robots", content: nf ? "noindex, follow" : "index, follow, max-image-preview:large"},
             {name: "author", content: "addict.clinic"},
             {name: "theme-color", content: "#F3F3F1"},
             {name: "format-detection", content: "telephone=yes"},
@@ -94,15 +99,15 @@ export const Route = createRootRoute({
             {property: "og:site_name", content: "addict.clinic"},
             {property: "og:locale", content: "ru_RU"},
             {property: "og:url", content: "https://addict.clinic/"},
-            {property: "og:title", content: OG_TITLE},
-            {property: "og:description", content: OG_DESCRIPTION},
+            {property: "og:title", content: nf ? NF_TITLE : OG_TITLE},
+            {property: "og:description", content: nf ? NF_DESCRIPTION : OG_DESCRIPTION},
             {property: "og:image", content: OG_IMAGE},
             {property: "og:image:width", content: "1200"},
             {property: "og:image:height", content: "630"},
             {property: "og:image:alt", content: "addict.clinic — анонимное лечение зависимостей"},
             {name: "twitter:card", content: "summary_large_image"},
-            {name: "twitter:title", content: OG_TITLE},
-            {name: "twitter:description", content: OG_DESCRIPTION},
+            {name: "twitter:title", content: nf ? NF_TITLE : OG_TITLE},
+            {name: "twitter:description", content: nf ? NF_DESCRIPTION : OG_DESCRIPTION},
             {name: "twitter:image", content: OG_IMAGE},
             ...PLATFORM_META,
         ],
@@ -126,9 +131,10 @@ export const Route = createRootRoute({
             {children: BOOT},
             ldScript(ROOT_LD),
         ],
-    }),
+        };
+    },
     component: RootComponent,
-    notFoundComponent: NotFound,
+    notFoundComponent: PageNotFound,
 });
 
 function RootComponent() {
