@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 
 MSK = timedelta(hours=3)
-MSK_NOW = "(NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')"
+MSK_NOW = "(NOW()::timestamp + INTERVAL '3 hours')"
 MSK_TODAY = f"{MSK_NOW}::date"
 MSK_TODAY_START = f"({MSK_TODAY} - INTERVAL '3 hours')"
 

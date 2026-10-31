@@ -279,7 +279,7 @@ def handle_dashboard(cur):
             COUNT(DISTINCT lead_id) FILTER (WHERE lead_created AND direction = 'out') AS leads_out,
             COUNT(DISTINCT lead_id) FILTER (WHERE lead_created AND status = 'missed') AS leads_missed
             FROM {t("crm_calls")}
-            WHERE (started_at + INTERVAL '3 hours')::date >= (NOW() AT TIME ZONE 'UTC' + INTERVAL '3 hours')::date - {days}''')
+            WHERE (started_at + INTERVAL '3 hours')::date >= (NOW()::timestamp + INTERVAL '3 hours')::date - {days}''')
         calls[key] = cur.fetchone()
     res['calls'] = calls
     return resp(200, res)
