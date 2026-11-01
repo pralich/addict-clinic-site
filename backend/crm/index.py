@@ -11,6 +11,7 @@ import psycopg2.extras
 from finance import handle_finance
 from billing import handle_billing
 from schedule import attach_plans
+import accrual
 from tasks import handle_tasks
 from calls import handle_calls, handle_live_calls, handle_make_call, entity_calls
 from reqlogs import handle_request_logs
@@ -61,7 +62,7 @@ ENTITIES = {
     },
     'deals': {
         'table': 'crm_deals',
-        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date', 'commission_type', 'commission_value', 'payment_schedule', 'payment_amount'],
+        'fields': ['title', 'client_id', 'partner_id', 'manager_id', 'lead_id', 'stage', 'program', 'amount', 'expected_close', 'notes', 'rep_name', 'rep_relation', 'rep_phone', 'rep_email', 'rep_messenger', 'rep_note', 'tags', 'check_in_date', 'treatment_months', 'check_out_date', 'commission_type', 'commission_value', 'payment_schedule', 'payment_amount', 'full_amount', 'accrual_mode', 'accrual_plan'],
         'required': ['title'],
         'search': ['title', 'program', 'notes', 'rep_name', 'rep_phone', 'rep_email'],
         'filter': 'stage',
@@ -247,6 +248,8 @@ def handle_dashboard(cur):
         COUNT(*) FILTER (WHERE stage = 'lost') AS lost
         FROM {t("crm_deals")} WHERE archived_at IS NULL''')
     res['deals'] = cur.fetchone()
+    today = msk_today()
+    res['deals']['won_month'] = round(sum(accrual.in_range(d, today.replace(day=1), today) for d in accrual.won_deals(cur, t)), 2)
     q(cur, f'SELECT stage, COUNT(*) AS count, COALESCE(SUM(amount),0) AS amount FROM {t("crm_deals")} WHERE archived_at IS NULL GROUP BY stage')
     res['funnel'] = cur.fetchall()
     q(cur, f'''SELECT to_char(d, 'DD.MM') AS day, (SELECT COUNT(*) FROM {t("crm_leads")} l WHERE {msk('l.created_at')}::date = d::date AND l.trashed_at IS NULL) AS leads
@@ -368,7 +371,7 @@ def handle_in_treatment(cur, params):
     day = params.get('date') or msk_today().isoformat()
     q(cur, f"""SELECT d.id AS deal_id, d.title, d.stage, d.program, d.amount, d.check_in_date, {CHECKOUT_SQL} AS check_out_date,
             d.treatment_months, d.rep_name, d.rep_relation, d.rep_phone, d.rep_email, d.rep_messenger,
-            d.commission_type, d.commission_value, d.payment_schedule, d.payment_amount, d.partner_id,
+            d.commission_type, d.commission_value, d.payment_schedule, d.payment_amount, d.partner_id, d.full_amount, d.accrual_mode, d.accrual_plan,
             pp.name AS partner_name,
             COALESCE((SELECT SUM(i.amount - COALESCE((SELECT SUM(pm.amount) FROM {t('crm_payments')} pm WHERE pm.invoice_id = i.id AND pm.archived_at IS NULL), 0))
                 FROM {t('crm_invoices')} i WHERE i.deal_id = d.id AND i.archived_at IS NULL AND i.status <> 'canceled'), 0) AS debt,
@@ -444,6 +447,12 @@ def prepare(cfg, body, partial):
                 v = int(v)
             if f in ('amount', 'commission_percent'):
                 v = float(v or 0)
+            if f == 'full_amount':
+                v = round(float(v), 2) if v not in (None, '') else None
+            if f == 'accrual_mode' and v not in accrual.MODES:
+                v = 'full'
+            if f == 'accrual_plan':
+                v = accrual.clean_plan(v)
             if f in ('commission_value', 'payment_amount'):
                 v = round(float(v), 2) if v not in (None, '') else None
             if f == 'project' and v not in ('reba', 'addict'):
@@ -487,6 +496,8 @@ def save_entity(cur, name, eid, body, user):
         return resp(400, {'error': f'Заполните поле: {missing}'})
     if not data:
         return resp(400, {'error': 'Нет данных'})
+    if name == 'deals' and data.get('accrual_mode') == 'custom' and not data.get('accrual_plan'):
+        return resp(400, {'error': 'Укажите свой график начисления в процентах по месяцам, например 30/30/40 — в сумме 100%'})
     if eid is None:
         if name in ('clients', 'leads', 'deals') and 'manager_id' not in data:
             data['manager_id'] = user['id']

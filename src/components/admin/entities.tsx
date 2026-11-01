@@ -5,7 +5,7 @@ import { TagList } from "./Tags";
 import ProjectBadge, { PROJECTS } from "./ProjectBadge";
 import { fmtMskDate, mskDateKey } from "@/lib/msk";
 import {
-  CHANNELS, CLIENT_STATUS, PAYMENT_SCHEDULES, commissionText, daysUntil, dueTone, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
+  accrualText, CHANNELS, CLIENT_STATUS, PAYMENT_SCHEDULES, commissionText, daysUntil, dueTone, REP_RELATIONS, DEAL_STAGES, LEAD_STATUS, PARTNER_STATUS, PARTNER_TYPES, SOURCES,
   fmtDate, money, toOptions, type StatusMap,
 } from "./config";
 
@@ -143,7 +143,8 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "client_id", label: "Клиент", type: "ref", ref: "clients" },
       { name: "stage", label: "Этап", type: "select", options: toOptions(DEAL_STAGES), required: true },
       { name: "program", label: "Программа лечения", placeholder: "Детокс, стационар 21 день…" },
-      { name: "amount", label: "Сумма, ₽", type: "number" },
+      { name: "amount", label: "Сумма, ₽", type: "number", placeholder: "Идёт в финансовые отчёты" },
+      { name: "full_amount", label: "Полная сумма (выбранного учреждения), ₽", type: "number", placeholder: "Для справки, в отчёты не идёт" },
       { name: "check_in_date", label: "Дата заезда", type: "date" },
       { name: "treatment_months", label: "Продолжительность лечения, мес.", type: "number", placeholder: "Например, 3" },
       { name: "check_out_date", label: "Дата выезда", type: "date" },
@@ -152,11 +153,14 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
       { name: "expected_close", label: "Плановая дата закрытия", type: "date" },
       { name: "notes", label: "Заметки", type: "textarea" },
       { name: "commission_type", label: "Комиссия", type: "commission", section: PAY },
+      { name: "accrual_mode", label: "Условия начисления", type: "accrual", section: PAY },
       { name: "payment_schedule", label: "Периодичность платежей", type: "select", options: toOptions(PAYMENT_SCHEDULES), section: PAY, placeholder: "Ежемесячно" },
       ...repFields,
     ],
     details: [
       { key: "amount", label: "Сумма", render: (r) => money(r.amount) },
+      { key: "full_amount", label: "Полная сумма учреждения", render: (r) => (r.full_amount ? money(r.full_amount) : null) },
+      { key: "accrual_mode", label: "Начисление", render: (r) => accrualText(r) },
       { key: "program", label: "Программа" },
       { key: "check_in_date", label: "Дата заезда", render: (r) => fmtDate(r.check_in_date) },
       { key: "commission", label: "Комиссия", render: (r) => commissionText(r) },
@@ -265,7 +269,7 @@ export const ENTITY_DEFS: Record<string, EntityDef> = {
 
 export const DEFAULTS: Record<string, Record<string, any>> = {
   leads: { status: "new", source: "phone" },
-  deals: { stage: "new", amount: 0 },
+  deals: { stage: "new", amount: 0, accrual_mode: "full" },
   clients: { status: "active", source: "site" },
   partners: { status: "active", type: "agent", commission_percent: 10 },
 };

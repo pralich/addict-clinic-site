@@ -7,12 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOptions, type Options } from "./useCrm";
 import { TagField } from "./Tags";
-import { commissionAmount, money } from "./config";
+import { ACCRUAL_MODES, commissionAmount, money, parseAccrualPlan } from "./config";
 
 export type Field = {
   name: string;
   label: string;
-  type?: "text" | "email" | "tel" | "number" | "date" | "textarea" | "select" | "switch" | "ref" | "password" | "tags" | "commission";
+  type?: "text" | "email" | "tel" | "number" | "date" | "textarea" | "select" | "switch" | "ref" | "password" | "tags" | "commission" | "accrual";
   options?: { value: string; label: string }[];
   ref?: keyof Options;
   required?: boolean;
@@ -42,6 +42,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
       const d: Record<string, any> = {};
       fields.forEach((f) => {
         if (f.type === "commission") d.commission_value = initial?.commission_value ?? "";
+        if (f.type === "accrual") d.accrual_plan = initial?.accrual_plan ?? "";
         const v = initial?.[f.name];
         d[f.name] = f.type === "tags" ? v || [] : f.type === "date" && v ? String(v).slice(0, 10) : v ?? (f.type === "switch" ? false : "");
       });
@@ -65,6 +66,11 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
           out[f.name] = out.commission_value === null ? null : v || "percent";
           return;
         }
+        if (f.type === "accrual") {
+          out[f.name] = v || "full";
+          out.accrual_plan = out[f.name] === "custom" ? data.accrual_plan || null : null;
+          return;
+        }
         out[f.name] = f.type === "tags" ? v || [] : v === "" ? null : v;
       });
       await onSubmit(out);
@@ -85,7 +91,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
         <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
           {fields.map((f) => {
             const v = data[f.name];
-            const full = f.full || f.type === "textarea" || f.type === "tags" || f.type === "commission";
+            const full = f.full || f.type === "textarea" || f.type === "tags" || f.type === "commission" || f.type === "accrual";
             let control;
             if (f.type === "commission") {
               const kind = v || "percent";
@@ -100,6 +106,29 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
                   <Input type="number" step="any" min="0" max={kind === "percent" ? 100 : undefined} value={data.commission_value ?? ""} onChange={(e) => set("commission_value", e.target.value)} placeholder={kind === "percent" ? "Например, 10" : "Например, 15000"} className="sm:w-40" />
                   <span className="text-sm text-muted-foreground">
                     {sum ? <>= <b className="text-foreground">{money(sum)}</b>{kind === "percent" && !Number(data.amount) ? "" : kind === "percent" ? ` от ${money(data.amount)}` : ""}</> : kind === "percent" && !Number(data.amount) ? "Укажите сумму сделки" : ""}
+                  </span>
+                </div>
+              );
+            } else if (f.type === "accrual") {
+              const mode = v || "full";
+              const plan = parseAccrualPlan(data.accrual_plan);
+              const amount = Number(data.amount || 0);
+              control = (
+                <div className="flex flex-col gap-2">
+                  <div className="grid gap-1 rounded-lg bg-secondary p-1 sm:grid-cols-3">
+                    {Object.entries(ACCRUAL_MODES).map(([k, l]) => (
+                      <button key={k} type="button" onClick={() => set(f.name, k)} className={`rounded-md px-3 py-1.5 text-xs ${mode === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
+                    ))}
+                  </div>
+                  {mode === "custom" && (
+                    <Input value={data.accrual_plan ?? ""} onChange={(e) => set("accrual_plan", e.target.value)} placeholder="Проценты по месяцам через /, например 30/30/40" />
+                  )}
+                  <span className="text-xs text-muted-foreground">
+                    {mode === "full" && "Вся сумма сделки попадает в выручку месяца, когда сделка стала «Успешно»."}
+                    {mode === "half" && (amount ? `${money(amount / 2)} — в месяц заезда, ${money(amount / 2)} — в следующий.` : "Половина — в месяц заезда, вторая половина — в следующий.")}
+                    {mode === "custom" && (plan
+                      ? plan.map((p, i) => `${i + 1}-й мес.: ${amount ? money((amount * p) / 100) : `${p}%`}`).join(" · ")
+                      : "Сумма процентов должна быть 100%. Отсчёт месяцев — от даты заезда.")}
                   </span>
                 </div>
               );
@@ -145,7 +174,7 @@ const EntityForm = ({ open, onOpenChange, title, fields, initial, onSubmit }: Pr
             return (
               <div key={f.name} className="contents">
               {heading}
-              <label className={`block text-sm ${full ? "sm:col-span-2" : ""}`} onClick={f.type === "tags" || f.type === "commission" ? (e) => e.preventDefault() : undefined}>
+              <label className={`block text-sm ${full ? "sm:col-span-2" : ""}`} onClick={f.type === "tags" || f.type === "commission" || f.type === "accrual" ? (e) => e.preventDefault() : undefined}>
                 <span className="mb-1.5 block font-medium">
                   {f.label}
                   {f.required && <span className="text-primary"> *</span>}

@@ -1,6 +1,7 @@
 from datetime import date
 
 from msk import msk, msk_today
+import accrual
 
 INCOME_CATS = ('services', 'partner_fee', 'grants', 'shop', 'other_income')
 EXPENSE_CATS = ('salary', 'rent', 'marketing', 'commission', 'taxes', 'software', 'telecom', 'bank', 'office', 'other_expense')
@@ -15,20 +16,28 @@ def _period(params):
 
 def _deals(cur, t, params):
     d_from, d_to = _period(params)
-    cur.execute(f"""SELECT d.id, d.title, d.program, d.amount, d.closed_at, d.stage,
-            c.full_name AS client_name, u.name AS manager_name, p.name AS partner_name, COALESCE(p.commission_percent, 0) AS commission_percent,
-            ROUND(d.amount * COALESCE(p.commission_percent, 0) / 100, 2) AS commission
+    f, to = date.fromisoformat(d_from[:10]), date.fromisoformat(d_to[:10])
+    cur.execute(f"""SELECT d.id, d.title, d.program, d.amount, d.closed_at, d.stage, d.check_in_date, d.accrual_mode, d.accrual_plan,
+            c.full_name AS client_name, u.name AS manager_name, p.name AS partner_name, COALESCE(p.commission_percent, 0) AS commission_percent
         FROM {t('crm_deals')} d
         LEFT JOIN {t('crm_clients')} c ON c.id = d.client_id
         LEFT JOIN {t('crm_users')} u ON u.id = d.manager_id
         LEFT JOIN {t('crm_partners')} p ON p.id = d.partner_id
-        WHERE d.stage = 'won' AND d.archived_at IS NULL AND {msk('d.closed_at')}::date BETWEEN %s AND %s
-        ORDER BY d.closed_at DESC""", (d_from, d_to))
-    items = cur.fetchall()
+        WHERE d.stage = 'won' AND d.archived_at IS NULL AND d.closed_at IS NOT NULL
+        ORDER BY d.closed_at DESC""")
+    items = []
+    for d in cur.fetchall():
+        acc = accrual.in_range(d, f, to)
+        if not acc:
+            continue
+        d['accrued'] = acc
+        d['commission'] = round(acc * float(d['commission_percent']) / 100, 2)
+        d['accrual_text'] = accrual.text(d)
+        items.append(d)
     cur.execute(f"""SELECT COALESCE(SUM(amount), 0) AS amount, COUNT(*) AS count FROM {t('crm_deals')}
         WHERE stage NOT IN ('won', 'lost') AND archived_at IS NULL""")
     pipeline = cur.fetchone()
-    total = sum(float(i['amount']) for i in items)
+    total = sum(i['accrued'] for i in items)
     commission = sum(float(i['commission']) for i in items)
     return {'items': items, 'summary': {'revenue': total, 'count': len(items), 'avg': total / len(items) if items else 0,
                                         'commission': commission, 'pipeline': pipeline['amount'], 'pipeline_count': pipeline['count']}}
@@ -87,10 +96,14 @@ def _cashflow(cur, t, params):
     months = [{'month': m, 'deals': 0.0, 'shop': 0.0, 'family': 0.0, 'income_manual': 0.0, 'expense': 0.0} for m in range(1, 13)]
     cats = {}
 
-    cur.execute(f"""SELECT EXTRACT(MONTH FROM {closed})::int AS m, SUM(amount) AS s FROM {t('crm_deals')}
-        WHERE stage = 'won' AND archived_at IS NULL AND EXTRACT(YEAR FROM {closed}) = %s GROUP BY 1""", (year,))
-    for r in cur.fetchall():
-        months[r['m'] - 1]['deals'] = float(r['s'])
+    deal_years, deals_before = set(), 0.0
+    for d in accrual.won_deals(cur, t):
+        for day, v in accrual.schedule(d):
+            deal_years.add(day.year)
+            if day.year == year:
+                months[day.month - 1]['deals'] += v
+            elif day.year < year:
+                deals_before += v
     cur.execute(f"""SELECT EXTRACT(MONTH FROM {paid})::int AS m, CASE WHEN source = 'shop' THEN 'shop' ELSE 'family' END AS src, SUM(amount) AS s
         FROM {t('orders')} WHERE status = 'paid' AND EXTRACT(YEAR FROM {paid}) = %s GROUP BY 1, 2""", (year,))
     for r in cur.fetchall():
@@ -104,11 +117,10 @@ def _cashflow(cur, t, params):
         c[r['m'] - 1] += float(r['s'])
 
     cur.execute(f"""SELECT
-        (SELECT COALESCE(SUM(amount), 0) FROM {t('crm_deals')} WHERE stage = 'won' AND archived_at IS NULL AND {closed} < %s)
-      + (SELECT COALESCE(SUM(amount), 0) FROM {t('orders')} WHERE status = 'paid' AND {paid} < %s)
+        (SELECT COALESCE(SUM(amount), 0) FROM {t('orders')} WHERE status = 'paid' AND {paid} < %s)
       + (SELECT COALESCE(SUM(CASE WHEN kind = 'income' THEN amount ELSE -amount END), 0) FROM {t('crm_fin_ops')} WHERE archived_at IS NULL AND op_date < %s) AS v""",
-                (opening_to, opening_to, opening_to))
-    balance = float(cur.fetchone()['v'])
+                (opening_to, opening_to))
+    balance = float(cur.fetchone()['v']) + deals_before
     opening = balance
     for m in months:
         m['inflow'] = m['deals'] + m['shop'] + m['family'] + m['income_manual']
@@ -118,10 +130,9 @@ def _cashflow(cur, t, params):
         m['closing'] = balance
 
     cur.execute(f"""SELECT DISTINCT y FROM (
-        SELECT EXTRACT(YEAR FROM {closed})::int AS y FROM {t('crm_deals')} WHERE stage = 'won' AND closed_at IS NOT NULL
-        UNION SELECT EXTRACT(YEAR FROM op_date)::int FROM {t('crm_fin_ops')} WHERE archived_at IS NULL
+        SELECT EXTRACT(YEAR FROM op_date)::int AS y FROM {t('crm_fin_ops')} WHERE archived_at IS NULL
         UNION SELECT EXTRACT(YEAR FROM {paid})::int FROM {t('orders')} WHERE status = 'paid') x ORDER BY y DESC""")
-    years = sorted({r['y'] for r in cur.fetchall()} | {msk_today().year}, reverse=True)
+    years = sorted({r['y'] for r in cur.fetchall()} | deal_years | {msk_today().year}, reverse=True)
     return {'year': year, 'years': years, 'opening': opening, 'closing': balance, 'months': months,
             'categories': [{'kind': k[0], 'category': k[1], 'months': v, 'total': sum(v)} for k, v in sorted(cats.items(), key=lambda x: (x[0][0] != 'income', -sum(x[1])))]}
 

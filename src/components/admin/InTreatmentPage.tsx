@@ -4,7 +4,7 @@ import Icon from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/crm-api";
 import StatusBadge from "./StatusBadge";
-import { DEAL_STAGES, REP_RELATIONS, commissionAmount, commissionText, daysUntil, fmtDate, money } from "./config";
+import { DEAL_STAGES, REP_RELATIONS, accrualText, commissionAmount, commissionText, daysUntil, fmtDate, money } from "./config";
 import { DueBadge, InvoiceButton, nextPaymentPreset } from "./billing/NextPayment";
 import DealPaymentsDialog from "./billing/DealPaymentsDialog";
 import { mskToday } from "@/lib/msk";
@@ -115,6 +115,8 @@ const Commission = ({ r }: { r: Row }) => {
   return (
     <div className="flex flex-col">
       <span className="tabular-nums">{money(r.amount)}</span>
+      {Number(r.full_amount) > 0 && <span className="text-xs text-muted-foreground">полная {money(r.full_amount)}</span>}
+      <span className="text-xs text-muted-foreground">{accrualText(r)}</span>
       {txt ? <span className="text-xs text-muted-foreground">комиссия {txt}</span> : <span className="text-xs text-muted-foreground">без комиссии</span>}
       {r.partner_name && <span className="max-w-[160px] truncate text-xs text-muted-foreground">{r.partner_name}</span>}
     </div>
@@ -159,6 +161,12 @@ const MobileRow = ({ r, day, onOpen }: { r: Row; day: Date; onOpen: (resource: s
       <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 text-[13px]">
         <dt className="whitespace-nowrap text-muted-foreground">Сумма</dt>
         <dd className="min-w-0 truncate text-right tabular-nums">{money(r.amount)}{txt ? <span className="text-muted-foreground"> · комиссия {txt}</span> : ""}</dd>
+        {Number(r.full_amount) > 0 && <>
+          <dt className="whitespace-nowrap text-muted-foreground">Полная сумма</dt>
+          <dd className="min-w-0 truncate text-right tabular-nums">{money(r.full_amount)}</dd>
+        </>}
+        <dt className="whitespace-nowrap text-muted-foreground">Начисление</dt>
+        <dd className="min-w-0 truncate text-right">{accrualText(r)}</dd>
         {r.partner_name && <>
           <dt className="whitespace-nowrap text-muted-foreground">Партнёр</dt>
           <dd className="min-w-0 truncate text-right">{r.partner_name}</dd>

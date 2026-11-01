@@ -139,6 +139,25 @@ export const PAYMENT_SCHEDULES: Record<string, string> = {
 
 export const PAY_SCHEDULE_HINT = "Платежи считаются от даты заезда: первый — в день заезда, далее по выбранной периодичности до даты выезда";
 
+export const ACCRUAL_MODES: Record<string, string> = {
+  full: "Сразу вся сумма",
+  half: "50% первый месяц, 50% второй",
+  custom: "Свой график",
+};
+
+export const parseAccrualPlan = (text?: string | null) => {
+  const parts = String(text || "").trim().split(/[\s/;+|]+/).filter(Boolean).map((p) => Number(p.replace(",", ".").replace(/%$/, "")));
+  if (!parts.length || parts.some((v) => !(v > 0))) return null;
+  return Math.abs(parts.reduce((a, v) => a + v, 0) - 100) <= 0.5 ? parts : null;
+};
+
+export const accrualText = (r: { accrual_mode?: string | null; accrual_plan?: string | null }) => {
+  if (r.accrual_mode === "half") return "50% в первый месяц, 50% во второй";
+  const plan = r.accrual_mode === "custom" ? parseAccrualPlan(r.accrual_plan) : null;
+  if (plan) return `По месяцам: ${plan.map((v) => `${String(v).replace(".", ",")}%`).join(" / ")}`;
+  return "Сразу вся сумма";
+};
+
 export const commissionAmount = (r: { amount?: any; commission_type?: string | null; commission_value?: any }) => {
   const v = Number(r.commission_value || 0);
   if (!r.commission_type || !v) return 0;

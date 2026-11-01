@@ -9,6 +9,8 @@ type Deal = {
   title: string;
   program: string | null;
   amount: number;
+  accrued: number;
+  accrual_text: string;
   closed_at: string;
   client_name: string | null;
   manager_name: string | null;
@@ -30,8 +32,8 @@ const DealsIncome = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
   const exportCsv = () =>
     data &&
     downloadCsv(`deals_${p.range[0]}_${p.range[1]}.csv`, [
-      ["Дата закрытия", "Сделка", "Программа", "Клиент", "Менеджер", "Партнёр", "Сумма", "Комиссия партнёра"],
-      ...data.items.map((d) => [fmtDate(d.closed_at), d.title, d.program || "", d.client_name || "", d.manager_name || "", d.partner_name || "", d.amount, d.commission]),
+      ["Дата закрытия", "Сделка", "Программа", "Клиент", "Менеджер", "Партнёр", "Сумма сделки", "Условия начисления", "Начислено за период", "Комиссия партнёра"],
+      ...data.items.map((d) => [fmtDate(d.closed_at), d.title, d.program || "", d.client_name || "", d.manager_name || "", d.partner_name || "", d.amount, d.accrual_text, d.accrued, d.commission]),
     ]);
 
   return (
@@ -44,7 +46,7 @@ const DealsIncome = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
       </div>
 
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
-        <Kpi label="Выручка по сделкам" value={money(s?.revenue)} sub={`${s?.count ?? 0} успешных сделок`} tone="pos" />
+        <Kpi label="Выручка по сделкам" value={money(s?.revenue)} sub={`${s?.count ?? 0} сделок с начислением за период`} tone="pos" />
         <Kpi label="Средний чек" value={money(s?.avg)} />
         <Kpi label="Комиссии партнёрам" value={money(s?.commission)} sub="по % из карточки партнёра" tone="neg" />
         <Kpi label="В работе (воронка)" value={money(s?.pipeline)} sub={`${s?.pipeline_count ?? 0} открытых сделок`} />
@@ -56,7 +58,7 @@ const DealsIncome = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
         ) : !data?.items.length ? (
           <div className="flex h-40 flex-col items-center justify-center gap-1 text-center text-sm text-muted-foreground">
             <Icon name="Handshake" size={22} />
-            За период нет сделок на этапе «Успешно»
+            За период нет начислений по успешным сделкам
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -68,7 +70,8 @@ const DealsIncome = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
                   <th className="px-4 py-2.5 font-medium">Клиент</th>
                   <th className="px-4 py-2.5 font-medium">Менеджер</th>
                   <th className="px-4 py-2.5 font-medium">Партнёр</th>
-                  <th className="px-4 py-2.5 text-right font-medium">Сумма</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Сумма сделки</th>
+                  <th className="px-4 py-2.5 text-right font-medium">Начислено</th>
                   <th className="px-4 py-2.5 text-right font-medium">Комиссия</th>
                 </tr>
               </thead>
@@ -80,14 +83,15 @@ const DealsIncome = ({ onOpen }: { onOpen: (resource: string, id: number) => voi
                     <td className="px-4 py-2.5">{d.client_name || "—"}</td>
                     <td className="px-4 py-2.5">{d.manager_name || "—"}</td>
                     <td className="px-4 py-2.5">{d.partner_name ? `${d.partner_name} · ${Number(d.commission_percent)}%` : "—"}</td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-medium tabular-nums">{money(d.amount)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-muted-foreground">{money(d.amount)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-medium tabular-nums">{money(d.accrued)}<p className="text-[11px] font-normal text-muted-foreground">{d.accrual_text}</p></td>
                     <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums text-muted-foreground">{Number(d.commission) ? money(d.commission) : "—"}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot className="border-t bg-secondary/40 font-medium">
                 <tr>
-                  <td className="px-4 py-2.5" colSpan={5}>Итого</td>
+                  <td className="px-4 py-2.5" colSpan={6}>Итого</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{money(s?.revenue)}</td>
                   <td className="px-4 py-2.5 text-right tabular-nums">{money(s?.commission)}</td>
                 </tr>
