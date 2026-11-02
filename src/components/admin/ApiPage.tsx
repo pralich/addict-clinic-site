@@ -9,6 +9,7 @@ import { api } from "@/lib/crm-api";
 import { useAuth } from "./AuthContext";
 import { fmtDate } from "./config";
 import LeadParseSettings from "./LeadParseSettings";
+import FormWidgets from "./FormWidgets";
 
 const API_URL = "https://api.addict.clinic/";
 
@@ -131,6 +132,8 @@ const ApiPage = () => {
       </div>
 
       <LeadParseSettings isAdmin={isAdmin} />
+
+      {isAdmin && <FormWidgets />}
 
       {isAdmin ? (
         <div className="rounded-xl border bg-card p-5">

@@ -117,6 +117,25 @@
         }
       },
       "expectedStatus": 401
+    },
+    {
+      "name": "Form widget without token",
+      "method": "POST",
+      "path": "/?resource=form_widget",
+      "body": {
+        "f": []
+      },
+      "expectedStatus": 400
+    },
+    {
+      "name": "Form widget wrong token",
+      "method": "POST",
+      "path": "/?resource=form_widget",
+      "body": {
+        "t": "fw_wrong",
+        "f": []
+      },
+      "expectedStatus": 403
     }
   ]
 }

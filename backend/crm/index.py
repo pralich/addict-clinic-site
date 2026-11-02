@@ -627,6 +627,33 @@ def handle_api_keys(cur, method, eid, body, user):
     return resp(400, {'error': 'Неверный запрос'})
 
 
+def handle_form_widgets(cur, method, eid, body, user):
+    if user['role'] != 'admin':
+        return resp(403, {'error': 'Доступно только администратору'})
+    if method == 'GET':
+        q(cur, f'SELECT w.id, w.token, w.name, w.project, w.domains, w.is_active, w.leads_count, w.last_lead_at, w.created_at, u.name AS author FROM {t("crm_form_widgets")} w LEFT JOIN {t("crm_users")} u ON u.id = w.created_by ORDER BY w.is_active DESC, w.id DESC')
+        return resp(200, {'items': cur.fetchall()})
+    name = clean(body.get('name'))
+    project = body.get('project') if body.get('project') in ('reba', 'addict') else 'addict'
+    domains = (clean(body.get('domains')) or '')[:1000] or None
+    if method == 'POST':
+        if not name:
+            return resp(400, {'error': 'Укажите название виджета'})
+        token = 'fw_' + secrets.token_urlsafe(18)
+        q(cur, f'INSERT INTO {t("crm_form_widgets")} (token, name, project, domains, created_by) VALUES (%s, %s, %s, %s, %s) RETURNING id, token',
+          (token, name[:200], project, domains, user['id']))
+        return resp(200, {'item': cur.fetchone()})
+    if method == 'PUT' and eid:
+        if 'is_active' in body:
+            q(cur, f'UPDATE {t("crm_form_widgets")} SET is_active = %s WHERE id = %s RETURNING id', (bool(body.get('is_active')), eid))
+        else:
+            if not name:
+                return resp(400, {'error': 'Укажите название виджета'})
+            q(cur, f'UPDATE {t("crm_form_widgets")} SET name = %s, project = %s, domains = %s WHERE id = %s RETURNING id', (name[:200], project, domains, eid))
+        return resp(200, {'item': cur.fetchone()})
+    return resp(400, {'error': 'Неверный запрос'})
+
+
 def handle_lead_parse(cur, method, action, body, user):
     if action == 'settings':
         if method == 'POST':
@@ -861,6 +888,8 @@ def handler(event: dict, context) -> dict:
             return handle_tags(cur, method, eid, body, user)
         if resource == 'lead_parse':
             return handle_lead_parse(cur, method, action, body, user)
+        if resource == 'form_widgets':
+            return handle_form_widgets(cur, method, eid, body, user)
         if resource == 'api_keys':
             return handle_api_keys(cur, method, eid, body, user)
         if resource == 'users':

@@ -12,6 +12,7 @@ import psycopg2
 import psycopg2.extras
 
 import lead_parse
+import form_widget
 
 from reqlog import logged
 
@@ -38,7 +39,7 @@ CHANNELS = {
     'organic_yandex': 'Поиск Яндекса', 'organic_google': 'Поиск Google', 'organic_other': 'Поиск', 'ai': 'ИИ-ассистенты',
     'social': 'Соцсети и мессенджеры', 'email': 'Рассылка', 'referral': 'Переход с сайта', 'direct': 'Прямой заход', 'api': 'Внешняя система',
 }
-FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта', 'vidzhitum': 'Виджитум'}
+FORMS = {'contacts': 'Контакты (главная)', 'premium': 'PREMIUM', 'article_cta': 'Статья', 'lead': 'Форма сайта', 'vidzhitum': 'Виджитум', 'widget': 'Виджет-перехватчик'}
 ATTR_FIELDS = {'form': 40, 'page_url': 500, 'page_title': 300, 'landing_url': 500, 'referrer': 500, 'utm_source': 150, 'utm_medium': 150, 'utm_campaign': 250, 'utm_content': 250, 'utm_term': 250, 'click_id': 250, 'ym_client_id': 50, 'device': 20, 'visitor_id': 64}
 CLIENT_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, full_name, phone, email, birth_date, is_anonymous, source, status, partner_id, manager_id, notes, created_at, updated_at'
 DEAL_OUT = 'id, external_id, rep_name, rep_relation, rep_phone, rep_email, title, client_id, partner_id, manager_id, lead_id, stage, program, amount, expected_close, closed_at, notes, created_at, updated_at'
@@ -471,6 +472,69 @@ def site_lead(cur, event, body):
     return resp(200, {'ok': True, 'id': lid})
 
 
+def widget_lead(cur, event, body):
+    token = str(body.get('t') or '')[:40]
+    if not token:
+        raise ApiError(400, 'Нет ключа виджета')
+    cur.execute(f"SELECT id, name, project, domains FROM {t('crm_form_widgets')} WHERE token = %s AND is_active", (token,))
+    w = cur.fetchone()
+    if not w:
+        raise ApiError(403, 'Виджет отключён')
+    attr = read_attr(body.get('a') if isinstance(body.get('a'), dict) else {})
+    if not form_widget.host_allowed(attr.get('page_url'), w['domains']):
+        raise ApiError(403, 'Сайт не разрешён для этого виджета')
+    if body.get('hp'):
+        return resp(200, {'ok': True}), None
+    ip = (((event.get('requestContext') or {}).get('identity') or {}).get('sourceIp') or '')[:64]
+    if ip:
+        cur.execute(f"SELECT COUNT(*) AS c FROM {t('crm_form_widget_hits')} WHERE ip = %s AND created_at > NOW() - INTERVAL '10 minutes'", (ip,))
+        if cur.fetchone()['c'] >= 8:
+            raise ApiError(429, 'Слишком много заявок')
+    f, extra = form_widget.extract(body.get('f'))
+    phone = norm_phone(f['phone'])
+    contact = phone or f['email']
+    if not contact:
+        return resp(200, {'ok': True, 'skipped': 'no_contact'}), None
+    cur.execute(f"SELECT id FROM {t('crm_leads')} WHERE contact = %s AND created_at > NOW() - INTERVAL '3 minutes' ORDER BY id DESC LIMIT 1", (contact,))
+    dup = cur.fetchone()
+    if dup:
+        return resp(200, {'ok': True, 'id': dup['id']}), None
+    form_name = str(body.get('n') or '')[:120]
+    message = '\n'.join(x for x in [f['message'], *extra] if x)[:5000] or None
+    channel = detect_channel(attr)
+    paid = channel in ('yandex_direct', 'google_ads', 'vk_ads', 'ads_other')
+    data = {
+        'name': f['name'],
+        'contact': contact,
+        'topic': f['topic'] or (form_name[:200] if form_name else None),
+        'message': message,
+        'source': 'ads' if paid else 'site',
+        'status': 'new',
+        'channel': channel,
+        'project': w['project'] if w['project'] in ('reba', 'addict') else None,
+        **attr,
+        'form': 'widget',
+    }
+    cur.execute(f"INSERT INTO {t('crm_leads')} ({', '.join(data)}) VALUES ({', '.join(['%s'] * len(data))}) RETURNING id", list(data.values()))
+    lid = cur.fetchone()['id']
+    site = host(attr.get('page_url')) or 'сайт'
+    parts = [f"Заявка через виджет «{w['name']}» · {site}", f"канал: {CHANNELS[channel]}"]
+    if form_name:
+        parts.append(f"форма: {form_name}")
+    if f['email'] and phone:
+        parts.append(f"email: {f['email']}")
+    if attr.get('utm_campaign'):
+        parts.append(f"кампания: {attr['utm_campaign']}")
+    if attr.get('page_title') or attr.get('page_url'):
+        parts.append(f"страница: {attr.get('page_title') or attr.get('page_url')}")
+    cur.execute(f"INSERT INTO {t('crm_activities')} (entity_type, entity_id, user_id, kind, text) VALUES ('leads', %s, NULL, 'system', %s)", (lid, ' · '.join(parts)))
+    cur.execute(f"INSERT INTO {t('crm_form_widget_hits')} (widget_id, ip, lead_id) VALUES (%s, %s, %s)", (w['id'], ip or None, lid))
+    cur.execute(f"UPDATE {t('crm_form_widgets')} SET leads_count = leads_count + 1, last_lead_at = NOW() WHERE id = %s", (w['id'],))
+    if lead_parse.auto_enabled(cur, t):
+        lead_parse.apply(cur, t, lid)
+    return resp(200, {'ok': True, 'id': lid}), lid
+
+
 VZ_WIDGETS = {'quiz': 'Квиз', 'callback': 'Обратный звонок', 'popup': 'Попап', 'wheel': 'Колесо фортуны', 'form': 'Форма', 'chat': 'Чат'}
 
 
@@ -614,11 +678,11 @@ def ping_push():
 
 
 @logged(
-    lambda e: {'site_lead': 'site', 'vidzhitum': 'vidzhitum'}.get((e.get('queryStringParameters') or {}).get('resource'), 'api'),
+    lambda e: {'site_lead': 'site', 'vidzhitum': 'vidzhitum', 'form_widget': 'widget'}.get((e.get('queryStringParameters') or {}).get('resource'), 'api'),
     lambda e, r: f"{e.get('httpMethod')} {(e.get('queryStringParameters') or {}).get('resource') or '/'}",
 )
 def handler(event: dict, context) -> dict:
-    """API CRM addict.clinic: заявки с форм сайта с источником и рекламой, создание и получение клиентов, лидов и сделок по API-ключу"""
+    """API CRM addict.clinic: заявки с форм сайта и виджета-перехватчика форм на чужих сайтах с источником и рекламой, создание и получение клиентов, лидов и сделок по API-ключу"""
     method = event.get('httpMethod', 'GET')
     if method == 'OPTIONS':
         return {'statusCode': 200, 'headers': CORS, 'body': ''}
@@ -654,6 +718,17 @@ def handler(event: dict, context) -> dict:
             if json.loads(result['body']).get('id'):
                 ping_push()
             return result
+        if resource == 'form_widget' and method == 'POST':
+            raw = raw_body(event)
+            try:
+                body = json.loads(raw.decode('utf-8', 'replace') or '{}')
+            except json.JSONDecodeError:
+                raise ApiError(400, 'Тело запроса должно быть JSON')
+            result, lid = widget_lead(cur, event, body if isinstance(body, dict) else {})
+            conn.commit()
+            if lid:
+                ping_push()
+            return result
         if resource == 'vidzhitum':
             if method != 'POST':
                 return resp(200, {'ok': True, 'service': 'vidzhitum-webhook'})
@@ -663,7 +738,7 @@ def handler(event: dict, context) -> dict:
                 ping_push()
             return result
         if resource not in ('leads', 'clients', 'deals', 'ping'):
-            raise ApiError(404, 'Неизвестный ресурс. Доступно: leads, clients, deals, ping, dictionaries')
+            raise ApiError(404, 'Неизвестный ресурс. Доступно: leads, clients, deals, ping, dictionaries, form_widget')
         api_key = auth(cur, event.get('headers') or {})
         conn.commit()
 
