@@ -1,4 +1,3 @@
-import { useState } from "react";
 import Icon from "@/components/ui/icon";
 
 type Stats = {
@@ -14,10 +13,9 @@ type Stats = {
 
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
-const DashboardCalls = ({ calls, onNavigate }: { calls?: { day: Stats; week: Stats }; onNavigate: (page: string) => void }) => {
-  const [period, setPeriod] = useState<"day" | "week">("day");
+const DashboardCalls = ({ calls, periodLabel, onNavigate }: { calls?: Stats; periodLabel: string; onNavigate: (page: string) => void }) => {
   if (!calls) return null;
-  const s = calls[period];
+  const s = calls;
   const n = (k: keyof Stats) => Number(s[k] || 0);
   const total = n("incoming") + n("outgoing");
 
@@ -35,11 +33,7 @@ const DashboardCalls = ({ calls, onNavigate }: { calls?: { day: Stats; week: Sta
           <Icon name="PhoneCall" size={18} />Звонки
           <Icon name="ArrowUpRight" size={14} className="text-muted-foreground" />
         </button>
-        <div className="flex gap-1 rounded-full bg-secondary p-1">
-          {([["day", "Сегодня"], ["week", "7 дней"]] as const).map(([k, l]) => (
-            <button key={k} onClick={() => setPeriod(k)} className={`rounded-full px-3 py-1 text-xs ${period === k ? "bg-card font-medium shadow-sm" : "text-muted-foreground"}`}>{l}</button>
-          ))}
-        </div>
+        <span className="text-xs text-muted-foreground">{periodLabel}</span>
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -58,7 +52,7 @@ const DashboardCalls = ({ calls, onNavigate }: { calls?: { day: Stats; week: Sta
         ))}
       </div>
 
-      {total === 0 && <p className="mt-3 text-center text-xs text-muted-foreground">{period === "day" ? "Сегодня звонков ещё не было" : "За неделю звонков не было"} — статистика появится после подключения АТС</p>}
+      {total === 0 && <p className="mt-3 text-center text-xs text-muted-foreground">За выбранный период звонков не было</p>}
     </div>
   );
 };
